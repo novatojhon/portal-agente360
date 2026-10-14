@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Asistente IA · Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f5; --card:#ffffff; --ink:#14201b; --muted:#5d6b64; --line:#dfe5e2;
+    --brand:#0f7b5f; --brand-ink:#ffffff; --brand-soft:#e3f3ed;
+    --ok:#12805c; --ok-soft:#dcf3e9; --bad:#b4372f; --bad-soft:#fbe5e3; --warn:#9a6a00; --warn-soft:#fdf1d6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Plus Jakarta Sans",system-ui,sans-serif}
+  header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .bar{max-width:880px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+  .logo{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700}
+  .bar h1{font-size:16px;margin:0;flex:1}
+  .bar small{display:block;color:var(--muted);font-weight:500}
+  main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto}
+  .tab{border:1px solid var(--line);background:var(--card);padding:9px 14px;border-radius:999px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);white-space:nowrap}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .card h2{font-size:18px;margin:0 0 4px}
+  .card p.sub{color:var(--muted);margin:0 0 16px}
+  label{display:block;font-weight:600;margin:14px 0 6px}
+  .hint{font-weight:400;color:var(--muted);font-size:13px}
+  input,select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.row{grid-template-columns:1fr}}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-weight:700}
+  .pill::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .qr{display:grid;place-items:center;padding:16px;border:1px dashed var(--line);border-radius:var(--radius);margin-top:16px;text-align:center}
+  .qr img{width:260px;max-width:100%;image-rendering:pixelated}
+  .steps{color:var(--muted);margin:8px 0 0;padding-left:18px;text-align:left}
+  .days{display:grid;gap:8px}
+  .day{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center}
+  .day label{margin:0;font-weight:500;display:flex;gap:8px;align-items:center}
+  .day input[type=checkbox]{width:auto}
+  .faq{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
+  @media(max-width:560px){.faq{grid-template-columns:1fr}.day{grid-template-columns:1fr 1fr 1fr}}
+  .note{padding:12px 14px;border-radius:10px;background:var(--brand-soft);color:#0b4f3d;margin-top:12px}
+  .note.bad{background:var(--bad-soft);color:var(--bad)} .note.warn{background:var(--warn-soft);color:#6b4a00}
+  .check{display:flex;gap:10px;align-items:center;font-weight:600;margin-top:14px}
+  .check input{width:auto}
+  .login{max-width:400px;margin:8vh auto}
+  .hidden{display:none!important}
+  pre.prompt{white-space:pre-wrap;background:#f7f9f8;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,monospace;max-height:280px;overflow:auto}
+</style>
+</head>
+<body>
+
+<header id="hdr" class="hidden">
+  <div class="bar">
+    <div class="logo">IA</div>
+    <h1 id="hdrName">Mi negocio<small>Portal del asistente de WhatsApp</small></h1>
+    <button class="btn ghost" id="logout">Salir</button>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<section id="vLogin" class="login card">
+  <div class="logo" style="margin-bottom:12px">IA</div>
+  <h2>Entra a tu portal</h2>
+  <p class="sub">Administra tu asistente de WhatsApp.</p>
+  <form id="fLogin">
+    <label for="email">Correo</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="pass">Contraseña</label>
+    <input id="pass" type="password" autocomplete="current-password" required>
+    <div style="margin-top:18px"><button class="btn" id="bLogin" type="submit">Entrar</button></div>
+    <div id="loginMsg" class="note bad hidden"></div>
+  </form>
+</section>
+
+<main id="vApp" class="hidden">
+  <nav class="tabs">
+    <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
+    <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
+  </nav>
+
+  <!-- WHATSAPP -->
+  <section id="tWa">
+    <div class="card">
+      <h2>Estado de mi WhatsApp</h2>
+      <p class="sub" id="waNum">—</p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <span class="pill warn" id="waPill">Consultando…</span>
+        <button class="btn ghost" id="bRefresh">Actualizar</button>
+        <button class="btn hidden" id="bQr">Mostrar código QR</button>
+      </div>
+      <div id="waBanner" class="note bad hidden">🔴 Tu WhatsApp está desconectado. Tu asistente no puede responder hasta que lo vuelvas a conectar.</div>
+      <div id="qrBox" class="qr hidden">
+        <img id="qrImg" alt="Código QR para vincular WhatsApp">
+        <ol class="steps">
+          <li>Abre WhatsApp en el teléfono del negocio.</li>
+          <li>Toca <b>⋮ Menú</b> → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b>.</li>
+          <li>Apunta la cámara a este código.</li>
+        </ol>
+        <p class="hint" style="margin-top:10px">El código se renueva cada pocos segundos. Esta pantalla se actualiza sola.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIGURACIÓN -->
+  <section id="tCfg" class="hidden">
+    <div class="card" id="cfgStatus"></div>
+    <form id="fCfg" class="card">
+      <h2>Configura tu asistente</h2>
+      <p class="sub">Con estas respuestas nuestra IA redacta las instrucciones de tu asistente. Antes de activarse, nuestro equipo las revisa.</p>
+
+      <div class="row">
+        <div><label for="nombre_negocio">Nombre del negocio</label><input id="nombre_negocio" required></div>
+        <div><label for="tipo_negocio">Rubro <span class="hint">(clínica, tienda de ropa, restaurante…)</span></label><input id="tipo_negocio" required></div>
+      </div>
+
+      <label for="objetivo">¿Qué es lo principal que debe hacer tu asistente?</label>
+      <select id="objetivo">
+        <option value="agendar">Agendar citas</option>
+        <option value="vender">Vender productos</option>
+        <option value="informar">Dar información</option>
+        <option value="soporte">Dar soporte a clientes</option>
+      </select>
+
+      <label for="descripcion">Describe tu negocio <span class="hint">(qué haces, a quién le vendes)</span></label>
+      <textarea id="descripcion" required></textarea>
+
+      <div class="row">
+        <div><label for="tono">Tono del asistente</label>
+          <select id="tono"><option>cercano y profesional</option><option>formal</option><option>divertido y relajado</option><option>técnico y preciso</option></select></div>
+        <div><label for="metodos_pago">Formas de pago</label><input id="metodos_pago" placeholder="Pago móvil, Zelle, efectivo…"></div>
+      </div>
+      <label for="direccion">Dirección</label><input id="direccion">
+
+      <label class="check"><input type="checkbox" id="agenda_citas"> Mi negocio agenda citas por WhatsApp</label>
+      <div id="citaBox" class="hidden">
+        <label for="duracion_cita_min">Duración normal de una cita (minutos)</label>
+        <input id="duracion_cita_min" type="number" min="5" step="5" value="30">
+      </div>
+
+      <label>Horario de atención</label>
+      <div class="days" id="days"></div>
+
+      <label for="que_hacer">¿Qué SÍ debe hacer tu asistente?</label>
+      <textarea id="que_hacer" placeholder="Ej.: informar precios, agendar citas, enviar la ubicación…"></textarea>
+      <label for="que_no_hacer">¿Qué NUNCA debe hacer o decir?</label>
+      <textarea id="que_no_hacer" placeholder="Ej.: no dar diagnósticos, no ofrecer descuentos…"></textarea>
+
+      <label>Preguntas frecuentes <span class="hint">(lo que tus clientes siempre preguntan)</span></label>
+      <div id="faqs"></div>
+      <button type="button" class="btn ghost" id="addFaq">+ Agregar pregunta</button>
+
+      <label for="mensaje_bienvenida">Mensaje de bienvenida</label>
+      <input id="mensaje_bienvenida" placeholder="¡Hola! 👋 Bienvenido a…">
+      <label for="mensaje_fuera_horario">Mensaje cuando estás cerrado</label>
+      <input id="mensaje_fuera_horario" placeholder="Ahora estamos cerrados, pero…">
+
+      <div style="margin-top:20px"><button class="btn" id="bSend" type="submit">Enviar para revisión</button></div>
+      <div id="cfgMsg" class="note hidden"></div>
+    </form>
+  </section>
+</main>
+
+<script>
+const CFG = window.PORTAL_CONFIG || {};
+const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+const $ = (id) => document.getElementById(id);
+const DIAS = [['lun','Lunes'],['mar','Martes'],['mie','Miércoles'],['jue','Jueves'],['vie','Viernes'],['sab','Sábado'],['dom','Domingo']];
+let tenant = null, pollTimer = null;
+
+function show(el, on){ el.classList.toggle('hidden', !on); }
+function msg(el, text, kind){ el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); show(el, !!text); }
+
+// ---------- Sesión ----------
+$('fLogin').addEventListener('submit', async (e) => {
+  e.preventDefault(); $('bLogin').disabled = true; msg($('loginMsg'), '');
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pass').value });
+  $('bLogin').disabled = false;
+  if (error) msg($('loginMsg'), 'Correo o contraseña incorrectos.', 'bad'); else start();
+});
+$('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function start(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show($('vLogin'), true); return; }
+  show($('vLogin'), false); show($('hdr'), true); show($('vApp'), true);
+  const { data, error } = await sb.from('tenants').select('*').limit(1).maybeSingle();
+  if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
+  tenant = data;
+  $('hdrName').firstChild.textContent = data.nombre_negocio;
+  fillForm(data); loadCfgStatus(); checkWa();
+}
+
+// ---------- Pestañas ----------
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  show($('tWa'), b.dataset.t === 'wa'); show($('tCfg'), b.dataset.t === 'cfg');
+});
+
+// ---------- WhatsApp (estado + QR vía n8n) ----------
+async function callWa(accion){
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(CFG.N8N_URL + '/webhook/portal-whatsapp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accion, access_token: session.access_token, anon_key: CFG.SUPABASE_ANON_KEY })
+  });
+  return r.json();
+}
+function paintState(estado){
+  const p = $('waPill');
+  const map = { open: ['ok','Conectado'], connecting: ['warn','Esperando que escanees el QR'], close: ['bad','Desconectado'] };
+  const [k, t] = map[estado] || ['bad','Desconectado'];
+  p.className = 'pill ' + k; p.textContent = t;
+  show($('waBanner'), estado !== 'open'); show($('bQr'), estado !== 'open');
+  if (estado === 'open') { show($('qrBox'), false); stopPoll(); }
+}
+async function checkWa(){
+  try {
+    const r = await callWa('estado');
+    if (!r.ok) { $('waPill').className = 'pill warn'; $('waPill').textContent = r.mensaje || 'Sin WhatsApp asignado'; return; }
+    $('waNum').textContent = r.numero ? 'Número: +' + r.numero : 'Instancia: ' + r.instancia;
+    paintState(r.estado);
+  } catch { $('waPill').className = 'pill warn'; $('waPill').textContent = 'No se pudo consultar'; }
+}
+async function showQr(){
+  $('bQr').disabled = true;
+  try {
+    const r = await callWa('qr');
+    if (r.estado === 'open') { paintState('open'); return; }
+    if (r.qr) { $('qrImg').src = r.qr.startsWith('data:') ? r.qr : 'data:image/png;base64,' + r.qr; show($('qrBox'), true); paintState('connecting'); startPoll(); }
+  } finally { $('bQr').disabled = false; }
+}
+function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () => { n++; await checkWa(); if (n % 6 === 0 && !$('qrBox').classList.contains('hidden')) showQr(); if (n > 60) stopPoll(); }, 5000); }
+function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+$('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
+
+// ---------- Formulario de configuración ----------
+function buildDays(h){
+  $('days').innerHTML = '';
+  for (const [k, n] of DIAS){
+    const v = h && Array.isArray(h[k]) ? h[k] : null;
+    const d = document.createElement('div'); d.className = 'day';
+    d.innerHTML = `<label><input type="checkbox" data-d="${k}" ${v ? 'checked' : ''}> ${n}</label>
+      <input type="time" data-a="${k}" value="${v ? v[0] : '08:00'}"><input type="time" data-c="${k}" value="${v ? v[1] : '17:00'}">`;
+    $('days').appendChild(d);
+  }
+}
+function addFaq(p = '', r = ''){
+  const d = document.createElement('div'); d.className = 'faq';
+  d.innerHTML = `<input placeholder="Pregunta" class="fq"><input placeholder="Respuesta" class="fr"><button type="button" class="btn ghost">✕</button>`;
+  d.querySelector('.fq').value = p; d.querySelector('.fr').value = r;
+  d.querySelector('button').onclick = () => d.remove();
+  $('faqs').appendChild(d);
+}
+$('addFaq').onclick = () => addFaq();
+$('agenda_citas').onchange = () => show($('citaBox'), $('agenda_citas').checked);
+
+const CAMPOS = ['nombre_negocio','tipo_negocio','objetivo','descripcion','tono','direccion','metodos_pago','que_hacer','que_no_hacer','mensaje_bienvenida','mensaje_fuera_horario'];
+async function fillForm(t){
+  for (const c of CAMPOS) if (t[c] != null && $(c)) $(c).value = t[c];
+  $('duracion_cita_min').value = t.duracion_cita_min || 30;
+  const { data: tools } = await sb.from('tenant_tools').select('herramienta,activa');
+  $('agenda_citas').checked = !!(tools || []).find(x => x.herramienta === 'agendar_cita' && x.activa);
+  show($('citaBox'), $('agenda_citas').checked);
+  buildDays(t.horario_atencion);
+  $('faqs').innerHTML = ''; (t.faqs || []).forEach(f => addFaq(f.pregunta, f.respuesta)); if (!(t.faqs || []).length) addFaq();
+}
+
+const ESTADOS = {
+  enviado: ['warn','Recibimos tu formulario. Nuestra IA está preparando las instrucciones…'],
+  generando: ['warn','Nuestra IA está redactando las instrucciones de tu asistente…'],
+  pendiente_revision: ['warn','Las instrucciones están listas y en revisión por nuestro equipo. Te avisaremos al activarlas.'],
+  aprobado: ['','✅ Tu configuración está activa. Tu asistente ya responde con estas instrucciones.'],
+  rechazado: ['bad','Necesitamos que ajustes algunos datos.'],
+  error: ['bad','Hubo un problema al generar las instrucciones. Vuelve a enviar el formulario.']
+};
+async function loadCfgStatus(){
+  const { data } = await sb.from('onboarding_forms').select('id,estado,comentario_revision,created_at,prompt_generado').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const box = $('cfgStatus');
+  if (!data) { box.innerHTML = '<h2>Aún no has configurado tu asistente</h2><p class="sub" style="margin:0">Llena el formulario de abajo y envíalo.</p>'; return; }
+  const [k, t] = ESTADOS[data.estado] || ['', data.estado];
+  box.innerHTML = `<h2>Estado de tu configuración</h2><div class="note ${k}">${t}${data.comentario_revision && data.estado === 'rechazado' ? '<br><b>Comentario:</b> ' + data.comentario_revision.replace(/</g,'&lt;') : ''}</div>`;
+  if (['enviado','generando'].includes(data.estado)) setTimeout(loadCfgStatus, 6000);
+}
+
+$('fCfg').addEventListener('submit', async (e) => {
+  e.preventDefault(); if (!tenant) return;
+  const horario = {};
+  for (const [k] of DIAS){
+    const on = document.querySelector(`[data-d="${k}"]`).checked;
+    horario[k] = on ? [document.querySelector(`[data-a="${k}"]`).value, document.querySelector(`[data-c="${k}"]`).value] : null;
+  }
+  const r = { horario, agenda_citas: $('agenda_citas').checked, duracion_cita_min: parseInt($('duracion_cita_min').value || '30', 10),
+    faqs: [...document.querySelectorAll('.faq')].map(f => ({ pregunta: f.querySelector('.fq').value.trim(), respuesta: f.querySelector('.fr').value.trim() })).filter(f => f.pregunta) };
+  for (const c of CAMPOS) r[c] = $(c).value.trim();
+  $('bSend').disabled = true; msg($('cfgMsg'), '');
+  const { data, error } = await sb.from('onboarding_forms').insert({ tenant_id: tenant.id, respuestas: r, estado: 'enviado' }).select('id').single();
+  if (error) { $('bSend').disabled = false; msg($('cfgMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
+  fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
+  $('bSend').disabled = false;
+  msg($('cfgMsg'), '¡Enviado! Nuestra IA está preparando las instrucciones de tu asistente y luego las revisamos.');
+  loadCfgStatus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+start();
+</script>
+</body>
+</html>

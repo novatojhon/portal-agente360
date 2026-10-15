@@ -109,6 +109,21 @@
   .sum .s p b{color:var(--ink);font-weight:600}
   .link{background:none;border:0;color:var(--brand);font:inherit;font-weight:700;cursor:pointer;padding:0;font-size:13px}
   .saved{font-size:12px;color:var(--muted)}
+  .tile.lock{opacity:.55;cursor:not-allowed;background:#f6f7f7}
+  .tile .lk{font-size:11.5px;font-weight:700;color:var(--warn)}
+  .meter{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 4px}
+  .meter i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .4s}
+  .meter i.warn{background:#e0a100} .meter i.bad{background:var(--bad)}
+  .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .stat div{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat b{display:block;font-size:18px}
+  .stat span{font-size:12.5px;color:var(--muted)}
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+  .plan{border:1.5px solid var(--line);border-radius:14px;padding:14px;position:relative}
+  .plan.me{border-color:var(--brand);background:var(--brand-soft)}
+  .plan .pr{font-size:22px;font-weight:700}
+  .plan .tag{position:absolute;top:-10px;right:12px;background:var(--ink);color:#fff;border-radius:99px;padding:1px 9px;font-size:11.5px;font-weight:700}
+  .plan ul{padding-left:18px;margin:8px 0 0;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -140,7 +155,9 @@
   <nav class="tabs">
     <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
+    <button class="tab" data-t="plan">📊 Mi plan</button>
   </nav>
+  <div id="planBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <!-- WHATSAPP -->
   <section id="tWa">
@@ -165,6 +182,9 @@
     </div>
   </section>
 
+  <!-- MI PLAN -->
+  <section id="tPlan" class="hidden"></section>
+
   <!-- CONFIGURACIÓN -->
   <section id="tCfg" class="hidden">
     <div class="card" id="cfgStatus"></div>
@@ -186,7 +206,7 @@ const CFG = window.PORTAL_CONFIG || {};
 const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tenant = null, pollTimer = null;
+let tenant = null, pollTimer = null, PLAN = null;
 
 function show(el, on){ el.classList.toggle('hidden', !on); }
 function msg(el, text, kind){ el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); show(el, !!text); }
@@ -208,13 +228,13 @@ async function start(){
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
-  await initWizard(); loadCfgStatus(); checkWa();
+  await loadPlan(); await initWizard(); loadCfgStatus(); checkWa();
 }
 
 // ---------- Pestañas ----------
 function openTab(t){
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
-  show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg');
+  show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan');
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
 
@@ -254,6 +274,77 @@ async function showQr(){
 function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () => { n++; await checkWa(); if (n % 6 === 0 && !$('qrBox').classList.contains('hidden')) showQr(); if (n > 60) stopPoll(); }, 5000); }
 function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 $('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
+
+// ---------- Mi plan (consumo, vencimiento, respuestas adicionales) ----------
+const FN_PLAN = { citas:'Agendar citas', reservas:'Reservas', pedidos:'Ventas y pedidos', delivery:'Envíos o delivery', cotizaciones:'Cotizaciones',
+  membresias:'Planes o membresías', tasas:'Tasas del día', paquetes:'Paquetes y viajes', soporte:'Soporte técnico', promociones:'Promociones',
+  fotos:'Fotos de productos', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos' };
+const usd = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('es-VE', { maximumFractionDigits: 2 });
+const fd = (d) => d ? d.split('-').reverse().join('/') : '—';
+async function loadPlan(){
+  const { data } = await sb.rpc('mi_plan');
+  PLAN = data && data.ok ? data : null;
+  paintPlan();
+}
+function planMinCon(k){ const p = (PLAN.planes || []).find(x => (x.funciones || []).includes(k)); return p ? p.nombre : null; }
+function paintPlan(){
+  const P = PLAN; if (!P) { $('tPlan').innerHTML = '<div class="card"><p class="sub">Aún no tienes un plan asignado.</p></div>'; return; }
+  const pct = Math.min(100, P.porcentaje || 0), cls = pct >= 100 ? 'bad' : pct >= 80 ? 'warn' : '';
+  const soporte = P.numero_soporte ? 'https://wa.me/' + String(P.numero_soporte).replace(/\D/g, '').replace(/^0/, '58') : null;
+  const bs = (n) => P.tasa_bs ? ` <span class="hint">(Bs ${(n * P.tasa_bs).toLocaleString('es-VE', { maximumFractionDigits: 2 })})</span>` : '';
+  // aviso arriba en todas las pestañas
+  let ban = '';
+  if (!P.puede_responder) ban = `<div class="note bad">⛔ <b>Tu asistente está detenido.</b> ${P.motivo === 'limite' ? 'Llegó al límite de respuestas de tu plan.' : P.motivo === 'prueba_terminada' ? 'Terminó tu período de prueba.' : 'Tu plan venció.'} <a href="#" data-goplan>Ver cómo reactivarlo →</a></div>`;
+  else if (pct >= 80) ban = `<div class="note warn">⚠️ Usaste el <b>${pct}%</b> de las respuestas de tu plan este mes. <a href="#" data-goplan>Ver consumo →</a></div>`;
+  else if (P.dias_para_vencer != null && P.dias_para_vencer <= 3) ban = `<div class="note warn">📅 Tu plan ${P.dias_para_vencer < 0 ? 'venció' : 'vence'} el <b>${fd(P.vence)}</b>. <a href="#" data-goplan>Ver mi plan →</a></div>`;
+  $('planBanner').innerHTML = ban; show($('planBanner'), !!ban);
+  $('planBanner').querySelectorAll('[data-goplan]').forEach(a => a.onclick = (e) => { e.preventDefault(); openTab('plan'); });
+
+  const est = { prueba:['warn','Período de prueba'], activa:['ok','Activa'], suspendida:['bad','Suspendida'] }[P.estado_cuenta] || ['', P.estado_cuenta];
+  $('tPlan').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div><h2>Plan ${esc(P.plan_nombre)}</h2><p class="sub" style="margin:0">${P.ciclo === 'anual' ? 'Pago anual' : 'Pago mensual'}</p></div>
+        <span class="pill ${est[0]}">${est[1]}</span></div>
+      <div style="margin-top:16px;font-weight:600">Respuestas de tu asistente este mes</div>
+      <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
+      <div class="hint"><b>${(P.usadas || 0).toLocaleString('es')}</b> de ${(P.limite || 0).toLocaleString('es')} incluidas (${pct}%) · se reinicia el día 1 de cada mes</div>
+      <div class="stat">
+        <div><b>${fd(P.vence)}</b><span>${P.estado_cuenta === 'prueba' ? 'Fin de la prueba' : 'Próximo pago'}${P.dias_para_vencer != null ? ' · ' + (P.dias_para_vencer < 0 ? 'venció hace ' + (-P.dias_para_vencer) + ' día(s)' : 'faltan ' + P.dias_para_vencer + ' día(s)') : ''}</span></div>
+        <div><b>${(P.extra || 0).toLocaleString('es')}</b><span>Respuestas adicionales este mes</span></div>
+        <div><b>${usd(P.extra_pendiente)}</b><span>Por pagar por adicionales (aparte del plan)</span></div>
+      </div>
+      ${!P.puede_responder && P.motivo !== 'limite' ? `<div class="note bad">Para reactivar tu asistente realiza tu pago${soporte ? ` y avísanos por <a href="${soporte}" target="_blank" rel="noopener">WhatsApp</a>` : ''}.</div>` : ''}
+    </div>
+    <div class="card">
+      <h2>Respuestas adicionales</h2>
+      <p class="sub">Si llegas al límite de tu plan, tu asistente <b>se detiene</b>, salvo que autorices respuestas adicionales. Cada 1.000 adicionales cuestan <b>${usd(P.precio_extra_1000)}</b>${bs(P.precio_extra_1000)} y se cobran con tu próximo pago.</p>
+      <label class="check" style="display:flex;gap:10px;align-items:center;font-weight:600"><input type="checkbox" id="xAut" style="width:auto;transform:scale(1.25)" ${P.autoriza_extra ? 'checked' : ''}> Autorizo respuestas adicionales cuando se acabe mi plan</label>
+      <div id="xTopeBox" class="${P.autoriza_extra ? '' : 'hidden'}">
+        <label for="xTope">Máximo de respuestas adicionales al mes <span class="hint">(vacío = sin máximo)</span></label>
+        <input id="xTope" type="number" min="0" step="100" value="${P.extra_tope || ''}" placeholder="Ej.: 1000" style="max-width:220px">
+      </div>
+      <div style="margin-top:12px"><button class="btn" id="xSave">Guardar</button></div>
+      <div id="xMsg" class="note hidden"></div>
+    </div>
+    <div class="card"><h2>Planes disponibles</h2><p class="sub">¿Necesitas más? Escríbenos para cambiar de plan.</p>
+      <div class="plans">${(P.planes || []).map(x => `<div class="plan ${x.id === P.plan ? 'me' : ''}">${x.id === P.plan ? '<span class="tag">Tu plan</span>' : x.destacado ? '<span class="tag">⭐ Recomendado</span>' : ''}
+        <b>${esc(x.nombre)}</b><div class="pr">${usd(x.precio_mensual)}<span class="hint"> /mes</span></div>${bs(x.precio_mensual)}
+        <div class="hint">${Number(x.respuestas_mes).toLocaleString('es')} respuestas al mes${x.precio_anual ? ' · ' + usd(x.precio_anual) + ' al año' : ''}</div>
+        <p class="hint" style="margin:6px 0 0">${esc(x.descripcion || '')}</p>
+        <ul>${(x.funciones || []).map(k => `<li>${FN_PLAN[k] || k}</li>`).join('')}</ul></div>`).join('')}</div>
+      ${soporte ? `<div style="margin-top:12px"><a class="btn ghost" href="${soporte}" target="_blank" rel="noopener">💬 Escribir a soporte</a></div>` : ''}
+    </div>`;
+  $('xAut').onchange = () => show($('xTopeBox'), $('xAut').checked);
+  $('xSave').onclick = async () => {
+    $('xSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_autorizar_extra', { p_autoriza: $('xAut').checked, p_tope: $('xTope').value ? parseInt($('xTope').value, 10) : null });
+    $('xSave').disabled = false;
+    if (error || !data || !data.ok) { msg($('xMsg'), 'No se pudo guardar. Intenta de nuevo.', 'bad'); return; }
+    PLAN = Object.assign(PLAN, data); paintPlan();
+    msg($('xMsg'), data.autoriza_extra ? '✅ Listo. Tu asistente seguirá respondiendo aunque se acabe tu plan.' : 'Listo. Tu asistente se detendrá al llegar al límite de tu plan.');
+  };
+}
 
 // =====================================================================
 //  CONFIGURAR MI ASISTENTE — asistente por pasos
@@ -435,15 +526,18 @@ function rCategoria(){
     <div class="grid" id="catGrid">${CATS.map(c => `<button type="button" class="tile ${F.categoria === c.id ? 'on' : ''}" data-act="cat" data-v="${c.id}" data-n="${esc(c.n.toLowerCase())}"><span class="em">${c.e}</span><b>${c.n}</b></button>`).join('')}</div>
     <div id="otroBox" class="${F.categoria === 'otro' ? '' : 'hidden'}">${field('otro_rubro', '¿Qué tipo de negocio es?', false, 'placeholder="Ej.: Floristería, imprenta, veterinaria…"')}</div>`;
 }
+const permitida = (k) => !PLAN || (PLAN.funciones || []).includes(k);
 function presetFunciones(){
-  if (F._catPreset === F.categoria) return;
-  F.funciones = [...catOf(F.categoria).f]; F._catPreset = F.categoria;
+  if (F._catPreset === F.categoria) { F.funciones = F.funciones.filter(permitida); return; }
+  F.funciones = catOf(F.categoria).f.filter(permitida); F._catPreset = F.categoria;
 }
 // Paso 3
 function rFunciones(){
   return `<div class="grid" style="margin-top:12px">
     <div class="tile on fixed"><span class="em">ℹ️</span><b>Dar información</b><small>Siempre incluido: responde dudas sobre tu negocio.</small></div>
-    ${Object.entries(FUNCS).map(([k, x]) => `<button type="button" class="tile ${F.funciones.includes(k) ? 'on' : ''}" data-act="fn" data-v="${k}"><span class="em">${x.e}</span><b>${x.n}</b><small>${x.d}</small></button>`).join('')}
+    ${Object.entries(FUNCS).map(([k, x]) => permitida(k)
+      ? `<button type="button" class="tile ${F.funciones.includes(k) ? 'on' : ''}" data-act="fn" data-v="${k}"><span class="em">${x.e}</span><b>${x.n}</b><small>${x.d}</small></button>`
+      : `<div class="tile lock" title="No incluido en tu plan"><span class="em">🔒</span><b>${x.n}</b><small>${x.d}</small><span class="lk">${planMinCon(k) ? 'Disponible en Plan ' + esc(planMinCon(k)) : 'No disponible en tu plan'}</span></div>`).join('')}
   </div><p class="hint" style="margin-top:12px">Si algo no aparece aquí, cuéntalo en las preguntas del siguiente paso.</p>`;
 }
 // Fila de pregunta: se marca si el cliente la quiere responder y se abre la casilla de respuesta
@@ -534,7 +628,7 @@ function payload(){
   const info = [];
   for (const q of [...cat.q, ...Object.values(FUNCS).flatMap(x => x.q)]) if ((F.respuestas[q] || '').trim()) info.push({ pregunta: q, respuesta: F.respuestas[q].trim() });
   for (const x of F.extra) if (x.pregunta.trim() && x.respuesta.trim()) info.push({ pregunta: x.pregunta.trim(), respuesta: x.respuesta.trim() });
-  const fn = F.funciones;
+  const fn = F.funciones.filter(permitida);
   const objetivo = fn.includes('citas') ? 'agendar' : fn.some(k => ['pedidos','cotizaciones','paquetes','membresias','tasas','reservas'].includes(k)) ? 'vender' : fn.includes('soporte') ? 'soporte' : 'informar';
   return {
     nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),

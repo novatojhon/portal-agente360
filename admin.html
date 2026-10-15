@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Administrador · Agente 360</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f4f7; --card:#fff; --ink:#151a24; --muted:#5f6878; --line:#e0e4ea;
+    --brand:#3a3fd6; --brand-soft:#ecedfd; --ok:#12805c; --ok-soft:#dcf3e9; --bad:#b4372f; --bad-soft:#fbe5e3; --warn:#9a6a00; --warn-soft:#fdf1d6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 "Plus Jakarta Sans",system-ui,sans-serif}
+  header{background:var(--ink);color:#fff;position:sticky;top:0;z-index:5}
+  .bar{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+  .bar h1{font-size:16px;margin:0;flex:1}
+  .bar small{display:block;color:#aab1c0;font-weight:500}
+  main{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto}
+  .tab{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:999px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);white-space:nowrap}
+  .tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .tab .n{background:var(--bad);color:#fff;border-radius:99px;padding:0 7px;margin-left:6px;font-size:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .card h2{font-size:17px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 14px}
+  label{display:block;font-weight:600;margin:12px 0 5px;font-size:13.5px}
+  input,select,textarea{width:100%;font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+  textarea{min-height:80px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:9px;padding:9px 15px;font:inherit;font-weight:700;cursor:pointer;background:var(--brand);color:#fff}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.ok{background:var(--ok)} .btn.bad{background:var(--bad)}
+  .btn.sm{padding:6px 10px;font-size:13px}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi b{display:block;font-size:22px}
+  .kpi span{color:var(--muted);font-size:12.5px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:#eef0f4;color:var(--muted)}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.brand{background:var(--brand-soft);color:var(--brand)}
+  .cli{display:grid;grid-template-columns:1.6fr 1fr 1.3fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+  .cli:first-of-type{border-top:0}
+  .cli .name b{display:block}
+  .cli .name small{color:var(--muted)}
+  @media(max-width:760px){.cli{grid-template-columns:1fr 1fr}.cli .acts{grid-column:1/-1}}
+  .meter{height:8px;background:#eef0f4;border-radius:99px;overflow:hidden;margin:4px 0 2px}
+  .meter i{display:block;height:100%;background:var(--ok);border-radius:99px}
+  .meter i.warn{background:#e0a100} .meter i.bad{background:var(--bad)}
+  .small{font-size:12.5px;color:var(--muted)}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .chks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+  .chk{display:flex;gap:8px;align-items:center;font-weight:500;margin:0;padding:6px 8px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+  .chk input{width:auto;accent-color:var(--brand)}
+  .note{padding:11px 13px;border-radius:9px;background:var(--brand-soft);color:#272b8f;margin-top:10px}
+  .note.bad{background:var(--bad-soft);color:var(--bad)} .note.warn{background:var(--warn-soft);color:#6b4a00} .note.ok{background:var(--ok-soft);color:var(--ok)}
+  .hidden{display:none!important}
+  .login{max-width:400px;margin:8vh auto}
+  dialog{border:0;border-radius:14px;padding:0;width:min(640px,94vw);max-height:90vh;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(15,18,30,.5)}
+  .dlg{padding:18px;overflow:auto;max-height:90vh}
+  .dlg h3{margin:0 0 4px}
+  .dlg .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  pre.p{white-space:pre-wrap;background:#f7f8fa;border:1px solid var(--line);border-radius:9px;padding:10px;font:12.5px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}
+  table.t{width:100%;border-collapse:collapse;font-size:13px}
+  table.t td,table.t th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+  .legend code{background:#eef0f4;border-radius:5px;padding:1px 5px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;z-index:50}
+</style>
+</head>
+<body>
+<header id="hdr" class="hidden"><div class="bar"><h1>Panel Administrador<small>Agente IA 360</small></h1><button class="btn ghost sm" id="bOut">Salir</button></div></header>
+
+<section id="vLogin" class="login card">
+  <h2>Panel del administrador</h2>
+  <p class="sub">Solo para el dueño del servicio.</p>
+  <form id="fLogin">
+    <label for="em">Correo</label><input id="em" type="email" autocomplete="username" required>
+    <label for="pw">Contraseña</label><input id="pw" type="password" autocomplete="current-password" required>
+    <div style="margin-top:16px"><button class="btn" id="bIn">Entrar</button></div>
+    <div id="lMsg" class="note bad hidden"></div>
+  </form>
+</section>
+
+<main id="vApp" class="hidden">
+  <nav class="tabs">
+    <button class="tab on" data-t="cli">👥 Clientes</button>
+    <button class="tab" data-t="frm">📝 Formularios<span class="n hidden" id="nFrm"></span></button>
+    <button class="tab" data-t="pla">💳 Planes</button>
+    <button class="tab" data-t="aju">⚙️ Tarifas y condiciones</button>
+  </nav>
+  <section id="tcli"></section>
+  <section id="tfrm" class="hidden"></section>
+  <section id="tpla" class="hidden"></section>
+  <section id="taju" class="hidden"></section>
+</main>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script>
+const CFG = window.PORTAL_CONFIG || {};
+const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const show = (el, on) => el.classList.toggle('hidden', !on);
+const money = (n) => n == null || n === '' ? '—' : '$' + Number(n).toLocaleString('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fdate = (d) => d ? d.split('-').reverse().join('/') : '—';
+function toast(t){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+async function rpc(fn, args){ const { data, error } = await sb.rpc(fn, args || {}); if (error) { toast('Error: ' + error.message); throw error; } return data; }
+
+const FUNC = {
+  citas:'📅 Agendar citas', reservas:'🛏️ Reservas', pedidos:'🛒 Ventas y pedidos', delivery:'🛵 Envíos o delivery',
+  cotizaciones:'🧾 Cotizaciones', membresias:'🎟️ Planes o membresías', tasas:'💱 Tasas del día', paquetes:'✈️ Paquetes y viajes',
+  soporte:'🛠️ Soporte técnico', promociones:'🎁 Promociones', fotos:'📷 Fotos de productos', recordatorios:'⏰ Recordatorio de citas',
+  conversaciones:'💬 Ver conversaciones', crm:'📈 Clientes potenciales y métricas', masivos:'📣 Mensajes masivos'
+};
+const GRUPOS = [['Lo que hace el bot', ['citas','reservas','pedidos','delivery','cotizaciones','membresias','tasas','paquetes','soporte']],
+                ['Herramientas del portal', ['promociones','fotos','recordatorios','conversaciones','crm','masivos']]];
+const ESTADO = { prueba:['warn','En prueba'], activa:['ok','Activa'], suspendida:['bad','Suspendida'] };
+const MOTIVO = { limite:'Llegó al límite', vencido:'Plan vencido', prueba_terminada:'Prueba terminada', suspendida:'Suspendida' };
+let D = null;
+
+// ---------- Sesión ----------
+$('fLogin').onsubmit = async (e) => {
+  e.preventDefault(); $('bIn').disabled = true; show($('lMsg'), false);
+  const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+  $('bIn').disabled = false;
+  if (error) { $('lMsg').textContent = 'Correo o contraseña incorrectos.'; show($('lMsg'), true); } else start();
+};
+$('bOut').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+async function start(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show($('vLogin'), true); return; }
+  const ok = await rpc('es_super_admin').catch(() => false);
+  if (!ok) { show($('vLogin'), true); $('lMsg').textContent = 'Esta cuenta no es de administrador.'; show($('lMsg'), true); await sb.auth.signOut(); return; }
+  show($('vLogin'), false); show($('hdr'), true); show($('vApp'), true);
+  await load();
+}
+async function load(){ D = await rpc('admin_datos'); rCli(); rFrm(); rPla(); rAju(); }
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  for (const t of ['cli','frm','pla','aju']) show($('t' + t), b.dataset.t === t);
+});
+function openDlg(html){ $('dlgBody').innerHTML = html; $('dlg').showModal(); }
+function closeDlg(){ $('dlg').close(); }
+
+// ---------- Clientes ----------
+function rCli(){
+  const c = D.clientes, plan = Object.fromEntries(D.planes.map(p => [p.id, p]));
+  const act = c.filter(x => x.estado_cuenta === 'activa' && x.activo);
+  const ingreso = act.reduce((s, x) => s + Number((plan[x.plan] || {}).precio_mensual || 0), 0);
+  const extra = c.reduce((s, x) => s + Number(x.extra_pendiente || 0), 0);
+  $('tcli').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><b>${act.length}</b><span>Clientes activos</span></div>
+      <div class="kpi"><b>${c.filter(x => x.estado_cuenta === 'prueba').length}</b><span>En prueba</span></div>
+      <div class="kpi"><b>${c.filter(x => !x.puede_responder).length}</b><span>Con el bot detenido</span></div>
+      <div class="kpi"><b>${money(ingreso)}</b><span>Ingreso mensual (planes activos)</span></div>
+      <div class="kpi"><b>${money(extra)}</b><span>Respuestas extra por cobrar</span></div>
+    </div>
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>Clientes</h2><p class="sub" style="margin:0">${c.length} en total</p></div>
+      <div style="display:flex;gap:8px"><input id="qCli" placeholder="🔎 Buscar…" style="width:200px"><button class="btn" id="bNew">+ Nuevo cliente</button></div></div>
+      <div id="lCli" style="margin-top:10px"></div></div>`;
+  const paint = () => {
+    const q = $('qCli').value.toLowerCase();
+    $('lCli').innerHTML = c.filter(x => !q || (x.negocio + ' ' + (x.email || '')).toLowerCase().includes(q)).map(x => {
+      const [ek, et] = ESTADO[x.estado_cuenta] || ['', x.estado_cuenta];
+      const pct = Math.min(100, x.porcentaje || 0), cls = pct >= 100 ? 'bad' : pct >= 80 ? 'warn' : '';
+      const dv = x.dias_para_vencer;
+      return `<div class="cli">
+        <div class="name"><b>${esc(x.negocio)}</b><small>${esc(x.email || 'sin correo')} · ${esc(x.categoria || '')}</small><br>
+          <span class="pill brand">${esc(x.plan_nombre || x.plan)}</span> <span class="pill ${ek}">${et}</span>
+          ${x.whatsapp ? `<span class="pill ${x.whatsapp === 'conectada' ? 'ok' : 'bad'}">WhatsApp ${x.whatsapp === 'conectada' ? 'conectado' : 'desconectado'}</span>` : '<span class="pill">Sin WhatsApp</span>'}
+          ${x.formulario === 'pendiente_revision' ? '<span class="pill warn">Formulario por revisar</span>' : ''}</div>
+        <div><div class="small">Vence: <b>${fdate(x.vence)}</b></div>
+          <div class="small">${dv == null ? '' : dv < 0 ? `<span style="color:var(--bad)">Venció hace ${-dv} día(s)${x.en_gracia ? ' · en gracia' : ''}</span>` : `Faltan ${dv} día(s)`}</div>
+          ${!x.puede_responder ? `<span class="pill bad">Bot detenido: ${MOTIVO[x.motivo] || x.motivo}</span>` : ''}</div>
+        <div><div class="small">${(x.usadas || 0).toLocaleString('es')} de ${(x.limite || 0).toLocaleString('es')} respuestas ${x.extra ? `· <b>${x.extra} extra este mes</b>` : ''}</div>
+          <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
+          ${Number(x.extra_pendiente) > 0 ? `<div class="small" style="color:var(--bad)">Extra por cobrar: <b>${money(x.extra_pendiente)}</b></div>` : ''}
+          <div class="small">${x.autoriza_extra ? '✅ Autorizó extra' + (x.extra_tope ? ' (tope ' + x.extra_tope + ')' : '') : 'Sin autorizar extra'}</div></div>
+        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button></div>
+      </div>`; }).join('') || '<p class="sub">No hay clientes.</p>';
+    $('lCli').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => dPago(c.find(x => x.id === b.dataset.pay)));
+    $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
+    $('lCli').querySelectorAll('[data-hist]').forEach(b => b.onclick = () => dHist(c.find(x => x.id === b.dataset.hist)));
+  };
+  $('qCli').oninput = paint; $('bNew').onclick = dNuevo; paint();
+}
+const planOpts = (sel) => D.planes.map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.nombre)} — ${money(p.precio_mensual)}/mes</option>`).join('');
+
+function dPago(x){
+  const p = D.planes.find(y => y.id === x.plan) || {};
+  openDlg(`<h3>💵 Registrar pago</h3><p class="sub">${esc(x.negocio)} · Plan ${esc(p.nombre || x.plan)} · vence ${fdate(x.vence)}</p>
+    <div class="row">
+      <div><label>Concepto</label><select id="pC">
+        <option value="mensualidad">Mensualidad (${money(p.precio_mensual)})</option><option value="anual">Pago anual (${money(p.precio_anual)})</option>
+        <option value="instalacion">Instalación (${money(D.ajustes.costo_instalacion)})</option><option value="extra">Respuestas extra (pendiente ${money(x.extra_pendiente)})</option><option value="otro">Otro</option></select></div>
+      <div><label>Monto</label><input id="pM" type="number" step="0.01" value="${p.precio_mensual || ''}"></div>
+      <div><label>Moneda</label><select id="pMo"><option>USD</option><option>Bs</option></select></div>
+      <div><label>Meses que extiende</label><input id="pMe" type="number" min="0" value="1"></div>
+    </div>
+    <div class="row"><div><label>Fecha</label><input id="pF" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div><label>Referencia</label><input id="pR" placeholder="N.º de pago móvil, Zelle…"></div></div>
+    <label>Nota</label><input id="pN">
+    <p class="small">📅 La fecha de pago es fija: la mensualidad suma 1 mes y el anual 12 meses <b>desde el vencimiento anterior</b> (${fdate(x.vence)}), no desde hoy. Las <b>respuestas extra</b> se cobran aparte: no cambian la fecha, solo bajan lo que debe de extra.</p>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn ok" id="pOk">Guardar pago</button></div>`);
+  const ref = { mensualidad:[p.precio_mensual,1], anual:[p.precio_anual,12], instalacion:[D.ajustes.costo_instalacion,0], extra:[x.extra_pendiente,0], otro:['',0] };
+  $('pC').onchange = () => { const [m, me] = ref[$('pC').value]; $('pM').value = m ?? ''; $('pMe').value = me; $('pMe').disabled = !['mensualidad','anual'].includes($('pC').value); };
+  $('pOk').onclick = async () => {
+    if (!$('pM').value) return toast('Escribe el monto');
+    $('pOk').disabled = true;
+    const r = await rpc('admin_registrar_pago', { p_tenant: x.id, p: { concepto: $('pC').value, monto: $('pM').value, moneda: $('pMo').value,
+      meses: $('pMe').value, fecha: $('pF').value, referencia: $('pR').value, nota: $('pN').value } }).catch(() => null);
+    $('pOk').disabled = false; if (!r) return;
+    closeDlg(); toast(r.vence ? 'Pago guardado · vence el ' + fdate(r.vence) : 'Pago guardado'); load();
+  };
+}
+function dEditar(x){
+  openDlg(`<h3>Editar cliente</h3><p class="sub">${esc(x.negocio)}</p>
+    <div class="row">
+      <div><label>Plan</label><select id="eP">${planOpts(x.plan)}</select></div>
+      <div><label>Estado de la cuenta</label><select id="eE">${Object.entries(ESTADO).map(([k, [, t]]) => `<option value="${k}" ${k === x.estado_cuenta ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label>Vence (fecha fija)</label><input value="${fdate(x.vence)}" readonly style="background:#f3f4f7"></div>
+      <div><label>Ciclo</label><select id="eC"><option value="mensual" ${x.ciclo === 'mensual' ? 'selected' : ''}>Mensual</option><option value="anual" ${x.ciclo === 'anual' ? 'selected' : ''}>Anual</option></select></div>
+    </div>
+    <div class="chks" style="margin-top:12px">
+      <label class="chk"><input type="checkbox" id="eB" ${x.bot_activo ? 'checked' : ''}> Bot encendido</label>
+      <label class="chk"><input type="checkbox" id="eX" ${x.autoriza_extra ? 'checked' : ''}> Respuestas extra autorizadas</label>
+      <label class="chk"><input type="checkbox" id="eA" ${x.activo ? 'checked' : ''}> Cliente activo</label>
+    </div>
+    <label>Notas internas</label><textarea id="eN">${esc(x.notas || '')}</textarea>
+    <p class="small">Teléfono del dueño para avisos: <b>${esc(x.telefono || 'sin teléfono')}</b> · Instancia: <b>${esc(x.instancia || '—')}</b></p>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="eOk">Guardar</button></div>`);
+  $('eOk').onclick = async () => {
+    const r = await rpc('admin_actualizar_cliente', { p_tenant: x.id, p: { plan: $('eP').value, estado_cuenta: $('eE').value,
+      ciclo: $('eC').value, bot_activo: $('eB').checked, autoriza_extra: $('eX').checked, activo: $('eA').checked, notas: $('eN').value } }).catch(() => null);
+    if (r) { closeDlg(); toast('Cliente actualizado'); load(); }
+  };
+}
+async function dHist(x){
+  const ps = await rpc('admin_pagos', { p_tenant: x.id });
+  openDlg(`<h3>Pagos de ${esc(x.negocio)}</h3>
+    ${ps.length ? `<table class="t"><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Meses</th><th>Referencia</th></tr>
+      ${ps.map(g => `<tr><td>${fdate(g.fecha)}</td><td>${esc(g.concepto)}</td><td>${esc(g.moneda)} ${Number(g.monto).toLocaleString('es')}</td><td>${g.meses || ''}</td><td>${esc(g.referencia || '')}</td></tr>`).join('')}</table>` : '<p class="sub">Aún no hay pagos registrados.</p>'}
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cerrar</button></div>`);
+}
+function dNuevo(){
+  openDlg(`<h3>+ Nuevo cliente</h3><p class="sub">Empieza en prueba de ${D.ajustes.dias_prueba} días.</p>
+    <label>Nombre del negocio</label><input id="nN">
+    <div class="row"><div><label>Correo de acceso al portal</label><input id="nE" type="email"></div><div><label>WhatsApp del dueño (avisos)</label><input id="nT" placeholder="0412-1234567"></div></div>
+    <div class="row"><div><label>Plan</label><select id="nP">${planOpts(D.ajustes.plan_prueba)}</select></div><div><label>Nombre de la instancia en Evolution</label><input id="nI" placeholder="Ej.: CLINICA_SOL"></div></div>
+    <div class="note warn">Antes o después de crearlo: 1) crea la instancia con ese mismo nombre en Evolution y apunta su webhook a <b>/webhook/agente360</b>; 2) crea su usuario en Supabase → Authentication (Auto Confirm) con ese correo. Si el usuario ya existe, se enlaza solo.</div>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="nOk">Crear cliente</button></div>`);
+  $('nOk').onclick = async () => {
+    const r = await rpc('admin_crear_cliente', { p: { negocio: $('nN').value.trim(), email: $('nE').value.trim(), telefono: $('nT').value.trim(), plan: $('nP').value, instancia: $('nI').value.trim() } }).catch(() => null);
+    if (r) { closeDlg(); toast(r.usuario_enlazado ? 'Cliente creado y enlazado a su usuario' : 'Cliente creado. Falta crear su usuario en Authentication.'); load(); }
+  };
+}
+
+// ---------- Formularios ----------
+function rFrm(){
+  const f = D.formularios, pend = f.filter(x => x.estado === 'pendiente_revision').length;
+  $('nFrm').textContent = pend; show($('nFrm'), pend > 0);
+  const est = { enviado:['warn','Recibido'], generando:['warn','La IA está redactando'], pendiente_revision:['brand','Por revisar'], error:['bad','Error al generar'] };
+  $('tfrm').innerHTML = `<div class="card"><h2>Formularios de configuración</h2><p class="sub">Revisa lo que llenó cada cliente y lo que redactó la IA. Al aprobar, el bot empieza a usarlo.</p>
+    ${f.length ? f.map(x => `<div class="cli" style="grid-template-columns:2fr 1fr auto"><div class="name"><b>${esc(x.negocio)}</b><small>${new Date(x.creado).toLocaleString('es-VE')}</small></div>
+      <div><span class="pill ${(est[x.estado] || [''])[0]}">${(est[x.estado] || ['', x.estado])[1]}</span></div>
+      <div class="acts"><button class="btn sm" data-ver="${x.id}">Revisar</button></div></div>`).join('') : '<p class="sub">No hay formularios pendientes. 🎉</p>'}</div>`;
+  $('tfrm').querySelectorAll('[data-ver]').forEach(b => b.onclick = () => dForm(b.dataset.ver));
+}
+async function dForm(id){
+  const f = await rpc('admin_ver_formulario', { p_form: id }), r = f.respuestas || {};
+  const li = (k, v) => v ? `<tr><th style="width:38%">${k}</th><td>${esc(v)}</td></tr>` : '';
+  openDlg(`<h3>📝 ${esc(f.negocio)}</h3><p class="sub">Revisa y aprueba o pide correcciones.</p>
+    <table class="t">${li('Asistente', (r.nombre_bot || '') + ' · ' + (r.estilo || '') + ' · emojis: ' + (r.emojis || ''))}${li('Categoría', r.tipo_negocio)}
+      ${li('Funciones', (r.funciones || []).map(k => FUNC[k] || k).join(', '))}${li('A qué se dedica', r.descripcion)}${li('Dirección', r.direccion)}
+      ${li('Teléfono', r.telefono)}${li('Pagos', r.metodos_pago)}${li('Años de experiencia', r.anios_experiencia)}
+      ${li('Productos', (r.catalogo || []).map(x => x.nombre + (x.precio ? ' ' + x.precio : '')).join(' · '))}
+      ${li('Respuestas', (r.info_extra || []).map(x => x.pregunta + ' → ' + x.respuesta).join(' | '))}
+      ${li('Preguntas frecuentes', (r.faqs || []).map(x => x.pregunta + ' → ' + x.respuesta).join(' | '))}
+      ${li('Bienvenida', r.mensaje_bienvenida)}</table>
+    <label>Instrucciones redactadas por la IA (puedes corregirlas antes de aprobar)</label>
+    <textarea id="fP" style="min-height:200px">${esc(f.prompt || '')}</textarea>
+    <label>Si lo rechazas, ¿qué debe corregir el cliente?</label><input id="fC" placeholder="Ej.: Agrega los precios de los servicios">
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cerrar</button><button class="btn bad" id="fNo">Rechazar</button><button class="btn ok" id="fSi" ${f.estado === 'pendiente_revision' ? '' : 'disabled'}>✅ Aprobar</button></div>`);
+  $('fSi').onclick = async () => { const r2 = await rpc('admin_aprobar_formulario', { p_form: id, p_prompt: $('fP').value }).catch(() => null); if (r2) { closeDlg(); toast('Aprobado: el bot ya usa esta configuración'); load(); } };
+  $('fNo').onclick = async () => { if (!$('fC').value.trim()) return toast('Escribe qué debe corregir'); const r2 = await rpc('admin_rechazar_formulario', { p_form: id, p_comentario: $('fC').value.trim() }).catch(() => null); if (r2) { closeDlg(); toast('Rechazado. El cliente verá tu comentario.'); load(); } };
+}
+
+// ---------- Planes ----------
+function rPla(){
+  $('tpla').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div><h2>Planes</h2><p class="sub" style="margin:0">Cambia precios, límites y funciones cuando quieras. Se aplica de inmediato a todos los clientes de ese plan.</p></div>
+      <button class="btn" id="bPNew">+ Nuevo plan</button></div></div>
+    ${D.planes.map((p, i) => planCard(p, i)).join('')}`;
+  $('bPNew').onclick = () => { D.planes.push({ id:'', nombre:'', precio_mensual:0, respuestas_mes:1000, precio_extra_1000:5, funciones:[], orden: D.planes.length + 1, activo:true, _nuevo:true }); rPla(); };
+  document.querySelectorAll('[data-psave]').forEach(b => b.onclick = () => savePlan(+b.dataset.psave));
+}
+function planCard(p, i){
+  const fn = p.funciones || [];
+  return `<div class="card" id="pl${i}"><div class="row">
+      <div><label>Código</label><input data-f="id" value="${esc(p.id)}" ${p._nuevo ? '' : 'readonly style="background:#f3f4f7"'} placeholder="ej.: emprendedor"></div>
+      <div><label>Nombre</label><input data-f="nombre" value="${esc(p.nombre)}"></div>
+      <div><label>Precio mensual ($)</label><input data-f="precio_mensual" type="number" step="0.01" value="${p.precio_mensual ?? ''}"></div>
+      <div><label>Precio anual ($)</label><input data-f="precio_anual" type="number" step="0.01" value="${p.precio_anual ?? ''}"></div>
+      <div><label>Respuestas al mes</label><input data-f="respuestas_mes" type="number" value="${p.respuestas_mes ?? ''}"></div>
+      <div><label>$ por cada 1.000 extra</label><input data-f="precio_extra_1000" type="number" step="0.01" value="${p.precio_extra_1000 ?? ''}"></div>
+      <div><label>Orden</label><input data-f="orden" type="number" value="${p.orden ?? 0}"></div>
+    </div>
+    <label>Descripción (la ve el cliente)</label><textarea data-f="descripcion" style="min-height:60px">${esc(p.descripcion || '')}</textarea>
+    ${GRUPOS.map(([g, ks]) => `<label>${g}</label><div class="chks">${ks.map(k => `<label class="chk"><input type="checkbox" data-fn="${k}" ${fn.includes(k) ? 'checked' : ''}> ${FUNC[k]}</label>`).join('')}</div>`).join('')}
+    <div class="chks" style="margin-top:10px"><label class="chk"><input type="checkbox" data-f="destacado" ${p.destacado ? 'checked' : ''}> ⭐ Plan destacado</label>
+      <label class="chk"><input type="checkbox" data-f="activo" ${p.activo !== false ? 'checked' : ''}> Visible para clientes</label></div>
+    ${fn.includes('masivos') ? '<div class="note warn">⚠️ Mensajes masivos: con la conexión que usamos, WhatsApp puede bloquear el número si se envía mucho. El sistema enviará despacio, con pausas variables y textos variados, y con un límite diario.</div>' : ''}
+    <div style="margin-top:12px;text-align:right"><button class="btn" data-psave="${i}">Guardar plan</button></div></div>`;
+}
+async function savePlan(i){
+  const el = $('pl' + i), p = {};
+  el.querySelectorAll('[data-f]').forEach(x => p[x.dataset.f] = x.type === 'checkbox' ? x.checked : x.value);
+  p.funciones = [...el.querySelectorAll('[data-fn]')].filter(x => x.checked).map(x => x.dataset.fn);
+  if (!p.id || !p.nombre) return toast('Falta el código o el nombre');
+  const r = await rpc('admin_guardar_plan', { p }).catch(() => null);
+  if (r) { toast('Plan guardado'); load(); }
+}
+
+// ---------- Tarifas y condiciones ----------
+function rAju(){
+  const a = D.ajustes, gratis = a.instalacion_gratis_en || [];
+  const ta = (k, l) => `<label>${l}</label><textarea data-a="${k}" style="min-height:70px">${esc(a[k] || '')}</textarea>`;
+  $('taju').innerHTML = `<div class="card"><h2>Tarifas y condiciones</h2><p class="sub">Todo lo que cobras aparte del plan y las reglas de la cuenta.</p>
+    <div class="row">
+      <div><label>Instalación ($)</label><input data-a="costo_instalacion" type="number" step="0.01" value="${a.costo_instalacion ?? ''}"></div>
+      <div><label>Días de prueba gratis</label><input data-a="dias_prueba" type="number" min="0" value="${a.dias_prueba ?? ''}"></div>
+      <div><label>Plan durante la prueba</label><select data-a="plan_prueba">${D.planes.map(p => `<option value="${esc(p.id)}" ${p.id === a.plan_prueba ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></div>
+      <div><label>Días de gracia tras vencer</label><input data-a="dias_gracia" type="number" min="0" value="${a.dias_gracia ?? ''}"></div>
+      <div><label>Avisar vencimiento (días antes)</label><input data-a="dias_aviso_vencimiento" type="number" min="0" value="${a.dias_aviso_vencimiento ?? ''}"></div>
+      <div><label>Avisar consumo al (%)</label><input data-a="porcentaje_aviso" type="number" min="1" max="99" value="${a.porcentaje_aviso ?? ''}"></div>
+      <div><label>Tasa Bs por $ (opcional)</label><input data-a="tasa_bs" type="number" step="0.01" value="${a.tasa_bs ?? ''}"></div>
+      <div><label>Tu WhatsApp de soporte</label><input data-a="numero_soporte" value="${esc(a.numero_soporte || '')}" placeholder="0412-1234567"></div>
+    </div>
+    <label>Planes con instalación gratis</label><div class="chks">${D.planes.map(p => `<label class="chk"><input type="checkbox" data-gr="${esc(p.id)}" ${gratis.includes(p.id) ? 'checked' : ''}> ${esc(p.nombre)}</label>`).join('')}</div>
+    <h2 style="margin-top:22px">Mensajes automáticos al dueño del negocio</h2>
+    <p class="small legend">Puedes usar: <code>{negocio}</code> <code>{plan}</code> <code>{limite}</code> <code>{porcentaje}</code> <code>{precio_extra}</code> <code>{fecha}</code></p>
+    ${ta('msg_aviso_consumo', 'Aviso de consumo (al llegar al %)')}${ta('msg_limite', 'Llegó al límite (el bot se detiene)')}${ta('msg_vencimiento', 'Su plan está por vencer')}${ta('msg_suspendido', 'Plan vencido (bot detenido)')}
+    <div style="margin-top:14px;text-align:right"><button class="btn" id="aOk">Guardar cambios</button></div></div>`;
+  $('aOk').onclick = async () => {
+    const p = {}; $('taju').querySelectorAll('[data-a]').forEach(x => p[x.dataset.a] = x.value);
+    p.instalacion_gratis_en = [...$('taju').querySelectorAll('[data-gr]')].filter(x => x.checked).map(x => x.dataset.gr);
+    const r = await rpc('admin_guardar_ajustes', { p }).catch(() => null);
+    if (r) { toast('Cambios guardados'); load(); }
+  };
+}
+
+start();
+</script>
+</body>
+</html>

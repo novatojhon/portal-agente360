@@ -90,11 +90,13 @@
 <main id="vApp" class="hidden">
   <nav class="tabs">
     <button class="tab on" data-t="cli">👥 Clientes</button>
+    <button class="tab" data-t="con">📱 Conexiones<span class="n hidden" id="nCon"></span></button>
     <button class="tab" data-t="frm">📝 Formularios<span class="n hidden" id="nFrm"></span></button>
     <button class="tab" data-t="pla">💳 Planes</button>
     <button class="tab" data-t="aju">⚙️ Tarifas y condiciones</button>
   </nav>
   <section id="tcli"></section>
+  <section id="tcon" class="hidden"></section>
   <section id="tfrm" class="hidden"></section>
   <section id="tpla" class="hidden"></section>
   <section id="taju" class="hidden"></section>
@@ -141,10 +143,49 @@ async function start(){
   show($('vLogin'), false); show($('hdr'), true); show($('vApp'), true);
   await load();
 }
-async function load(){ D = await rpc('admin_datos'); rCli(); rFrm(); rPla(); rAju(); }
+async function load(){ D = await rpc('admin_datos'); rCli(); rFrm(); rPla(); rAju(); loadCon(); }
+
+// ---------- Conexiones (estado del WhatsApp de cada cliente) ----------
+let C2 = null;
+async function loadCon(){ C2 = await rpc('admin_conexiones').catch(() => null); if (C2) rCon(); }
+function hace(ts){ if (!ts) return '—'; const m = Math.round((Date.now() - new Date(ts)) / 60000);
+  return m < 1 ? 'hace un momento' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} día(s)`; }
+function rCon(){
+  const k = C2.kpis, I = C2.instancias;
+  $('nCon').textContent = k.caidas; show($('nCon'), k.caidas > 0);
+  const EST = { conectada:['ok','🟢 Conectado'], desconectada:['bad','🔴 Desconectado'], esperando_qr:['warn','🟡 Esperando QR'] };
+  $('tcon').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><b style="color:var(--ok)">${k.conectadas}</b><span>WhatsApp conectados</span></div>
+      <div class="kpi"><b style="color:var(--bad)">${k.caidas}</b><span>Desconectados</span></div>
+      <div class="kpi"><b style="color:var(--warn)">${k.esperando_qr}</b><span>Esperando QR</span></div>
+      <div class="kpi"><b>${k.clientes_activos}</b><span>Clientes activos</span></div>
+      <div class="kpi"><b>${k.conversaciones_totales}</b><span>Conversaciones totales · ${k.conversaciones_hoy} hoy</span></div>
+    </div>
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>Estado de las conexiones</h2><p class="sub" style="margin:0">Primero los que tienen problemas. Se actualiza solo cuando WhatsApp avisa un cambio; pulsa "Comprobar ahora" para consultar a Evolution en este momento.</p></div>
+      <button class="btn" id="bLive">🔄 Comprobar ahora</button></div>
+      <div style="overflow:auto;margin-top:12px"><table class="t"><tr><th>Negocio</th><th>Estado</th><th>Instancia</th><th>Número</th><th>Último cambio</th><th>Último mensaje</th><th>Plan</th></tr>
+      ${I.map(x => { const [c, t] = EST[x.estado] || ['', x.estado];
+        return `<tr><td><b>${esc(x.negocio)}</b>${x.activo ? '' : ' <span class="pill bad">Inactivo</span>'}</td><td><span class="pill ${c}">${t}</span></td>
+          <td>${esc(x.instancia)}</td><td>${x.numero ? '+' + esc(x.numero) : '—'}</td><td>${hace(x.actualizado)}</td><td>${hace(x.ultimo_mensaje)}</td><td>${esc(x.plan || '')}</td></tr>`; }).join('') || '<tr><td colspan="7">No hay instancias registradas.</td></tr>'}
+      </table></div>
+      ${k.caidas ? '<div class="note bad">🔴 Los clientes desconectados deben entrar a su portal → "Mi WhatsApp" → "Mostrar código QR" y escanearlo. Mientras tanto su asistente no responde.</div>' : ''}
+    </div>`;
+  $('bLive').onclick = async () => {
+    $('bLive').disabled = true; $('bLive').textContent = 'Consultando…';
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const r = await fetch(CFG.N8N_URL + '/webhook/admin-conexiones', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: session.access_token, anon_key: CFG.SUPABASE_ANON_KEY }) }).then(x => x.json());
+      toast(r.ok ? `Listo: ${r.actualizadas} conexión(es) comprobada(s)` : (r.mensaje || 'No se pudo comprobar'));
+    } catch { toast('No se pudo comprobar. Intenta de nuevo.'); }
+    await loadCon(); D = await rpc('admin_datos'); rCli();
+  };
+}
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  for (const t of ['cli','frm','pla','aju']) show($('t' + t), b.dataset.t === t);
+  for (const t of ['cli','con','frm','pla','aju']) show($('t' + t), b.dataset.t === t);
 });
 function openDlg(html){ $('dlgBody').innerHTML = html; $('dlg').showModal(); }
 function closeDlg(){ $('dlg').close(); }

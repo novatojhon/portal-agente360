@@ -95,6 +95,13 @@
   .faqc b{display:block}
   .faqc span{color:var(--muted)}
   .faqbox{background:var(--brand-soft);border-radius:12px;padding:14px;margin-top:10px}
+  .qrow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;background:#fff;transition:border-color .15s}
+  .qrow.on{border-color:var(--brand);background:#f6fbf9}
+  .qchk{display:flex;gap:10px;align-items:flex-start;font-weight:500;margin:0;cursor:pointer}
+  .qchk input{width:auto;margin-top:3px;accent-color:var(--brand);transform:scale(1.25);flex:none}
+  .qrow textarea{margin-top:8px;min-height:44px}
+  details.more{margin-top:14px}
+  details.more summary{cursor:pointer;font-weight:700;color:var(--brand);padding:6px 0}
   .sum{display:grid;gap:10px}
   .sum .s{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
   .sum .s h4{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
@@ -358,12 +365,12 @@ const STEPS = [
   { e:'🏷️', t:'¿En qué categoría está tu negocio?', s:'Así preparamos tu asistente con lo que más usa tu tipo de negocio.', r: rCategoria,
     v: () => !F.categoria ? 'Elige una categoría.' : (F.categoria === 'otro' && !F.otro_rubro.trim()) ? 'Escribe qué tipo de negocio es.' : '' },
   { e:'🧩', t:'¿Qué hará tu asistente?', s:'Ya marcamos lo más común para tu categoría. Toca para marcar o desmarcar.', r: rFunciones, v: () => '' },
-  { e:'💬', t:'Unas preguntas sobre cómo trabajas', s:'Responde solo las que apliquen. Si alguna no aplica, déjala en blanco.', r: rPreguntas, v: () => '' },
+  { e:'💬', t:'Unas preguntas sobre cómo trabajas', s:'Aquí están todas las preguntas. Marca solo las que quieras responder.', r: rPreguntas, v: () => '' },
   { e:'🛍️', t:'Productos y precios', s:'Agrega lo que vendes u ofreces. El asistente solo dará estos precios.', r: rCatalogo, v: () => '' },
   { e:'🕒', t:'Horario de atención', s:'Marca los días que abres y la hora.', r: rHorario, v: () => '' },
   { e:'🤖', t:'La personalidad de tu asistente', s:'Dale un nombre y elige cómo habla con tus clientes.', r: rPersonalidad,
     v: () => !F.nombre_bot.trim() ? 'Ponle un nombre a tu asistente.' : '' },
-  { e:'❓', t:'Preguntas frecuentes', s:'Agrega una por una lo que tus clientes siempre preguntan.', r: rFaqs, v: () => '' },
+  { e:'❓', t:'Preguntas frecuentes', s:'Marca las que te hacen tus clientes o agrega las tuyas con el botón +.', r: rFaqs, v: () => '' },
   { e:'✅', t:'Revisa y envía', s:'Si todo está bien, envíalo. Nuestro equipo lo revisa antes de activarlo.', r: rResumen, v: () => '' }
 ];
 
@@ -398,8 +405,11 @@ function bindAll(){
   $('wzBody').querySelectorAll('[data-arr]').forEach(el => el.addEventListener('input', () => {
     F[el.dataset.arr][+el.dataset.i][el.dataset.f] = el.value; saveDraft();
   }));
-  $('wzBody').querySelectorAll('[data-resp]').forEach(el => el.addEventListener('input', () => {
-    F.respuestas[el.dataset.resp] = el.value; saveDraft();
+  $('wzBody').querySelectorAll('[data-qa]').forEach(el => el.addEventListener('input', () => {
+    const q = el.dataset.q;
+    if (el.dataset.kind === 'resp') F.respuestas[q] = el.value;
+    else { const f = F.faqs.find(x => x.pregunta === q); if (f) f.respuesta = el.value; }
+    saveDraft();
   }));
   $('wzBody').querySelectorAll('[data-act]').forEach(el => el.addEventListener('click', () => { msg($('wzMsg'), ''); ACT[el.dataset.act](el); }));
   $('wzBody').addEventListener('input', () => msg($('wzMsg'), ''), { once: true });
@@ -436,19 +446,27 @@ function rFunciones(){
     ${Object.entries(FUNCS).map(([k, x]) => `<button type="button" class="tile ${F.funciones.includes(k) ? 'on' : ''}" data-act="fn" data-v="${k}"><span class="em">${x.e}</span><b>${x.n}</b><small>${x.d}</small></button>`).join('')}
   </div><p class="hint" style="margin-top:12px">Si algo no aparece aquí, cuéntalo en las preguntas del siguiente paso.</p>`;
 }
+// Fila de pregunta: se marca si el cliente la quiere responder y se abre la casilla de respuesta
+function qrow(kind, q, ans, ph){
+  const on = ans !== undefined;
+  return `<div class="qrow ${on ? 'on' : ''}"><label class="qchk"><input type="checkbox" data-act="toggleQ" data-kind="${kind}" data-q="${esc(q)}" ${on ? 'checked' : ''}><span>${esc(q)}</span></label>
+    ${on ? `<textarea data-qa data-kind="${kind}" data-q="${esc(q)}" rows="2" placeholder="${esc(ph || 'Escribe tu respuesta…')}">${esc(ans)}</textarea>` : ''}</div>`;
+}
 // Paso 4
 function rPreguntas(){
   const cat = catOf(F.categoria);
-  const qs = (list) => list.map(q => `<label>${esc(q)}</label><textarea data-resp="${esc(q)}" rows="2" style="min-height:44px">${esc(F.respuestas[q] || '')}</textarea>`).join('');
-  let h = '';
+  const qs = (list) => list.map(q => qrow('resp', q, F.respuestas[q])).join('');
+  let h = `<p class="hint" style="margin:10px 0 0">✅ Al marcar una pregunta se abre la casilla para tu respuesta. Las que no marques no se usan.</p>`;
   if (cat.q.length) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
   for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
-  if (!h) h = `<p class="note">No hay preguntas especiales para tu negocio. Si quieres, agrega otros datos importantes abajo.</p>`;
-  h += `<div class="grp"><h3>➕ Otros datos importantes</h3><p class="hint" style="margin:0 0 8px">Algo que tu asistente deba saber y no se preguntó arriba.</p>
+  const otras = Object.keys(FUNCS).filter(k => !F.funciones.includes(k));
+  if (otras.length) h += `<details class="more" ${otras.some(k => FUNCS[k].q.some(q => F.respuestas[q] !== undefined)) ? 'open' : ''}><summary>Ver más preguntas que podrían servirte</summary>
+    ${otras.map(k => `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`).join('')}</details>`;
+  h += `<div class="grp"><h3>➕ Tus propias preguntas</h3><p class="hint" style="margin:0 0 8px">¿Falta algo que tu asistente deba saber? Agrégalo aquí.</p>
     ${F.extra.map((x, i) => `<div class="item"><button class="x" type="button" data-act="delExtra" data-i="${i}" title="Quitar">✕</button>
-      <span class="mini">Tema</span><input data-arr="extra" data-i="${i}" data-f="pregunta" value="${esc(x.pregunta)}" placeholder="Ej.: Estacionamiento">
-      <span class="mini" style="margin-top:6px">Detalle</span><textarea data-arr="extra" data-i="${i}" data-f="respuesta" rows="2" style="min-height:44px" placeholder="Ej.: Tenemos estacionamiento gratis para clientes.">${esc(x.respuesta)}</textarea></div>`).join('')}
-    <button type="button" class="btn add" data-act="addExtra">+ Agregar otro dato</button></div>`;
+      <span class="mini">Pregunta</span><input data-arr="extra" data-i="${i}" data-f="pregunta" value="${esc(x.pregunta)}" placeholder="Ej.: ¿Tienen estacionamiento?">
+      <span class="mini" style="margin-top:6px">Respuesta</span><textarea data-arr="extra" data-i="${i}" data-f="respuesta" rows="2" style="min-height:44px" placeholder="Ej.: Sí, gratis para clientes.">${esc(x.respuesta)}</textarea></div>`).join('')}
+    <button type="button" class="btn add" data-act="addExtra">+ Agregar una pregunta que no esté</button></div>`;
   return h;
 }
 // Paso 5
@@ -494,24 +512,27 @@ function refreshStyleExamples(){
 }
 // Paso 8
 function rFaqs(){
-  const sug = catOf(F.categoria).faq.filter(q => !F.faqs.some(f => f.pregunta === q));
+  const comunes = catOf(F.categoria).faq;
+  const propias = F.faqs.map((f, i) => [f, i]).filter(([f]) => !comunes.includes(f.pregunta));
   const p = faqEdit >= 0 ? F.faqs[faqEdit] : { pregunta:'', respuesta:'' };
-  return `${F.faqs.length ? '' : '<p class="hint" style="margin-top:10px">Aún no has agregado preguntas.</p>'}
-    <div style="margin-top:12px">${F.faqs.map((f, i) => i === faqEdit ? '' : `<div class="faqc"><div><b>${esc(f.pregunta)}</b><span>${esc(f.respuesta)}</span></div>
-      <button class="link" type="button" data-act="editFaq" data-i="${i}">Editar</button><button class="link" type="button" data-act="delFaq" data-i="${i}" style="color:var(--bad)">Quitar</button></div>`).join('')}</div>
-    <div class="faqbox">
-      ${sug.length && faqEdit < 0 ? `<span class="mini">💡 Ideas para tu tipo de negocio (toca una):</span><div class="chips" style="margin-bottom:6px">${sug.map(q => `<button type="button" class="chip sug" data-act="sugFaq" data-v="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : ''}
-      <label style="margin-top:6px">Pregunta</label><input id="fqP" value="${esc(p.pregunta)}" placeholder="Ej.: ¿Hacen envíos a todo el país?">
-      <label>Respuesta</label><textarea id="fqR" rows="2" placeholder="Ej.: Sí, enviamos por MRW y Zoom.">${esc(p.respuesta)}</textarea>
-      <button type="button" class="btn" data-act="addFaq" style="margin-top:10px;width:100%">${faqEdit >= 0 ? 'Guardar cambio' : '+ Agregar pregunta'}</button>
-    </div>`;
+  const ans = (q) => { const f = F.faqs.find(x => x.pregunta === q); return f ? f.respuesta : undefined; };
+  return `<div class="grp"><h3>💡 Preguntas comunes en tu tipo de negocio</h3><p class="hint" style="margin:0">Marca las que te hacen tus clientes y escribe la respuesta.</p>
+      ${comunes.map(q => qrow('faq', q, ans(q))).join('')}</div>
+    <div class="grp"><h3>➕ Tus propias preguntas</h3>
+      ${propias.map(([f, i]) => i === faqEdit ? '' : `<div class="faqc"><div><b>${esc(f.pregunta)}</b><span>${esc(f.respuesta)}</span></div>
+        <button class="link" type="button" data-act="editFaq" data-i="${i}">Editar</button><button class="link" type="button" data-act="delFaq" data-i="${i}" style="color:var(--bad)">Quitar</button></div>`).join('')}
+      <div class="faqbox">
+        <label style="margin-top:0">Pregunta</label><input id="fqP" value="${esc(p.pregunta)}" placeholder="Ej.: ¿Hacen envíos a todo el país?">
+        <label>Respuesta</label><textarea id="fqR" rows="2" placeholder="Ej.: Sí, enviamos por MRW y Zoom.">${esc(p.respuesta)}</textarea>
+        <button type="button" class="btn" data-act="addFaq" style="margin-top:10px;width:100%">${faqEdit >= 0 ? 'Guardar cambio' : '+ Agregar esta pregunta'}</button>
+      </div></div>`;
 }
 // Paso 9
 function payload(){
   const cat = catOf(F.categoria);
   const horario = {}; for (const [k] of DIAS) horario[k] = Array.isArray(F.horario[k]) ? F.horario[k] : null;
   const info = [];
-  for (const q of [...cat.q, ...F.funciones.flatMap(k => FUNCS[k].q)]) if ((F.respuestas[q] || '').trim()) info.push({ pregunta: q, respuesta: F.respuestas[q].trim() });
+  for (const q of [...cat.q, ...Object.values(FUNCS).flatMap(x => x.q)]) if ((F.respuestas[q] || '').trim()) info.push({ pregunta: q, respuesta: F.respuestas[q].trim() });
   for (const x of F.extra) if (x.pregunta.trim() && x.respuesta.trim()) info.push({ pregunta: x.pregunta.trim(), respuesta: x.respuesta.trim() });
   const fn = F.funciones;
   const objetivo = fn.includes('citas') ? 'agendar' : fn.some(k => ['pedidos','cotizaciones','paquetes','membresias','tasas','reservas'].includes(k)) ? 'vender' : fn.includes('soporte') ? 'soporte' : 'informar';
@@ -527,7 +548,7 @@ function payload(){
     horario, duracion_cita_min: parseInt(F.duracion_cita_min || 30, 10) || 30,
     nombre_bot: F.nombre_bot.trim(), estilo: F.estilo, emojis: F.emojis, tono: ESTILOS[F.estilo].tono,
     mensaje_bienvenida: F.mensaje_bienvenida.trim(), mensaje_fuera_horario: F.mensaje_fuera_horario.trim(),
-    faqs: F.faqs
+    faqs: F.faqs.filter(f => f.pregunta && (f.respuesta || '').trim()).map(f => ({ pregunta: f.pregunta.trim(), respuesta: f.respuesta.trim() }))
   };
 }
 function rResumen(){
@@ -563,11 +584,17 @@ const ACT = {
   nombre: (el) => { F.nombre_bot = el.dataset.v; document.querySelector('[data-k="nombre_bot"]').value = F.nombre_bot; refreshStyleExamples(); saveDraft(); },
   estilo: (el) => { F.estilo = el.dataset.v; document.querySelectorAll('[data-act="estilo"]').forEach(t => t.classList.toggle('on', t === el)); refreshStyleExamples(); saveDraft(); },
   emo: (el) => { F.emojis = el.dataset.v; document.querySelectorAll('[data-act="emo"]').forEach(t => t.classList.toggle('on', t === el)); saveDraft(); },
-  sugFaq: (el) => { $('fqP').value = el.dataset.v; $('fqR').focus(); },
+  toggleQ: (el) => {
+    const q = el.dataset.q, kind = el.dataset.kind;
+    if (kind === 'resp') { if (el.checked) F.respuestas[q] = F.respuestas[q] || ''; else delete F.respuestas[q]; }
+    else { if (el.checked) { if (!F.faqs.some(f => f.pregunta === q)) F.faqs.push({ pregunta: q, respuesta: '' }); } else F.faqs = F.faqs.filter(f => f.pregunta !== q); faqEdit = -1; }
+    const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft();
+    if (el.checked) { const t = [...document.querySelectorAll('[data-qa]')].find(x => x.dataset.q === q); if (t) t.focus({ preventScroll: true }); }
+  },
   addFaq: () => { const p = $('fqP').value.trim(), r = $('fqR').value.trim();
     if (!p || !r) { msg($('wzMsg'), 'Escribe la pregunta y su respuesta.', 'warn'); return; }
     if (faqEdit >= 0) F.faqs[faqEdit] = { pregunta: p, respuesta: r }; else F.faqs.push({ pregunta: p, respuesta: r });
-    faqEdit = -1; render(); saveDraft(); $('fqP').focus(); },
+    faqEdit = -1; const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); $('fqP').focus({ preventScroll: true }); },
   editFaq: (el) => { faqEdit = +el.dataset.i; render(); $('fqP').focus(); },
   delFaq: (el) => { F.faqs.splice(+el.dataset.i, 1); faqEdit = -1; render(); saveDraft(); },
   go: (el) => goTo(+el.dataset.i)

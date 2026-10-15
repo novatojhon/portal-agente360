@@ -109,6 +109,46 @@
   .sum .s p b{color:var(--ink);font-weight:600}
   .link{background:none;border:0;color:var(--brand);font:inherit;font-weight:700;cursor:pointer;padding:0;font-size:13px}
   .saved{font-size:12px;color:var(--muted)}
+  /* ---------- Conversaciones ---------- */
+  main.wide{max-width:1180px}
+  .inbox{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 190px);min-height:480px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .ilist{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .ilist .top{padding:12px;border-bottom:1px solid var(--line)}
+  .ilist .items{overflow:auto;flex:1}
+  .ci{display:flex;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+  .ci:hover{background:#f7faf8} .ci.on{background:var(--brand-soft)}
+  .av{width:38px;height:38px;border-radius:50%;background:#dfe9e5;color:#2c5a4a;display:grid;place-items:center;font-weight:700;flex:none}
+  .ci .mid{flex:1;min-width:0}
+  .ci .nm{display:flex;justify-content:space-between;gap:6px;font-weight:700}
+  .ci .nm small{font-weight:500;color:var(--muted);font-size:12px;white-space:nowrap}
+  .ci .lm{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tg{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px;margin-top:3px;background:#eef1f0;color:var(--muted)}
+  .tg.h{background:#e6eefc;color:#2a4fa8} .tg.b{background:var(--ok-soft);color:var(--ok)}
+  .ichat{display:flex;flex-direction:column;min-height:0;background:#efeae2}
+  .ichat .hd{background:var(--card);padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ichat .hd .who{flex:1;min-width:140px}
+  .ichat .hd .who b{display:block}
+  .ichat .hd .who a{font-size:12.5px;color:var(--muted)}
+  .ichat .hd select{width:auto;padding:6px 8px;font-size:13px}
+  .msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:6px}
+  .m{max-width:75%;padding:7px 10px 5px;border-radius:10px;font-size:14px;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+  .m small{display:block;text-align:right;font-size:11px;color:#6b7a73;margin-top:2px}
+  .m.c{background:#fff;align-self:flex-start;border-top-left-radius:2px}
+  .m.a{background:#d9fdd3;align-self:flex-end;border-top-right-radius:2px}
+  .m.h{background:#dbe8ff;align-self:flex-end;border-top-right-radius:2px}
+  .m .who{font-size:11px;font-weight:700;color:#5c6b64;display:block;margin-bottom:1px}
+  .dayx{align-self:center;background:#fff;border-radius:8px;padding:2px 10px;font-size:12px;color:var(--muted);margin:6px 0}
+  .comp{background:var(--card);border-top:1px solid var(--line);padding:10px;display:flex;gap:8px;align-items:flex-end}
+  .comp textarea{min-height:42px;max-height:140px;flex:1}
+  .modebar{padding:8px 14px;font-size:13px;font-weight:600;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .modebar.b{background:var(--ok-soft);color:var(--ok)} .modebar.h{background:#e6eefc;color:#2a4fa8}
+  .empty{flex:1;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px}
+  .back{display:none}
+  @media(max-width:760px){
+    .inbox{grid-template-columns:1fr;height:calc(100vh - 170px)}
+    .inbox .ichat{display:none} .inbox.chat .ichat{display:flex} .inbox.chat .ilist{display:none}
+    .back{display:inline-flex}
+  }
   .tile.lock{opacity:.55;cursor:not-allowed;background:#f6f7f7}
   .tile .lk{font-size:11.5px;font-weight:700;color:var(--warn)}
   .meter{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 4px}
@@ -154,6 +194,7 @@
 <main id="vApp" class="hidden">
   <nav class="tabs">
     <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
+    <button class="tab" data-t="conv">💬 Conversaciones</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
   </nav>
@@ -181,6 +222,9 @@
       </div>
     </div>
   </section>
+
+  <!-- CONVERSACIONES -->
+  <section id="tConv" class="hidden"></section>
 
   <!-- MI PLAN -->
   <section id="tPlan" class="hidden"></section>
@@ -234,7 +278,9 @@ async function start(){
 // ---------- Pestañas ----------
 function openTab(t){
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
-  show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan');
+  show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
+  $('vApp').classList.toggle('wide', t === 'conv');
+  if (t === 'conv') openInbox();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
 
@@ -274,6 +320,125 @@ async function showQr(){
 function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () => { n++; await checkWa(); if (n % 6 === 0 && !$('qrBox').classList.contains('hidden')) showQr(); if (n > 60) stopPoll(); }, 5000); }
 function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 $('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
+
+// ---------- Conversaciones (bandeja de entrada) ----------
+const ETAPAS = [['prospecto','Prospecto'],['interesado','Interesado'],['negociacion','Negociación'],['cerrado_ganado','Cerrado ✅'],['perdido','Perdido']];
+let CONV = [], LEADS = {}, convSel = null, convFiltro = 'todas', rtOn = false, convTimer = null, loadT = null;
+const numVis = (n) => { const d = String(n || '').split('@')[0]; return d ? '+' + d : ''; };
+const nomC = (c) => c.nombre_cliente || numVis(c.numero_cliente);
+const ini = (t) => (String(t || '?').replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1) || '?').toUpperCase();
+function hora(ts){ const d = new Date(ts), h = new Date(); return d.toDateString() === h.toDateString() ? d.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' }) : d.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit' }); }
+const conPlan = () => !PLAN || (PLAN.funciones || []).includes('conversaciones');
+function openInbox(){
+  if (!$('tConv').dataset.ready) {
+    $('tConv').dataset.ready = '1';
+    $('tConv').innerHTML = `${conPlan() ? '' : `<div class="note warn" style="margin:0 0 12px">🔒 Ver y responder conversaciones está disponible en el Plan ${esc(planMinCon('conversaciones') || 'Pro')}. Puedes ver tus chats, pero no responder desde aquí.</div>`}
+      <div class="inbox" id="inbox">
+        <div class="ilist"><div class="top"><input id="cQ" placeholder="🔎 Buscar por nombre o número">
+          <div class="chips" style="margin-top:8px" id="cF">${[['todas','Todas'],['humano','👤 Te esperan'],['bot','🤖 Con el bot']].map(([k, t]) => `<button type="button" class="chip ${k === convFiltro ? 'on' : ''}" data-f="${k}">${t}</button>`).join('')}</div></div>
+          <div class="items" id="cItems"><p class="hint" style="padding:12px">Cargando…</p></div></div>
+        <div class="ichat" id="cChat"><div class="empty">💬<br>Elige una conversación para verla aquí.</div></div>
+      </div>`;
+    $('cQ').oninput = paintList;
+    $('cF').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { convFiltro = b.dataset.f; $('cF').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b)); paintList(); });
+  }
+  loadConvs(); startRealtime();
+  clearInterval(convTimer); convTimer = setInterval(() => { if (!$('tConv').classList.contains('hidden')) { loadConvs(); if (convSel) loadChat(convSel, true); } }, 20000);
+}
+async function loadConvs(){
+  const { data } = await sb.from('conversations').select('id,tenant_id,numero_cliente,nombre_cliente,bot_activo,ultimo_mensaje,ultimo_mensaje_at').order('ultimo_mensaje_at', { ascending: false }).limit(300);
+  CONV = data || [];
+  const { data: ld } = await sb.from('leads').select('conversation_id,etapa,etapa_sugerida_ia');
+  LEADS = Object.fromEntries((ld || []).map(l => [l.conversation_id, l]));
+  paintList();
+  if (convSel) paintHead();
+}
+function paintList(){
+  const q = ($('cQ') ? $('cQ').value : '').toLowerCase().trim();
+  const L = CONV.filter(c => (convFiltro === 'todas' || (convFiltro === 'humano' ? !c.bot_activo : c.bot_activo))
+    && (!q || (nomC(c) + ' ' + c.numero_cliente).toLowerCase().includes(q)));
+  $('cItems').innerHTML = L.length ? L.map(c => {
+    const e = (LEADS[c.id] || {}).etapa;
+    return `<div class="ci ${c.id === convSel ? 'on' : ''}" data-id="${c.id}"><div class="av">${esc(ini(nomC(c)))}</div>
+      <div class="mid"><div class="nm"><span>${esc(nomC(c))}</span><small>${c.ultimo_mensaje_at ? hora(c.ultimo_mensaje_at) : ''}</small></div>
+      <div class="lm">${esc(c.ultimo_mensaje || '')}</div>
+      <span class="tg ${c.bot_activo ? 'b' : 'h'}">${c.bot_activo ? '🤖 Bot' : '👤 Humano'}</span>${e ? ` <span class="tg">${esc((ETAPAS.find(x => x[0] === e) || [, e])[1])}</span>` : ''}</div></div>`;
+  }).join('') : '<p class="hint" style="padding:14px">No hay conversaciones todavía.</p>';
+  $('cItems').querySelectorAll('.ci').forEach(el => el.onclick = () => loadChat(el.dataset.id));
+}
+function paintHead(){
+  const c = CONV.find(x => x.id === convSel); if (!c || !$('cHd')) return;
+  const l = LEADS[c.id] || {};
+  $('cHd').innerHTML = `<button class="btn ghost sm back" id="cBack" type="button">←</button><div class="av">${esc(ini(nomC(c)))}</div>
+    <div class="who"><b>${esc(nomC(c))}</b><a href="https://wa.me/${esc(String(c.numero_cliente).split('@')[0])}" target="_blank" rel="noopener">${esc(numVis(c.numero_cliente))}</a></div>
+    <label class="hint" style="margin:0">Etapa <select id="cEt">${ETAPAS.map(([k, t]) => `<option value="${k}" ${k === (l.etapa || 'prospecto') ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    ${l.etapa_sugerida_ia && l.etapa_sugerida_ia !== l.etapa ? `<span class="tg">IA sugiere: ${esc((ETAPAS.find(x => x[0] === l.etapa_sugerida_ia) || [, l.etapa_sugerida_ia])[1])}</span>` : ''}`;
+  $('cMode').className = 'modebar ' + (c.bot_activo ? 'b' : 'h');
+  $('cMode').innerHTML = c.bot_activo
+    ? `<span>🤖 El asistente está respondiendo este chat.</span><button class="btn ghost sm" id="cTake" type="button">Tomar el control</button>`
+    : `<span>👤 Tú estás atendiendo este chat. El asistente está en pausa.</span><button class="btn sm" id="cBot" type="button">Reanudar asistente</button>`;
+  $('cBack').onclick = () => { $('inbox').classList.remove('chat'); };
+  $('cEt').onchange = () => setEtapa(c, $('cEt').value);
+  if ($('cTake')) $('cTake').onclick = () => setBot(c, false);
+  if ($('cBot')) $('cBot').onclick = () => setBot(c, true);
+}
+async function loadChat(id, silencioso){
+  const nuevo = convSel !== id; convSel = id;
+  if (nuevo || !$('cMsgs')) {
+    $('cChat').innerHTML = `<div class="hd" id="cHd"></div><div class="modebar" id="cMode"></div><div class="msgs" id="cMsgs"><p class="hint">Cargando…</p></div>
+      <div class="comp"><textarea id="cTxt" rows="1" placeholder="${conPlan() ? 'Escribe tu respuesta… (el asistente se pausará en este chat)' : '🔒 Responder desde aquí está disponible en un plan superior'}" ${conPlan() ? '' : 'disabled'}></textarea>
+      <button class="btn" id="cSend" type="button" ${conPlan() ? '' : 'disabled'}>Enviar</button></div>`;
+    $('inbox').classList.add('chat'); paintList(); paintHead();
+    $('cSend').onclick = enviarManual;
+    $('cTxt').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarManual(); } };
+  }
+  const { data } = await sb.from('messages').select('id,rol,contenido,created_at').eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
+  if (convSel !== id) return;
+  const ms = (data || []).reverse(), box = $('cMsgs');
+  const abajo = !silencioso || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  let dia = '';
+  box.innerHTML = ms.map(m => {
+    const d = new Date(m.created_at).toLocaleDateString('es-VE', { weekday:'short', day:'2-digit', month:'short' });
+    const sep = d !== dia ? `<div class="dayx">${d}</div>` : ''; dia = d;
+    const k = m.rol === 'cliente' ? 'c' : m.rol === 'humano' ? 'h' : 'a';
+    const who = k === 'a' ? '🤖 Asistente' : k === 'h' ? '👤 Tú' : '';
+    return `${sep}<div class="m ${k}">${who ? `<span class="who">${who}</span>` : ''}${esc(m.contenido || '')}<small>${new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })}</small></div>`;
+  }).join('') || '<p class="hint">Sin mensajes.</p>';
+  if (abajo) box.scrollTop = box.scrollHeight;
+}
+async function enviarManual(){
+  const t = $('cTxt').value.trim(); if (!t || !convSel) return;
+  $('cSend').disabled = true;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(CFG.N8N_URL + '/webhook/portal-enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: session.access_token, anon_key: CFG.SUPABASE_ANON_KEY, conversation_id: convSel, texto: t }) }).then(x => x.json());
+    if (r.ok) { $('cTxt').value = ''; } else alert(r.mensaje || 'No se pudo enviar');
+  } catch { alert('No se pudo enviar. Revisa tu conexión.'); }
+  $('cSend').disabled = false;
+  await loadConvs(); await loadChat(convSel, false);
+}
+async function setBot(c, activo){
+  const { error } = await sb.from('conversations').update({ bot_activo: activo }).eq('id', c.id);
+  if (!error) { c.bot_activo = activo; paintHead(); paintList(); }
+}
+async function setEtapa(c, etapa){
+  const ex = LEADS[c.id];
+  const q = ex ? sb.from('leads').update({ etapa, actualizado_at: new Date().toISOString() }).eq('conversation_id', c.id)
+               : sb.from('leads').insert({ tenant_id: c.tenant_id, conversation_id: c.id, etapa });
+  const { error } = await q;
+  if (!error) { LEADS[c.id] = Object.assign(ex || {}, { conversation_id: c.id, etapa }); paintList(); }
+}
+function startRealtime(){
+  if (rtOn) return; rtOn = true;
+  const later = () => { clearTimeout(loadT); loadT = setTimeout(loadConvs, 400); };
+  try {
+    sb.channel('inbox')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, later)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => { if (p.new && p.new.conversation_id === convSel) loadChat(convSel, true); later(); })
+      .subscribe();
+  } catch {}
+}
 
 // ---------- Mi plan (consumo, vencimiento, respuestas adicionales) ----------
 const FN_PLAN = { citas:'Agendar citas', reservas:'Reservas', pedidos:'Ventas y pedidos', delivery:'Envíos o delivery', cotizaciones:'Cotizaciones',

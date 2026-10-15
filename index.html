@@ -149,6 +149,28 @@
     .inbox .ichat{display:none} .inbox.chat .ichat{display:flex} .inbox.chat .ilist{display:none}
     .back{display:inline-flex}
   }
+  /* ---------- Promociones y métricas ---------- */
+  .promo{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+  .promo.off{opacity:.6}
+  .promo .kw{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;letter-spacing:.3px}
+  .promo .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
+  .promo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .kpis2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .kpis2 div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpis2 b{display:block;font-size:24px;line-height:1.2}
+  .kpis2 span{font-size:12.5px;color:var(--muted)}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:18px;border-bottom:1px solid var(--line);position:relative}
+  .bars .b{flex:1;background:var(--brand);border-radius:4px 4px 0 0;min-height:1px;position:relative;opacity:.85;cursor:default}
+  .bars .b:hover{opacity:1}
+  .bars .b.pk{opacity:1}
+  .bars .b .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translate(-50%,-6px);background:var(--ink);color:#fff;font-size:12px;padding:3px 7px;border-radius:6px;white-space:nowrap;z-index:2}
+  .bars .b:hover .tip{display:block}
+  .axis{display:flex;gap:3px;font-size:11px;color:var(--muted);margin-top:4px}
+  .axis span{flex:1;text-align:center}
+  .funnel .r{display:grid;grid-template-columns:110px 1fr 40px;gap:10px;align-items:center;margin:6px 0;font-size:13.5px}
+  .funnel .t{height:14px;background:var(--line);border-radius:4px;overflow:hidden}
+  .funnel .t i{display:block;height:100%;background:var(--brand);border-radius:0 4px 4px 0}
+  .funnel .r b{text-align:right}
   .tile.lock{opacity:.55;cursor:not-allowed;background:#f6f7f7}
   .tile .lk{font-size:11.5px;font-weight:700;color:var(--warn)}
   .meter{height:12px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 4px}
@@ -195,6 +217,8 @@
   <nav class="tabs">
     <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
     <button class="tab" data-t="conv">💬 Conversaciones</button>
+    <button class="tab" data-t="promo">🎁 Promociones</button>
+    <button class="tab" data-t="met">📈 Métricas</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
   </nav>
@@ -222,6 +246,10 @@
       </div>
     </div>
   </section>
+
+  <!-- PROMOCIONES Y MÉTRICAS -->
+  <section id="tPromo" class="hidden"></section>
+  <section id="tMet" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -281,6 +309,9 @@ function openTab(t){
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
   if (t === 'conv') openInbox();
+  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met');
+  if (t === 'promo') loadPromos();
+  if (t === 'met') loadMetricas();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
 
@@ -320,6 +351,101 @@ async function showQr(){
 function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () => { n++; await checkWa(); if (n % 6 === 0 && !$('qrBox').classList.contains('hidden')) showQr(); if (n > 60) stopPoll(); }, 5000); }
 function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 $('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
+
+// ---------- Promociones (palabra clave → respuesta automática) ----------
+let PROMOS = [], promoEdit = null;
+const tiene = (k) => !PLAN || (PLAN.funciones || []).includes(k);
+const bloqueo = (k, txt) => `<div class="card"><h2>🔒 ${txt}</h2><p class="sub" style="margin:0">Disponible en el Plan ${esc(planMinCon(k) || 'superior')}. Mira los planes en la pestaña "📊 Mi plan".</p></div>`;
+async function loadPromos(){
+  if (!tiene('promociones')) { $('tPromo').innerHTML = bloqueo('promociones', 'Promociones'); return; }
+  const { data } = await sb.from('promotions').select('*').order('created_at', { ascending: false });
+  PROMOS = data || []; paintPromos();
+}
+function paintPromos(){
+  const e = promoEdit, hoy = new Date().toISOString().slice(0, 10);
+  $('tPromo').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>🎁 Promociones</h2><p class="sub" style="margin:0">Cuando un cliente escriba la <b>palabra clave</b> (por ejemplo, <b>PROMO50</b>), tu asistente responde al instante con tu mensaje.</p></div>
+      ${e ? '' : '<button class="btn" id="pNew" type="button">+ Nueva promoción</button>'}</div>
+    ${e ? `<div class="grp">
+      <h3>${e.id ? 'Editar promoción' : 'Nueva promoción'}</h3>
+      <div class="row"><div><label>Palabra clave</label><input id="pK" value="${esc(e.palabra_clave || '')}" placeholder="Ej.: PROMO50" maxlength="40"></div>
+        <div><label>Válida hasta <span class="opt">(opcional)</span></label><input id="pV" type="date" value="${esc(e.vence || '')}" min="${hoy}"></div></div>
+      <label>Mensaje que enviará tu asistente</label><textarea id="pR" placeholder="Ej.: 🎉 ¡Tienes 50% de descuento en tu primera consulta! Válido hasta el 31/10. ¿Te agendo una cita?">${esc(e.respuesta || '')}</textarea>
+      <label>Nota interna <span class="opt">(opcional, solo la ves tú)</span></label><input id="pD" value="${esc(e.descripcion || '')}" placeholder="Ej.: Promo de Instagram de octubre">
+      <label class="sw" style="margin-top:12px"><input type="checkbox" id="pA" ${e.activa !== false ? 'checked' : ''}> Activa</label>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="pSave" type="button">Guardar</button><button class="btn ghost" id="pCancel" type="button">Cancelar</button></div>
+      <div id="pMsg" class="note bad hidden"></div></div>` : ''}
+    ${PROMOS.length ? PROMOS.map(x => { const vencida = x.vence && x.vence < hoy;
+      return `<div class="promo ${x.activa && !vencida ? '' : 'off'}"><div><span class="kw">${esc(x.palabra_clave)}</span>
+        ${!x.activa ? ' <span class="tg">Pausada</span>' : vencida ? ' <span class="tg">Vencida</span>' : ' <span class="tg b">Activa</span>'}
+        <div class="bubble" style="margin-top:8px">${esc(x.respuesta)}</div>
+        <div class="meta">${x.vence ? 'Válida hasta ' + fd(x.vence) + ' · ' : ''}Usada ${x.usos || 0} ${x.usos === 1 ? 'vez' : 'veces'}${x.descripcion ? ' · ' + esc(x.descripcion) : ''}</div></div>
+        <div class="acts"><button class="btn ghost sm" data-pe="${x.id}" type="button">Editar</button>
+          <button class="btn ghost sm" data-pt="${x.id}" type="button">${x.activa ? 'Pausar' : 'Activar'}</button>
+          <button class="btn ghost sm" data-pd="${x.id}" type="button" style="color:var(--bad)">Borrar</button></div></div>`; }).join('')
+      : (e ? '' : '<p class="hint" style="margin-top:12px">Aún no tienes promociones. Crea la primera con el botón de arriba.</p>')}
+    </div>`;
+  if ($('pNew')) $('pNew').onclick = () => { promoEdit = { activa: true }; paintPromos(); $('pK').focus(); };
+  if (e) {
+    $('pCancel').onclick = () => { promoEdit = null; paintPromos(); };
+    $('pSave').onclick = async () => {
+      const row = { palabra_clave: $('pK').value.trim(), respuesta: $('pR').value.trim(), vence: $('pV').value || null,
+                    descripcion: $('pD').value.trim() || null, activa: $('pA').checked };
+      if (!row.palabra_clave || !row.respuesta) { msg($('pMsg'), 'Escribe la palabra clave y el mensaje.', 'bad'); return; }
+      const q = e.id ? sb.from('promotions').update(row).eq('id', e.id) : sb.from('promotions').insert(Object.assign({ tenant_id: tenant.id }, row));
+      const { error } = await q;
+      if (error) { msg($('pMsg'), /duplicate|unique/i.test(error.message) ? 'Ya tienes una promoción con esa palabra clave.' : 'No se pudo guardar: ' + error.message, 'bad'); return; }
+      promoEdit = null; loadPromos();
+    };
+  }
+  $('tPromo').querySelectorAll('[data-pe]').forEach(b => b.onclick = () => { promoEdit = Object.assign({}, PROMOS.find(x => x.id === b.dataset.pe)); paintPromos(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('tPromo').querySelectorAll('[data-pt]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pt); await sb.from('promotions').update({ activa: !x.activa }).eq('id', x.id); loadPromos(); });
+  $('tPromo').querySelectorAll('[data-pd]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pd); if (!confirm('¿Borrar la promoción ' + x.palabra_clave + '?')) return; await sb.from('promotions').delete().eq('id', x.id); loadPromos(); });
+}
+
+// ---------- Métricas ----------
+let metDias = 30;
+async function loadMetricas(){
+  if (!tiene('crm')) { $('tMet').innerHTML = bloqueo('crm', 'Métricas'); return; }
+  $('tMet').innerHTML = '<div class="card"><p class="hint" style="margin:0">Cargando…</p></div>';
+  const { data } = await sb.rpc('mis_metricas', { p_dias: metDias });
+  if (!data || !data.ok) { $('tMet').innerHTML = data && data.bloqueado ? bloqueo('crm', 'Métricas') : '<div class="card"><p class="sub">No se pudieron cargar las métricas.</p></div>'; return; }
+  paintMetricas(data);
+}
+function paintMetricas(M){
+  const n = (x) => Number(x || 0).toLocaleString('es');
+  const et = M.etapas || {}, totLeads = Object.values(et).reduce((a, b) => a + b, 0);
+  const conv = totLeads ? Math.round(100 * (et.cerrado_ganado || 0) / totLeads) : 0;
+  const respT = (M.respuestas_bot || 0) + (M.respuestas_humano || 0);
+  const auto = respT ? Math.round(100 * M.respuestas_bot / respT) : 0;
+  const ph = M.por_hora || [], maxH = Math.max(1, ...ph), pico = ph.indexOf(Math.max(...ph));
+  const pdia = M.por_dia || [], maxD = Math.max(1, ...pdia.map(x => x.n));
+  const h12 = (h) => (h % 12 || 12) + (h < 12 ? ' am' : ' pm');
+  $('tMet').innerHTML = `
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>📈 Métricas de tu asistente</h2><p class="sub" style="margin:0">Últimos ${M.dias} días</p></div>
+      <div class="chips" id="mD">${[7, 30, 90].map(d => `<button type="button" class="chip ${d === metDias ? 'on' : ''}" data-d="${d}">${d} días</button>`).join('')}</div></div></div>
+    <div class="kpis2" style="margin-bottom:16px">
+      <div><b>${n(M.conversaciones)}</b><span>Conversaciones</span></div>
+      <div><b>${n(M.nuevas)}</b><span>Clientes nuevos</span></div>
+      <div><b>${n(M.mensajes_clientes)}</b><span>Mensajes recibidos</span></div>
+      <div><b>${auto}%</b><span>Respondido por el asistente</span></div>
+      <div><b>${n(M.citas)}</b><span>Citas agendadas</span></div>
+      <div><b>${conv}%</b><span>Conversión (cerrados ÷ clientes)</span></div>
+    </div>
+    <div class="card"><h2>¿A qué hora te escriben más?</h2>
+      <p class="sub">${Math.max(...ph) ? `La hora con más mensajes es de <b>${h12(pico)} a ${h12((pico + 1) % 24)}</b>.` : 'Aún no hay mensajes en este período.'}</p>
+      <div class="bars">${ph.map((v, h) => `<div class="b ${h === pico && v ? 'pk' : ''}" style="height:${Math.round(100 * v / maxH)}%"><span class="tip">${h12(h)}: ${n(v)} mensaje(s)</span></div>`).join('')}</div>
+      <div class="axis">${ph.map((_, h) => `<span>${h % 3 === 0 ? h12(h).replace(' ', '') : ''}</span>`).join('')}</div></div>
+    <div class="card"><h2>Clientes nuevos por día</h2><p class="sub">Últimos 14 días</p>
+      <div class="bars">${pdia.map(x => `<div class="b" style="height:${Math.round(100 * x.n / maxD)}%"><span class="tip">${fd(x.dia)}: ${n(x.n)}</span></div>`).join('')}</div>
+      <div class="axis">${pdia.map((x, i) => `<span>${i % 2 === 0 ? x.dia.slice(8, 10) + '/' + x.dia.slice(5, 7) : ''}</span>`).join('')}</div></div>
+    <div class="card"><h2>Tus clientes por etapa</h2><p class="sub">Cambia la etapa de cada cliente desde "💬 Conversaciones".</p>
+      <div class="funnel">${ETAPAS.map(([k, t]) => `<div class="r"><span>${t}</span><div class="t"><i style="width:${totLeads ? Math.round(100 * (et[k] || 0) / totLeads) : 0}%"></i></div><b>${n(et[k])}</b></div>`).join('')}</div>
+      <p class="hint" style="margin-top:10px">👤 ${n(M.pasadas_a_humano)} conversación(es) pasaron a una persona · 🤖 ${n(M.respuestas_bot)} respuestas del asistente · 👤 ${n(M.respuestas_humano)} tuyas</p></div>
+    ${(M.promos || []).length ? `<div class="card"><h2>Promociones más usadas</h2>${M.promos.map(p => `<p style="margin:6px 0"><span class="kw" style="background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px">${esc(p.clave)}</span> — ${n(p.usos)} ${p.usos === 1 ? 'vez' : 'veces'}</p>`).join('')}</div>` : ''}`;
+  $('mD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { metDias = +b.dataset.d; loadMetricas(); });
+}
 
 // ---------- Conversaciones (bandeja de entrada) ----------
 const ETAPAS = [['prospecto','Prospecto'],['interesado','Interesado'],['negociacion','Negociación'],['cerrado_ganado','Cerrado ✅'],['perdido','Perdido']];

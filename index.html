@@ -19,8 +19,8 @@
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Plus Jakarta Sans",system-ui,sans-serif}
   header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
   .bar{max-width:880px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
-  .logo{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700}
-  .bar h1{font-size:16px;margin:0;flex:1}
+  .logo{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+  .bar h1{font-size:16px;margin:0;flex:1;min-width:0}
   .bar small{display:block;color:var(--muted);font-weight:500}
   main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
   .tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto}
@@ -32,12 +32,14 @@
   label{display:block;font-weight:600;margin:14px 0 6px}
   .hint{font-weight:400;color:var(--muted);font-size:13px}
   input,select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
-  textarea{min-height:84px;resize:vertical}
+  textarea{min-height:70px;resize:vertical}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);border-color:transparent}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:560px){.row{grid-template-columns:1fr}}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
   .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn.add{background:var(--brand-soft);color:var(--brand);width:100%;border:1px dashed var(--brand)}
+  .btn.sm{padding:6px 10px;font-size:13px}
   .btn:disabled{opacity:.55;cursor:wait}
   .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-weight:700}
   .pill::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
@@ -45,19 +47,61 @@
   .qr{display:grid;place-items:center;padding:16px;border:1px dashed var(--line);border-radius:var(--radius);margin-top:16px;text-align:center}
   .qr img{width:260px;max-width:100%;image-rendering:pixelated}
   .steps{color:var(--muted);margin:8px 0 0;padding-left:18px;text-align:left}
-  .days{display:grid;gap:8px}
-  .day{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center}
-  .day label{margin:0;font-weight:500;display:flex;gap:8px;align-items:center}
-  .day input[type=checkbox]{width:auto}
-  .faq{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
-  @media(max-width:560px){.faq{grid-template-columns:1fr}.day{grid-template-columns:1fr 1fr 1fr}}
   .note{padding:12px 14px;border-radius:10px;background:var(--brand-soft);color:#0b4f3d;margin-top:12px}
   .note.bad{background:var(--bad-soft);color:var(--bad)} .note.warn{background:var(--warn-soft);color:#6b4a00}
-  .check{display:flex;gap:10px;align-items:center;font-weight:600;margin-top:14px}
-  .check input{width:auto}
   .login{max-width:400px;margin:8vh auto}
   .hidden{display:none!important}
-  pre.prompt{white-space:pre-wrap;background:#f7f9f8;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,monospace;max-height:280px;overflow:auto}
+
+  /* ---------- Asistente por pasos ---------- */
+  .wz-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;color:var(--muted);font-size:13px;font-weight:600}
+  .prog{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .prog i{display:block;height:100%;background:var(--brand);border-radius:99px;transition:width .3s}
+  .wz-title{display:flex;gap:12px;align-items:flex-start;margin-bottom:6px}
+  .wz-title .em{font-size:30px;line-height:1}
+  .wz-title h2{margin:0;font-size:20px}
+  .wz-title p{margin:2px 0 0;color:var(--muted)}
+  .wz-nav #wzNext{margin-left:auto}
+  .wz-nav{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+  .opt{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;font:inherit;font-size:14px;color:var(--ink)}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .chip.sug{border-style:dashed;color:var(--brand);border-color:var(--brand)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .tile{border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:12px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);display:flex;flex-direction:column;gap:4px}
+  .tile .em{font-size:24px}
+  .tile b{font-size:14px;line-height:1.3}
+  .tile small{color:var(--muted);font-size:12px;line-height:1.35}
+  .tile.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset}
+  .tile.fixed{cursor:default;opacity:.85}
+  .grp{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+  .grp h3{margin:0 0 2px;font-size:15px}
+  .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fbfcfb;position:relative}
+  .item .x{position:absolute;top:8px;right:8px;border:0;background:none;cursor:pointer;font-size:16px;color:var(--muted)}
+  .item .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+  @media(max-width:560px){.item .row3{grid-template-columns:1fr 1fr}.item .row3 > :first-child{grid-column:1/-1}}
+  .item input,.item textarea{background:#fff}
+  .mini{font-size:12px;color:var(--muted);font-weight:600;margin:0 0 4px;display:block}
+  .day{display:grid;grid-template-columns:130px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+  .day:last-child{border-bottom:0}
+  .day.off input[type=time]{opacity:.35}
+  .sw{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;margin:0}
+  .sw input{width:auto;accent-color:var(--brand);transform:scale(1.2)}
+  @media(max-width:560px){.day{grid-template-columns:1fr 1fr}.day .sw{grid-column:1/-1}}
+  .styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .bubble{background:#dcf8c6;border-radius:10px 10px 10px 2px;padding:8px 10px;font-size:13px;color:#1b2a22;margin-top:6px;white-space:pre-line}
+  .faqc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+  .faqc div{flex:1}
+  .faqc b{display:block}
+  .faqc span{color:var(--muted)}
+  .faqbox{background:var(--brand-soft);border-radius:12px;padding:14px;margin-top:10px}
+  .sum{display:grid;gap:10px}
+  .sum .s{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .sum .s h4{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+  .sum .s p{margin:2px 0;color:var(--muted);font-size:14px}
+  .sum .s p b{color:var(--ink);font-weight:600}
+  .link{background:none;border:0;color:var(--brand);font:inherit;font-weight:700;cursor:pointer;padding:0;font-size:13px}
+  .saved{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -117,59 +161,16 @@
   <!-- CONFIGURACIÓN -->
   <section id="tCfg" class="hidden">
     <div class="card" id="cfgStatus"></div>
-    <form id="fCfg" class="card">
-      <h2>Configura tu asistente</h2>
-      <p class="sub">Con estas respuestas nuestra IA redacta las instrucciones de tu asistente. Antes de activarse, nuestro equipo las revisa.</p>
-
-      <div class="row">
-        <div><label for="nombre_negocio">Nombre del negocio</label><input id="nombre_negocio" required></div>
-        <div><label for="tipo_negocio">Rubro <span class="hint">(clínica, tienda de ropa, restaurante…)</span></label><input id="tipo_negocio" required></div>
+    <div class="card hidden" id="wz">
+      <div class="wz-top"><span id="wzStep"></span><span class="saved" id="wzSaved"></span></div>
+      <div class="prog"><i id="wzProg"></i></div>
+      <div id="wzBody"></div>
+      <div id="wzMsg" class="note bad hidden"></div>
+      <div class="wz-nav">
+        <button class="btn ghost" id="wzBack" type="button">← Atrás</button>
+        <button class="btn" id="wzNext" type="button">Siguiente →</button>
       </div>
-
-      <label for="objetivo">¿Qué es lo principal que debe hacer tu asistente?</label>
-      <select id="objetivo">
-        <option value="agendar">Agendar citas</option>
-        <option value="vender">Vender productos</option>
-        <option value="informar">Dar información</option>
-        <option value="soporte">Dar soporte a clientes</option>
-      </select>
-
-      <label for="descripcion">Describe tu negocio <span class="hint">(qué haces, a quién le vendes)</span></label>
-      <textarea id="descripcion" required></textarea>
-
-      <div class="row">
-        <div><label for="tono">Tono del asistente</label>
-          <select id="tono"><option>cercano y profesional</option><option>formal</option><option>divertido y relajado</option><option>técnico y preciso</option></select></div>
-        <div><label for="metodos_pago">Formas de pago</label><input id="metodos_pago" placeholder="Pago móvil, Zelle, efectivo…"></div>
-      </div>
-      <label for="direccion">Dirección</label><input id="direccion">
-
-      <label class="check"><input type="checkbox" id="agenda_citas"> Mi negocio agenda citas por WhatsApp</label>
-      <div id="citaBox" class="hidden">
-        <label for="duracion_cita_min">Duración normal de una cita (minutos)</label>
-        <input id="duracion_cita_min" type="number" min="5" step="5" value="30">
-      </div>
-
-      <label>Horario de atención</label>
-      <div class="days" id="days"></div>
-
-      <label for="que_hacer">¿Qué SÍ debe hacer tu asistente?</label>
-      <textarea id="que_hacer" placeholder="Ej.: informar precios, agendar citas, enviar la ubicación…"></textarea>
-      <label for="que_no_hacer">¿Qué NUNCA debe hacer o decir?</label>
-      <textarea id="que_no_hacer" placeholder="Ej.: no dar diagnósticos, no ofrecer descuentos…"></textarea>
-
-      <label>Preguntas frecuentes <span class="hint">(lo que tus clientes siempre preguntan)</span></label>
-      <div id="faqs"></div>
-      <button type="button" class="btn ghost" id="addFaq">+ Agregar pregunta</button>
-
-      <label for="mensaje_bienvenida">Mensaje de bienvenida</label>
-      <input id="mensaje_bienvenida" placeholder="¡Hola! 👋 Bienvenido a…">
-      <label for="mensaje_fuera_horario">Mensaje cuando estás cerrado</label>
-      <input id="mensaje_fuera_horario" placeholder="Ahora estamos cerrados, pero…">
-
-      <div style="margin-top:20px"><button class="btn" id="bSend" type="submit">Enviar para revisión</button></div>
-      <div id="cfgMsg" class="note hidden"></div>
-    </form>
+    </div>
   </section>
 </main>
 
@@ -177,7 +178,7 @@
 const CFG = window.PORTAL_CONFIG || {};
 const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
-const DIAS = [['lun','Lunes'],['mar','Martes'],['mie','Miércoles'],['jue','Jueves'],['vie','Viernes'],['sab','Sábado'],['dom','Domingo']];
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let tenant = null, pollTimer = null;
 
 function show(el, on){ el.classList.toggle('hidden', !on); }
@@ -200,14 +201,15 @@ async function start(){
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
-  fillForm(data); loadCfgStatus(); checkWa();
+  await initWizard(); loadCfgStatus(); checkWa();
 }
 
 // ---------- Pestañas ----------
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  show($('tWa'), b.dataset.t === 'wa'); show($('tCfg'), b.dataset.t === 'cfg');
-});
+function openTab(t){
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg');
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
 
 // ---------- WhatsApp (estado + QR vía n8n) ----------
 async function callWa(accion){
@@ -246,73 +248,381 @@ function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () =>
 function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 $('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
 
-// ---------- Formulario de configuración ----------
-function buildDays(h){
-  $('days').innerHTML = '';
-  for (const [k, n] of DIAS){
-    const v = h && Array.isArray(h[k]) ? h[k] : null;
-    const d = document.createElement('div'); d.className = 'day';
-    d.innerHTML = `<label><input type="checkbox" data-d="${k}" ${v ? 'checked' : ''}> ${n}</label>
-      <input type="time" data-a="${k}" value="${v ? v[0] : '08:00'}"><input type="time" data-c="${k}" value="${v ? v[1] : '17:00'}">`;
-    $('days').appendChild(d);
-  }
-}
-function addFaq(p = '', r = ''){
-  const d = document.createElement('div'); d.className = 'faq';
-  d.innerHTML = `<input placeholder="Pregunta" class="fq"><input placeholder="Respuesta" class="fr"><button type="button" class="btn ghost">✕</button>`;
-  d.querySelector('.fq').value = p; d.querySelector('.fr').value = r;
-  d.querySelector('button').onclick = () => d.remove();
-  $('faqs').appendChild(d);
-}
-$('addFaq').onclick = () => addFaq();
-$('agenda_citas').onchange = () => show($('citaBox'), $('agenda_citas').checked);
+// =====================================================================
+//  CONFIGURAR MI ASISTENTE — asistente por pasos
+// =====================================================================
 
-const CAMPOS = ['nombre_negocio','tipo_negocio','objetivo','descripcion','tono','direccion','metodos_pago','que_hacer','que_no_hacer','mensaje_bienvenida','mensaje_fuera_horario'];
-async function fillForm(t){
-  for (const c of CAMPOS) if (t[c] != null && $(c)) $(c).value = t[c];
-  $('duracion_cita_min').value = t.duracion_cita_min || 30;
-  const { data: tools } = await sb.from('tenant_tools').select('herramienta,activa');
-  $('agenda_citas').checked = !!(tools || []).find(x => x.herramienta === 'agendar_cita' && x.activa);
-  show($('citaBox'), $('agenda_citas').checked);
-  buildDays(t.horario_atencion);
-  $('faqs').innerHTML = ''; (t.faqs || []).forEach(f => addFaq(f.pregunta, f.respuesta)); if (!(t.faqs || []).length) addFaq();
+// Lo que puede hacer el asistente (además de informar, que siempre lo hace)
+const FUNCS = {
+  citas:        { e:'📅', n:'Agendar citas',        d:'Ofrece horas libres y agenda la cita.',
+                  q:['¿Con cuánta anticipación se puede pedir una cita?','¿El cliente debe traer algo o cumplir algún requisito?','¿Cobran por adelantado o por cancelar?'] },
+  reservas:     { e:'🛏️', n:'Tomar reservas',       d:'Habitaciones, mesas, salones…',
+                  q:['¿Qué se puede reservar? (habitaciones, mesas, salón…)','¿Hora de entrada y de salida?','¿Piden un anticipo para reservar? ¿Cuánto?','¿Qué pasa si el cliente cancela?'] },
+  pedidos:      { e:'🛒', n:'Ventas y pedidos',     d:'Ayuda a elegir y toma el pedido.',
+                  q:['¿Cómo hace un cliente para comprar? (pasos)','¿Hay un pedido o compra mínima?','¿Apartan productos? ¿Por cuánto tiempo?','¿Tienen garantía o aceptan cambios?'] },
+  delivery:     { e:'🛵', n:'Envíos o delivery',    d:'Zonas, costos y tiempos de entrega.',
+                  q:['¿A qué zonas hacen delivery?','¿Cuánto cuesta el envío?','¿Cuánto tarda la entrega?','¿Hacen envíos nacionales? ¿Por qué empresa?'] },
+  cotizaciones: { e:'🧾', n:'Cotizaciones',         d:'Pide los datos y prepara la cotización.',
+                  q:['¿Qué datos necesitan para cotizar? (ej.: marca, modelo, año)','¿En cuánto tiempo entregan una cotización?'] },
+  membresias:   { e:'🎟️', n:'Planes o membresías',  d:'Mensualidades, inscripciones, cursos.',
+                  q:['¿Cobran inscripción? ¿Cuánto?','¿Ofrecen un día o clase de prueba?','¿Cómo se paga o renueva la mensualidad?'] },
+  tasas:        { e:'💱', n:'Tasas del día',        d:'Informa la tasa y cómo cambiar.',
+                  q:['¿Qué monedas cambian?','¿Hay monto mínimo o máximo?','¿Cómo se hace la operación? (pasos)'] },
+  paquetes:     { e:'✈️', n:'Paquetes y viajes',    d:'Destinos, qué incluye y requisitos.',
+                  q:['¿Qué destinos trabajan?','¿Qué incluyen normalmente los paquetes?','¿Qué requisitos piden? (pasaporte, visa…)','¿Ofrecen pagar en cuotas?'] },
+  soporte:      { e:'🛠️', n:'Soporte técnico',      d:'Fallas, reportes y cobertura.',
+                  q:['¿Qué debe hacer primero el cliente cuando falla el servicio?','¿Qué datos piden para reportar una falla?','¿En qué zonas tienen cobertura?','¿En qué horario atiende el soporte técnico?'] }
+};
+
+// Categorías: marcan funciones sugeridas, el nombre de lo que vende y preguntas frecuentes típicas
+const CATS = [
+  { id:'salud',      e:'🩺', n:'Salud y clínicas',            f:['citas'],                         it:'Servicio',  faq:['¿Atienden por seguro?','¿Hacen consultas a domicilio?','¿Necesito orden médica?'], q:['¿Qué especialidades o médicos atienden?'] },
+  { id:'belleza',    e:'💇', n:'Belleza, barbería y spa',     f:['citas'],                         it:'Servicio',  faq:['¿Atienden sin cita?','¿Qué productos usan?','¿Tienen estacionamiento?'], q:[] },
+  { id:'restaurante',e:'🍔', n:'Restaurantes y comida',       f:['pedidos','delivery','reservas'], it:'Plato o producto', faq:['¿Tienen opciones vegetarianas?','¿Hacen delivery?','¿Aceptan reservas para grupos?'], q:['¿Tienen menú del día? ¿Cuál es?'] },
+  { id:'abasto',     e:'🛒', n:'Abastos y supermercados',     f:['pedidos','delivery'],            it:'Producto',  faq:['¿Tienen delivery?','¿Venden al mayor?','¿Aceptan pago móvil?'], q:['¿Venden al mayor? ¿Desde cuántas unidades?'] },
+  { id:'tienda',     e:'🛍️', n:'Tiendas y ventas en línea',   f:['pedidos','delivery'],            it:'Producto',  faq:['¿Hacen envíos?','¿Tienen garantía?','¿Puedo cambiar la talla?'], q:['¿Tienen tienda física o solo en línea?'] },
+  { id:'repuestos',  e:'🔧', n:'Repuestos y autopartes',      f:['cotizaciones','pedidos','delivery'], it:'Repuesto', faq:['¿Son originales o genéricos?','¿Tienen garantía?','¿Hacen envíos?'], q:['¿Para qué marcas de vehículos trabajan?'] },
+  { id:'taller',     e:'🚗', n:'Talleres y servicio técnico', f:['citas','cotizaciones'],          it:'Servicio',  faq:['¿Cuánto tarda la revisión?','¿Dan garantía del trabajo?','¿Buscan el vehículo?'], q:['¿Qué marcas o equipos reparan?'] },
+  { id:'hotel',      e:'🏨', n:'Hoteles y posadas',           f:['reservas'],                      it:'Habitación',faq:['¿Incluye desayuno?','¿Aceptan mascotas?','¿Tienen estacionamiento?'], q:['¿Qué servicios incluye la estadía? (wifi, piscina…)'] },
+  { id:'gimnasio',   e:'🏋️', n:'Gimnasios y deportes',        f:['membresias'],                    it:'Plan',      faq:['¿Tienen entrenador personal?','¿Hay clases grupales?','¿Puedo congelar mi plan?'], q:['¿Qué clases o actividades ofrecen?'] },
+  { id:'educacion',  e:'🎓', n:'Educación y cursos',          f:['membresias'],                    it:'Curso',     faq:['¿Entregan certificado?','¿Las clases son en línea o presenciales?','¿Cuándo empieza el próximo curso?'], q:['¿Cuándo comienzan los próximos cursos?'] },
+  { id:'viajes',     e:'✈️', n:'Agencias de viajes',          f:['paquetes','cotizaciones'],       it:'Paquete',   faq:['¿Ayudan con la visa?','¿Incluye seguro de viaje?','¿Puedo pagar en cuotas?'], q:[] },
+  { id:'cambio',     e:'💱', n:'Casas de cambio',             f:['tasas'],                         it:'Moneda o tasa', faq:['¿Cuál es la tasa de hoy?','¿Hacen transferencias al exterior?','¿Qué necesito para cambiar?'], q:[] },
+  { id:'internet',   e:'📡', n:'Venta de internet',           f:['membresias','soporte'],          it:'Plan de internet', faq:['¿Cuánto cuesta la instalación?','¿Hay cobertura en mi zona?','¿Qué velocidad tiene cada plan?'], q:['¿Cuánto tarda la instalación?'] },
+  { id:'profesional',e:'💼', n:'Servicios profesionales',     f:['citas','cotizaciones'],          it:'Servicio',  faq:['¿La primera consulta tiene costo?','¿Atienden en línea?','¿Cuánto tarda el trámite?'], q:['¿En qué casos o áreas trabajan?'] },
+  { id:'inmobiliaria',e:'🏠',n:'Inmobiliarias',               f:['citas'],                         it:'Propiedad', faq:['¿Aceptan financiamiento?','¿Cuál es la comisión?','¿Puedo visitar el inmueble?'], q:['¿Trabajan venta, alquiler o ambos?'] },
+  { id:'eventos',    e:'🎉', n:'Eventos y salones de fiesta', f:['reservas','cotizaciones'],       it:'Paquete o servicio', faq:['¿Cuántas personas caben?','¿Incluye decoración?','¿Puedo llevar mi propia comida?'], q:['¿Para qué tipos de eventos trabajan?'] },
+  { id:'otro',       e:'✨', n:'Otro',                        f:[],                                it:'Producto o servicio', faq:['¿Hacen envíos?','¿Qué formas de pago aceptan?'], q:[] }
+];
+const catOf = (id) => CATS.find(c => c.id === id) || CATS[CATS.length - 1];
+
+const PAGOS = ['Efectivo','Pago móvil','Transferencia','Zelle','Binance','Punto de venta','PayPal'];
+const DIAS = [['lun','Lunes'],['mar','Martes'],['mie','Miércoles'],['jue','Jueves'],['vie','Viernes'],['sab','Sábado'],['dom','Domingo']];
+const ESTILOS = {
+  formal:   { e:'🎩', n:'Formal',   tono:'formal y respetuoso, trata de usted',
+              ej:(b,n) => `Buenos días. Le saluda ${b}, asistente de ${n}. ¿En qué puedo servirle?` },
+  amigable: { e:'😊', n:'Amigable', tono:'cercano, cálido y profesional, tutea al cliente',
+              ej:(b,n) => `¡Hola! 👋 Soy ${b} de ${n}. ¿En qué te puedo ayudar hoy?` },
+  juvenil:  { e:'😎', n:'Juvenil',  tono:'relajado, alegre y moderno, tutea al cliente',
+              ej:(b,n) => `¡Epa! 🙌 Aquí ${b} de ${n}. Cuéntame, ¿qué estás buscando? 🔥` },
+  directo:  { e:'⚡', n:'Directo',  tono:'breve, claro y al grano, sin rodeos',
+              ej:(b,n) => `Hola, soy ${b} de ${n}. ¿Qué necesitas?` }
+};
+const EMOJIS = { mucho:'Muchos 🎉', poco:'Pocos 🙂', nada:'Ninguno' };
+const NOMBRES = ['Sofi','Max','Luna','Leo','Vale','Teo'];
+
+// Estado del formulario
+let F = null, step = 0, faqEdit = -1;
+const KEY = () => 'a360_borrador_' + (tenant && tenant.id);
+
+function blank(){
+  return { nombre_negocio:'', descripcion:'', anios_experiencia:'', direccion:'', telefono:'', redes:'', pagos:[], pago_otro:'',
+    categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
+    nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
+    mensaje_fuera_horario:'', fuera_editado:false, faqs:[] };
+}
+async function fromTenant(t){
+  const f = blank();
+  Object.assign(f, {
+    nombre_negocio: t.nombre_negocio || '', descripcion: t.descripcion || '', anios_experiencia: t.anios_experiencia ?? '',
+    direccion: t.direccion || '', telefono: t.telefono || '', redes: t.redes || '',
+    categoria: t.categoria || '', funciones: Array.isArray(t.funciones) ? t.funciones.filter(x => FUNCS[x]) : [],
+    horario: t.horario_atencion || {}, duracion_cita_min: t.duracion_cita_min || 30,
+    nombre_bot: t.nombre_bot || '', estilo: ESTILOS[t.estilo] ? t.estilo : 'amigable', emojis: EMOJIS[t.emojis] ? t.emojis : 'poco',
+    mensaje_bienvenida: t.mensaje_bienvenida || '', bienv_editado: !!t.mensaje_bienvenida,
+    mensaje_fuera_horario: t.mensaje_fuera_horario || '', fuera_editado: !!t.mensaje_fuera_horario,
+    faqs: (t.faqs || []).filter(x => x && x.pregunta)
+  });
+  if (f.funciones.length) f._catPreset = f.categoria;
+  if (t.categoria === 'otro') f.otro_rubro = t.tipo_negocio || '';
+  const pm = String(t.metodos_pago || '').split(',').map(s => s.trim()).filter(Boolean);
+  f.pagos = pm.filter(p => PAGOS.includes(p)); f.pago_otro = pm.filter(p => !PAGOS.includes(p)).join(', ');
+  // respuestas a preguntas guardadas: las que coinciden con una pregunta conocida vuelven a su casilla
+  const known = new Set([...Object.values(FUNCS).flatMap(x => x.q), ...CATS.flatMap(c => c.q)]);
+  for (const r of (t.info_extra || [])) { if (known.has(r.pregunta)) f.respuestas[r.pregunta] = r.respuesta; else f.extra.push({ pregunta: r.pregunta, respuesta: r.respuesta }); }
+  const { data: kb } = await sb.from('knowledge_base').select('nombre,descripcion,precio,datos_extra').eq('activo', true).order('created_at');
+  f.catalogo = (kb || []).map(k => ({ nombre: k.nombre, precio: k.precio != null ? String(k.precio) : ((k.datos_extra || {}).precio_texto || ''),
+    descripcion: k.descripcion || '', duracion_min: (k.datos_extra || {}).duracion_min || '' }));
+  return f;
+}
+function saveDraft(){
+  try { localStorage.setItem(KEY(), JSON.stringify({ F, step })); $('wzSaved').textContent = '✓ Avance guardado'; } catch {}
+}
+function loadDraft(){ try { return JSON.parse(localStorage.getItem(KEY()) || 'null'); } catch { return null; } }
+function clearDraft(){ try { localStorage.removeItem(KEY()); } catch {} }
+
+// --------- Pasos ---------
+const STEPS = [
+  { e:'🏪', t:'Tu comercio', s:'Cuéntanos lo básico de tu negocio.', r: rComercio,
+    v: () => !F.nombre_negocio.trim() ? 'Escribe el nombre de tu negocio.' : !F.descripcion.trim() ? 'Cuéntanos a qué se dedica tu negocio.' : '' },
+  { e:'🏷️', t:'¿En qué categoría está tu negocio?', s:'Así preparamos tu asistente con lo que más usa tu tipo de negocio.', r: rCategoria,
+    v: () => !F.categoria ? 'Elige una categoría.' : (F.categoria === 'otro' && !F.otro_rubro.trim()) ? 'Escribe qué tipo de negocio es.' : '' },
+  { e:'🧩', t:'¿Qué hará tu asistente?', s:'Ya marcamos lo más común para tu categoría. Toca para marcar o desmarcar.', r: rFunciones, v: () => '' },
+  { e:'💬', t:'Unas preguntas sobre cómo trabajas', s:'Responde solo las que apliquen. Si alguna no aplica, déjala en blanco.', r: rPreguntas, v: () => '' },
+  { e:'🛍️', t:'Productos y precios', s:'Agrega lo que vendes u ofreces. El asistente solo dará estos precios.', r: rCatalogo, v: () => '' },
+  { e:'🕒', t:'Horario de atención', s:'Marca los días que abres y la hora.', r: rHorario, v: () => '' },
+  { e:'🤖', t:'La personalidad de tu asistente', s:'Dale un nombre y elige cómo habla con tus clientes.', r: rPersonalidad,
+    v: () => !F.nombre_bot.trim() ? 'Ponle un nombre a tu asistente.' : '' },
+  { e:'❓', t:'Preguntas frecuentes', s:'Agrega una por una lo que tus clientes siempre preguntan.', r: rFaqs, v: () => '' },
+  { e:'✅', t:'Revisa y envía', s:'Si todo está bien, envíalo. Nuestro equipo lo revisa antes de activarlo.', r: rResumen, v: () => '' }
+];
+
+function render(){
+  const S = STEPS[step];
+  $('wzStep').textContent = `Paso ${step + 1} de ${STEPS.length}`;
+  $('wzProg').style.width = ((step + 1) / STEPS.length * 100) + '%';
+  $('wzBody').innerHTML = `<div class="wz-title"><span class="em">${S.e}</span><div><h2>${S.t}</h2><p>${S.s}</p></div></div>` + S.r();
+  show($('wzBack'), step > 0);
+  $('wzNext').textContent = step === STEPS.length - 1 ? 'Enviar para revisión 🚀' : 'Siguiente →';
+  msg($('wzMsg'), '');
+  bindAll();
+}
+$('wzNext').onclick = async () => {
+  const err = STEPS[step].v(); if (err) { msg($('wzMsg'), err, 'bad'); return; }
+  if (step === STEPS.length - 1) return enviar();
+  if (step === 1) presetFunciones();
+  step++; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' });
+};
+$('wzBack').onclick = () => { if (step > 0) { step--; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); } };
+function goTo(i){ step = i; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
+
+// Enlaza campos simples (data-k) y campos de listas (data-arr / data-i / data-f)
+function bindAll(){
+  $('wzBody').querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => {
+    F[el.dataset.k] = el.value;
+    if (el.dataset.k === 'mensaje_bienvenida') F.bienv_editado = true;
+    if (el.dataset.k === 'mensaje_fuera_horario') F.fuera_editado = true;
+    if (el.dataset.k === 'nombre_bot') refreshStyleExamples();
+    saveDraft();
+  }));
+  $('wzBody').querySelectorAll('[data-arr]').forEach(el => el.addEventListener('input', () => {
+    F[el.dataset.arr][+el.dataset.i][el.dataset.f] = el.value; saveDraft();
+  }));
+  $('wzBody').querySelectorAll('[data-resp]').forEach(el => el.addEventListener('input', () => {
+    F.respuestas[el.dataset.resp] = el.value; saveDraft();
+  }));
+  $('wzBody').querySelectorAll('[data-act]').forEach(el => el.addEventListener('click', () => { msg($('wzMsg'), ''); ACT[el.dataset.act](el); }));
+  $('wzBody').addEventListener('input', () => msg($('wzMsg'), ''), { once: true });
+}
+const field = (k, label, opt, attrs = '') => `<label>${label}${opt ? '<span class="opt">(opcional)</span>' : ''}</label><input data-k="${k}" value="${esc(F[k])}" ${attrs}>`;
+const area  = (k, label, opt, ph = '') => `<label>${label}${opt ? '<span class="opt">(opcional)</span>' : ''}</label><textarea data-k="${k}" placeholder="${esc(ph)}">${esc(F[k])}</textarea>`;
+
+// Paso 1
+function rComercio(){
+  return field('nombre_negocio', 'Nombre del negocio', false, 'placeholder="Ej.: Repuestos El Rayo"') +
+    area('descripcion', '¿A qué se dedica tu negocio?', false, 'Ej.: Vendemos repuestos para carros americanos y japoneses en Valencia.') +
+    `<div class="row"><div>${field('anios_experiencia', 'Años de experiencia', true, 'type="number" min="0" max="200" placeholder="Ej.: 10"')}</div>
+      <div>${field('telefono', 'Teléfono de contacto', true, 'type="tel" placeholder="Ej.: 0412-1234567"')}</div></div>` +
+    field('direccion', 'Dirección', true, 'placeholder="Ej.: Av. Bolívar, local 5, Valencia"') +
+    field('redes', 'Redes sociales o página web', true, 'placeholder="Ej.: @minegocio en Instagram"') +
+    `<label>¿Cómo te pueden pagar?<span class="opt">(toca las que aceptas)</span></label>
+     <div class="chips">${PAGOS.map(p => `<button type="button" class="chip ${F.pagos.includes(p) ? 'on' : ''}" data-act="pago" data-v="${p}">${p}</button>`).join('')}</div>
+     <input data-k="pago_otro" value="${esc(F.pago_otro)}" placeholder="¿Otra forma de pago? Escríbela aquí" style="margin-top:8px">`;
+}
+// Paso 2
+function rCategoria(){
+  return `<input id="catQ" placeholder="🔎 Buscar categoría…" style="margin:10px 0 12px">
+    <div class="grid" id="catGrid">${CATS.map(c => `<button type="button" class="tile ${F.categoria === c.id ? 'on' : ''}" data-act="cat" data-v="${c.id}" data-n="${esc(c.n.toLowerCase())}"><span class="em">${c.e}</span><b>${c.n}</b></button>`).join('')}</div>
+    <div id="otroBox" class="${F.categoria === 'otro' ? '' : 'hidden'}">${field('otro_rubro', '¿Qué tipo de negocio es?', false, 'placeholder="Ej.: Floristería, imprenta, veterinaria…"')}</div>`;
+}
+function presetFunciones(){
+  if (F._catPreset === F.categoria) return;
+  F.funciones = [...catOf(F.categoria).f]; F._catPreset = F.categoria;
+}
+// Paso 3
+function rFunciones(){
+  return `<div class="grid" style="margin-top:12px">
+    <div class="tile on fixed"><span class="em">ℹ️</span><b>Dar información</b><small>Siempre incluido: responde dudas sobre tu negocio.</small></div>
+    ${Object.entries(FUNCS).map(([k, x]) => `<button type="button" class="tile ${F.funciones.includes(k) ? 'on' : ''}" data-act="fn" data-v="${k}"><span class="em">${x.e}</span><b>${x.n}</b><small>${x.d}</small></button>`).join('')}
+  </div><p class="hint" style="margin-top:12px">Si algo no aparece aquí, cuéntalo en las preguntas del siguiente paso.</p>`;
+}
+// Paso 4
+function rPreguntas(){
+  const cat = catOf(F.categoria);
+  const qs = (list) => list.map(q => `<label>${esc(q)}</label><textarea data-resp="${esc(q)}" rows="2" style="min-height:44px">${esc(F.respuestas[q] || '')}</textarea>`).join('');
+  let h = '';
+  if (cat.q.length) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
+  for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
+  if (!h) h = `<p class="note">No hay preguntas especiales para tu negocio. Si quieres, agrega otros datos importantes abajo.</p>`;
+  h += `<div class="grp"><h3>➕ Otros datos importantes</h3><p class="hint" style="margin:0 0 8px">Algo que tu asistente deba saber y no se preguntó arriba.</p>
+    ${F.extra.map((x, i) => `<div class="item"><button class="x" type="button" data-act="delExtra" data-i="${i}" title="Quitar">✕</button>
+      <span class="mini">Tema</span><input data-arr="extra" data-i="${i}" data-f="pregunta" value="${esc(x.pregunta)}" placeholder="Ej.: Estacionamiento">
+      <span class="mini" style="margin-top:6px">Detalle</span><textarea data-arr="extra" data-i="${i}" data-f="respuesta" rows="2" style="min-height:44px" placeholder="Ej.: Tenemos estacionamiento gratis para clientes.">${esc(x.respuesta)}</textarea></div>`).join('')}
+    <button type="button" class="btn add" data-act="addExtra">+ Agregar otro dato</button></div>`;
+  return h;
+}
+// Paso 5
+function rCatalogo(){
+  const it = catOf(F.categoria).it, citas = F.funciones.includes('citas'), tasas = F.funciones.includes('tasas');
+  return `<div style="margin-top:12px">${F.catalogo.map((x, i) => `<div class="item"><button class="x" type="button" data-act="delItem" data-i="${i}" title="Quitar">✕</button>
+      <div class="row3">
+        <div><span class="mini">${esc(it)}</span><input data-arr="catalogo" data-i="${i}" data-f="nombre" value="${esc(x.nombre)}" placeholder="Nombre"></div>
+        <div><span class="mini">${tasas ? 'Tasa' : 'Precio'}</span><input data-arr="catalogo" data-i="${i}" data-f="precio" value="${esc(x.precio)}" placeholder="${tasas ? 'Ej.: 36,50' : 'Ej.: 25'}" inputmode="decimal"></div>
+        ${citas ? `<div><span class="mini">Duración (min)</span><input data-arr="catalogo" data-i="${i}" data-f="duracion_min" value="${esc(x.duracion_min)}" type="number" min="5" step="5" placeholder="30"></div>` : '<div></div>'}
+      </div>
+      <span class="mini" style="margin-top:6px">Detalle <span class="opt">(opcional)</span></span>
+      <input data-arr="catalogo" data-i="${i}" data-f="descripcion" value="${esc(x.descripcion)}" placeholder="Ej.: incluye…, tallas…, marca…"></div>`).join('')}
+    <button type="button" class="btn add" data-act="addItem">+ Agregar ${esc(it.toLowerCase())}</button>
+    <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Podrás cambiar esta lista más adelante.</p></div>`;
+}
+// Paso 6
+function rHorario(){
+  const h = F.horario || {};
+  return `<div style="margin-top:12px">${DIAS.map(([k, n]) => { const v = Array.isArray(h[k]) ? h[k] : null;
+      return `<div class="day ${v ? '' : 'off'}"><label class="sw"><input type="checkbox" data-act="dia" data-v="${k}" ${v ? 'checked' : ''}> ${n}</label>
+      <input type="time" data-h="${k}" data-p="0" value="${v ? v[0] : '08:00'}" ${v ? '' : 'disabled'}><input type="time" data-h="${k}" data-p="1" value="${v ? v[1] : '17:00'}" ${v ? '' : 'disabled'}></div>`; }).join('')}</div>
+    <button type="button" class="btn ghost sm" data-act="copiaDia" style="margin-top:10px">Copiar el horario del lunes a los demás días abiertos</button>
+    ${F.funciones.includes('citas') ? `<label>Duración normal de una cita (minutos)</label><input data-k="duracion_cita_min" type="number" min="5" step="5" value="${esc(F.duracion_cita_min)}">` : ''}`;
+}
+// Paso 7
+function welcome(){ return ESTILOS[F.estilo].ej(F.nombre_bot.trim() || 'tu asistente', F.nombre_negocio.trim() || 'tu negocio'); }
+function rPersonalidad(){
+  if (!F.bienv_editado) F.mensaje_bienvenida = welcome();
+  if (!F.fuera_editado) F.mensaje_fuera_horario = 'Ahora mismo estamos cerrados, pero con gusto te ayudo con lo que necesites y te respondemos al abrir. 🙂';
+  return field('nombre_bot', '¿Cómo se llama tu asistente?', false, 'placeholder="Ej.: Sofi" maxlength="30"') +
+    `<div class="chips" style="margin-top:8px">${NOMBRES.map(n => `<button type="button" class="chip sug" data-act="nombre" data-v="${n}">${n}</button>`).join('')}</div>
+    <label>¿Cómo debe hablar?</label>
+    <div class="styles">${Object.entries(ESTILOS).map(([k, x]) => `<button type="button" class="tile ${F.estilo === k ? 'on' : ''}" data-act="estilo" data-v="${k}"><b>${x.e} ${x.n}</b><div class="bubble" data-ej="${k}">${esc(x.ej(F.nombre_bot.trim() || 'tu asistente', F.nombre_negocio.trim() || 'tu negocio'))}</div></button>`).join('')}</div>
+    <label>¿Usa emojis?</label>
+    <div class="chips">${Object.entries(EMOJIS).map(([k, n]) => `<button type="button" class="chip ${F.emojis === k ? 'on' : ''}" data-act="emo" data-v="${k}">${n}</button>`).join('')}</div>` +
+    area('mensaje_bienvenida', 'Saludo de bienvenida', false) +
+    area('mensaje_fuera_horario', 'Mensaje cuando está cerrado', false);
+}
+function refreshStyleExamples(){
+  document.querySelectorAll('[data-ej]').forEach(el => el.textContent = ESTILOS[el.dataset.ej].ej(F.nombre_bot.trim() || 'tu asistente', F.nombre_negocio.trim() || 'tu negocio'));
+  if (!F.bienv_editado) { F.mensaje_bienvenida = welcome(); const t = document.querySelector('[data-k="mensaje_bienvenida"]'); if (t) t.value = F.mensaje_bienvenida; }
+}
+// Paso 8
+function rFaqs(){
+  const sug = catOf(F.categoria).faq.filter(q => !F.faqs.some(f => f.pregunta === q));
+  const p = faqEdit >= 0 ? F.faqs[faqEdit] : { pregunta:'', respuesta:'' };
+  return `${F.faqs.length ? '' : '<p class="hint" style="margin-top:10px">Aún no has agregado preguntas.</p>'}
+    <div style="margin-top:12px">${F.faqs.map((f, i) => i === faqEdit ? '' : `<div class="faqc"><div><b>${esc(f.pregunta)}</b><span>${esc(f.respuesta)}</span></div>
+      <button class="link" type="button" data-act="editFaq" data-i="${i}">Editar</button><button class="link" type="button" data-act="delFaq" data-i="${i}" style="color:var(--bad)">Quitar</button></div>`).join('')}</div>
+    <div class="faqbox">
+      ${sug.length && faqEdit < 0 ? `<span class="mini">💡 Ideas para tu tipo de negocio (toca una):</span><div class="chips" style="margin-bottom:6px">${sug.map(q => `<button type="button" class="chip sug" data-act="sugFaq" data-v="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : ''}
+      <label style="margin-top:6px">Pregunta</label><input id="fqP" value="${esc(p.pregunta)}" placeholder="Ej.: ¿Hacen envíos a todo el país?">
+      <label>Respuesta</label><textarea id="fqR" rows="2" placeholder="Ej.: Sí, enviamos por MRW y Zoom.">${esc(p.respuesta)}</textarea>
+      <button type="button" class="btn" data-act="addFaq" style="margin-top:10px;width:100%">${faqEdit >= 0 ? 'Guardar cambio' : '+ Agregar pregunta'}</button>
+    </div>`;
+}
+// Paso 9
+function payload(){
+  const cat = catOf(F.categoria);
+  const horario = {}; for (const [k] of DIAS) horario[k] = Array.isArray(F.horario[k]) ? F.horario[k] : null;
+  const info = [];
+  for (const q of [...cat.q, ...F.funciones.flatMap(k => FUNCS[k].q)]) if ((F.respuestas[q] || '').trim()) info.push({ pregunta: q, respuesta: F.respuestas[q].trim() });
+  for (const x of F.extra) if (x.pregunta.trim() && x.respuesta.trim()) info.push({ pregunta: x.pregunta.trim(), respuesta: x.respuesta.trim() });
+  const fn = F.funciones;
+  const objetivo = fn.includes('citas') ? 'agendar' : fn.some(k => ['pedidos','cotizaciones','paquetes','membresias','tasas','reservas'].includes(k)) ? 'vender' : fn.includes('soporte') ? 'soporte' : 'informar';
+  return {
+    nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),
+    direccion: F.direccion.trim(), telefono: F.telefono.trim(), redes: F.redes.trim(),
+    metodos_pago: [...F.pagos, ...F.pago_otro.split(',').map(s => s.trim()).filter(Boolean)].join(', '),
+    categoria: F.categoria, tipo_negocio: F.categoria === 'otro' ? F.otro_rubro.trim() : cat.n,
+    funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
+    que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
+    catalogo: F.catalogo.filter(x => (x.nombre || '').trim()).map(x => ({ nombre: x.nombre.trim(), precio: String(x.precio || '').trim(),
+      descripcion: (x.descripcion || '').trim(), duracion_min: String(x.duracion_min || '').trim(), tipo: cat.it })),
+    horario, duracion_cita_min: parseInt(F.duracion_cita_min || 30, 10) || 30,
+    nombre_bot: F.nombre_bot.trim(), estilo: F.estilo, emojis: F.emojis, tono: ESTILOS[F.estilo].tono,
+    mensaje_bienvenida: F.mensaje_bienvenida.trim(), mensaje_fuera_horario: F.mensaje_fuera_horario.trim(),
+    faqs: F.faqs
+  };
+}
+function rResumen(){
+  const p = payload(), cat = catOf(F.categoria);
+  const dias = DIAS.map(([k, n]) => p.horario[k] ? `${n.slice(0,3)} ${p.horario[k][0]}–${p.horario[k][1]}` : null).filter(Boolean).join(' · ') || 'Sin horario';
+  const sec = (i, t, body) => `<div class="s"><h4>${t}<button class="link" type="button" data-act="go" data-i="${i}">Editar</button></h4>${body}</div>`;
+  const ln = (k, v) => v ? `<p><b>${k}:</b> ${esc(v)}</p>` : '';
+  return `<div class="sum" style="margin-top:12px">
+    ${sec(0, '🏪 Tu comercio', ln('Nombre', p.nombre_negocio) + ln('A qué se dedica', p.descripcion) + ln('Años de experiencia', p.anios_experiencia) + ln('Dirección', p.direccion) + ln('Teléfono', p.telefono) + ln('Redes', p.redes) + ln('Pagos', p.metodos_pago))}
+    ${sec(1, '🏷️ Categoría', `<p><b>${cat.e} ${esc(p.tipo_negocio)}</b></p>`)}
+    ${sec(2, '🧩 Qué hará', `<p>${esc(p.que_hacer)}</p>`)}
+    ${sec(3, '💬 Respuestas', `<p>${p.info_extra.length} dato(s) agregado(s)</p>`)}
+    ${sec(4, '🏷️ Productos y precios', p.catalogo.length ? p.catalogo.slice(0, 6).map(x => `<p>• ${esc(x.nombre)}${x.precio ? ' — ' + esc(x.precio) : ''}</p>`).join('') + (p.catalogo.length > 6 ? `<p>… y ${p.catalogo.length - 6} más</p>` : '') : '<p>Sin productos (el asistente ofrecerá pasar con un asesor si preguntan precios).</p>')}
+    ${sec(5, '🕒 Horario', `<p>${esc(dias)}</p>`)}
+    ${sec(6, '🤖 Asistente', `<p><b>${esc(p.nombre_bot)}</b> · ${ESTILOS[p.estilo].n} · Emojis: ${EMOJIS[p.emojis]}</p><div class="bubble">${esc(p.mensaje_bienvenida)}</div>`)}
+    ${sec(7, '❓ Preguntas frecuentes', `<p>${p.faqs.length} pregunta(s)</p>`)}
+  </div>`;
 }
 
+// --------- Acciones de botones ---------
+const ACT = {
+  pago: (el) => { const v = el.dataset.v; F.pagos = F.pagos.includes(v) ? F.pagos.filter(x => x !== v) : [...F.pagos, v]; el.classList.toggle('on'); saveDraft(); },
+  cat: (el) => { F.categoria = el.dataset.v; document.querySelectorAll('#catGrid .tile').forEach(t => t.classList.toggle('on', t === el)); show($('otroBox'), F.categoria === 'otro'); saveDraft(); },
+  fn: (el) => { const v = el.dataset.v; F.funciones = F.funciones.includes(v) ? F.funciones.filter(x => x !== v) : [...F.funciones, v]; el.classList.toggle('on'); saveDraft(); },
+  addExtra: () => { F.extra.push({ pregunta:'', respuesta:'' }); render(); },
+  delExtra: (el) => { F.extra.splice(+el.dataset.i, 1); render(); saveDraft(); },
+  addItem: () => { F.catalogo.push({ nombre:'', precio:'', descripcion:'', duracion_min:'' }); render(); const all = document.querySelectorAll('[data-f="nombre"]'); if (all.length) all[all.length - 1].focus(); },
+  delItem: (el) => { F.catalogo.splice(+el.dataset.i, 1); render(); saveDraft(); },
+  dia: (el) => { const k = el.dataset.v; const row = el.closest('.day'); const t = row.querySelectorAll('input[type=time]');
+    F.horario[k] = el.checked ? [t[0].value, t[1].value] : null; row.classList.toggle('off', !el.checked); t.forEach(x => x.disabled = !el.checked); saveDraft(); },
+  copiaDia: () => { const l = F.horario.lun; if (!Array.isArray(l)) { msg($('wzMsg'), 'Primero marca el lunes y su horario.', 'warn'); return; }
+    for (const [k] of DIAS) if (k !== 'lun' && Array.isArray(F.horario[k])) F.horario[k] = [...l]; render(); saveDraft(); },
+  nombre: (el) => { F.nombre_bot = el.dataset.v; document.querySelector('[data-k="nombre_bot"]').value = F.nombre_bot; refreshStyleExamples(); saveDraft(); },
+  estilo: (el) => { F.estilo = el.dataset.v; document.querySelectorAll('[data-act="estilo"]').forEach(t => t.classList.toggle('on', t === el)); refreshStyleExamples(); saveDraft(); },
+  emo: (el) => { F.emojis = el.dataset.v; document.querySelectorAll('[data-act="emo"]').forEach(t => t.classList.toggle('on', t === el)); saveDraft(); },
+  sugFaq: (el) => { $('fqP').value = el.dataset.v; $('fqR').focus(); },
+  addFaq: () => { const p = $('fqP').value.trim(), r = $('fqR').value.trim();
+    if (!p || !r) { msg($('wzMsg'), 'Escribe la pregunta y su respuesta.', 'warn'); return; }
+    if (faqEdit >= 0) F.faqs[faqEdit] = { pregunta: p, respuesta: r }; else F.faqs.push({ pregunta: p, respuesta: r });
+    faqEdit = -1; render(); saveDraft(); $('fqP').focus(); },
+  editFaq: (el) => { faqEdit = +el.dataset.i; render(); $('fqP').focus(); },
+  delFaq: (el) => { F.faqs.splice(+el.dataset.i, 1); faqEdit = -1; render(); saveDraft(); },
+  go: (el) => goTo(+el.dataset.i)
+};
+// horas y búsqueda (eventos que no son clic)
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (el.dataset && el.dataset.h) { const k = el.dataset.h; if (Array.isArray(F.horario[k])) { F.horario[k][+el.dataset.p] = el.value; saveDraft(); } }
+  if (el.id === 'catQ') { const q = el.value.toLowerCase().trim(); document.querySelectorAll('#catGrid .tile').forEach(t => show(t, !q || t.dataset.n.includes(q) || t.dataset.v === 'otro')); }
+});
+
+// --------- Enviar ---------
+async function enviar(){
+  if (!tenant) return;
+  for (let i = 0; i < STEPS.length; i++) { const err = STEPS[i].v(); if (err) { goTo(i); msg($('wzMsg'), err, 'bad'); return; } }
+  $('wzNext').disabled = true; msg($('wzMsg'), '');
+  const { data, error } = await sb.from('onboarding_forms').insert({ tenant_id: tenant.id, respuestas: payload(), estado: 'enviado' }).select('id').single();
+  $('wzNext').disabled = false;
+  if (error) { msg($('wzMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
+  fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
+  clearDraft(); show($('wz'), false); await loadCfgStatus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function initWizard(){
+  const d = loadDraft();
+  if (d && d.F) { F = Object.assign(blank(), d.F); step = Math.min(d.step || 0, STEPS.length - 1); }
+  else { F = await fromTenant(tenant); step = 0; }
+}
+function openWizard(auto){ if (auto === true && !$('wz').classList.contains('hidden')) return; show($('wz'), true); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
+
+// --------- Estado de la configuración ---------
 const ESTADOS = {
-  enviado: ['warn','Recibimos tu formulario. Nuestra IA está preparando las instrucciones…'],
-  generando: ['warn','Nuestra IA está redactando las instrucciones de tu asistente…'],
-  pendiente_revision: ['warn','Las instrucciones están listas y en revisión por nuestro equipo. Te avisaremos al activarlas.'],
-  aprobado: ['','✅ Tu configuración está activa. Tu asistente ya responde con estas instrucciones.'],
+  enviado: ['warn','⏳ Recibimos tu formulario. Estamos preparando tu asistente…'],
+  generando: ['warn','⏳ Estamos preparando tu asistente…'],
+  pendiente_revision: ['warn','👀 Tu asistente está listo y en revisión por nuestro equipo. Te avisaremos al activarlo.'],
+  aprobado: ['','✅ Tu asistente está activo con esta configuración.'],
   rechazado: ['bad','Necesitamos que ajustes algunos datos.'],
-  error: ['bad','Hubo un problema al generar las instrucciones. Vuelve a enviar el formulario.']
+  error: ['bad','Hubo un problema al preparar tu asistente. Vuelve a enviar el formulario.']
 };
 async function loadCfgStatus(){
-  const { data } = await sb.from('onboarding_forms').select('id,estado,comentario_revision,created_at,prompt_generado').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const { data } = await sb.from('onboarding_forms').select('id,estado,comentario_revision,created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
   const box = $('cfgStatus');
-  if (!data) { box.innerHTML = '<h2>Aún no has configurado tu asistente</h2><p class="sub" style="margin:0">Llena el formulario de abajo y envíalo.</p>'; return; }
+  const hasDraft = !!loadDraft();
+  if (!data) {
+    box.innerHTML = `<h2>👋 ¡Vamos a crear tu asistente!</h2><p class="sub" style="margin:0">Son ${STEPS.length} pasos cortos. Tu avance se guarda solo, puedes terminar después.</p>`;
+    openWizard(true); return;
+  }
   const [k, t] = ESTADOS[data.estado] || ['', data.estado];
-  box.innerHTML = `<h2>Estado de tu configuración</h2><div class="note ${k}">${t}${data.comentario_revision && data.estado === 'rechazado' ? '<br><b>Comentario:</b> ' + data.comentario_revision.replace(/</g,'&lt;') : ''}</div>`;
+  const enCurso = ['enviado','generando','pendiente_revision'].includes(data.estado);
+  box.innerHTML = `<h2>Estado de tu asistente</h2><div class="note ${k}">${t}${data.comentario_revision && data.estado === 'rechazado' ? '<br><b>Comentario:</b> ' + esc(data.comentario_revision) : ''}</div>
+    <div style="margin-top:14px"><button class="btn ${enCurso ? 'ghost' : ''}" id="bEdit" type="button">${hasDraft ? 'Continuar donde quedé' : enCurso ? 'Quiero cambiar algo' : data.estado === 'aprobado' ? 'Cambiar la configuración' : 'Corregir y volver a enviar'}</button></div>`;
+  $('bEdit').onclick = () => openWizard();
+  if (['rechazado','error'].includes(data.estado) || hasDraft) openWizard(true);
   if (['enviado','generando'].includes(data.estado)) setTimeout(loadCfgStatus, 6000);
 }
-
-$('fCfg').addEventListener('submit', async (e) => {
-  e.preventDefault(); if (!tenant) return;
-  const horario = {};
-  for (const [k] of DIAS){
-    const on = document.querySelector(`[data-d="${k}"]`).checked;
-    horario[k] = on ? [document.querySelector(`[data-a="${k}"]`).value, document.querySelector(`[data-c="${k}"]`).value] : null;
-  }
-  const r = { horario, agenda_citas: $('agenda_citas').checked, duracion_cita_min: parseInt($('duracion_cita_min').value || '30', 10),
-    faqs: [...document.querySelectorAll('.faq')].map(f => ({ pregunta: f.querySelector('.fq').value.trim(), respuesta: f.querySelector('.fr').value.trim() })).filter(f => f.pregunta) };
-  for (const c of CAMPOS) r[c] = $(c).value.trim();
-  $('bSend').disabled = true; msg($('cfgMsg'), '');
-  const { data, error } = await sb.from('onboarding_forms').insert({ tenant_id: tenant.id, respuestas: r, estado: 'enviado' }).select('id').single();
-  if (error) { $('bSend').disabled = false; msg($('cfgMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
-  fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
-  $('bSend').disabled = false;
-  msg($('cfgMsg'), '¡Enviado! Nuestra IA está preparando las instrucciones de tu asistente y luego las revisamos.');
-  loadCfgStatus(); window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
 start();
 </script>

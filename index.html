@@ -133,6 +133,8 @@
   .msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:6px}
   .m{max-width:75%;padding:7px 10px 5px;border-radius:10px;font-size:14px;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,.06)}
   .m small{display:block;text-align:right;font-size:11px;color:#6b7a73;margin-top:2px}
+  .m a.foto{display:block;margin:2px 0 4px}
+  .m a.foto img{display:block;max-width:240px;max-height:240px;width:100%;object-fit:cover;border-radius:8px}
   .m.c{background:#fff;align-self:flex-start;border-top-left-radius:2px}
   .m.a{background:#d9fdd3;align-self:flex-end;border-top-right-radius:2px}
   .m.h{background:#dbe8ff;align-self:flex-end;border-top-right-radius:2px}
@@ -552,7 +554,7 @@ async function loadChat(id, silencioso){
     $('cSend').onclick = enviarManual;
     $('cTxt').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarManual(); } };
   }
-  const { data } = await sb.from('messages').select('id,rol,contenido,created_at').eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
+  const { data } = await sb.from('messages').select('id,rol,contenido,created_at,media_url').eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
   if (convSel !== id) return;
   const ms = (data || []).reverse(), box = $('cMsgs');
   const abajo = !silencioso || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -562,7 +564,7 @@ async function loadChat(id, silencioso){
     const sep = d !== dia ? `<div class="dayx">${d}</div>` : ''; dia = d;
     const k = m.rol === 'cliente' ? 'c' : m.rol === 'humano' ? 'h' : 'a';
     const who = k === 'a' ? '🤖 Asistente' : k === 'h' ? '👤 Tú' : '';
-    return `${sep}<div class="m ${k}">${who ? `<span class="who">${who}</span>` : ''}${esc(m.contenido || '')}<small>${new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })}</small></div>`;
+    return `${sep}<div class="m ${k}">${who ? `<span class="who">${who}</span>` : ''}${/^https?:\/\//.test(m.media_url || '') ? `<a class="foto" href="${esc(m.media_url)}" target="_blank" rel="noopener"><img src="${esc(m.media_url)}" alt="Foto enviada" loading="lazy"></a>` : ''}${esc(m.contenido || '')}<small>${new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })}</small></div>`;
   }).join('') || '<p class="hint">Sin mensajes.</p>';
   if (abajo) box.scrollTop = box.scrollHeight;
 }

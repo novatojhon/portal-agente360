@@ -152,6 +152,14 @@
   /* ---------- Promociones y métricas ---------- */
   .promo{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
   .promo.off{opacity:.6}
+  .fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  .fotos .th{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#fff}
+  .fotos .th img{width:100%;height:100%;object-fit:cover;display:block}
+  .fotos .th button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:11px;line-height:20px;cursor:pointer;padding:0}
+  .fotos .addf{width:64px;height:64px;border:1.5px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:var(--muted);cursor:pointer;text-align:center;line-height:1.2}
+  .fotos .addf input{display:none}
+  .fotos .addf.busy{opacity:.5;pointer-events:none}
+  .promo img.pimg{max-width:180px;max-height:140px;border-radius:10px;display:block;margin-top:8px;border:1px solid var(--line)}
   .promo .kw{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;letter-spacing:.3px}
   .promo .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
   .promo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -352,6 +360,25 @@ function startPoll(){ stopPoll(); let n = 0; pollTimer = setInterval(async () =>
 function stopPoll(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 $('bRefresh').onclick = checkWa; $('bQr').onclick = showQr;
 
+// ---------- Fotos (Supabase Storage, carpeta pública "productos/<id del negocio>/") ----------
+async function comprimir(file, max = 1280){
+  const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = URL.createObjectURL(file); });
+  const k = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  return await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.82));
+}
+async function subirFoto(file){
+  if (!file || !/^image\//.test(file.type)) throw new Error('El archivo no es una imagen.');
+  if (file.size > 15 * 1024 * 1024) throw new Error('La imagen es muy pesada (máximo 15 MB).');
+  const blob = await comprimir(file);
+  const path = `${tenant.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await sb.storage.from('productos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw new Error(error.message);
+  return sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
+}
+
 // ---------- Promociones (palabra clave → respuesta automática) ----------
 let PROMOS = [], promoEdit = null;
 const tiene = (k) => !PLAN || (PLAN.funciones || []).includes(k);
@@ -371,6 +398,9 @@ function paintPromos(){
       <div class="row"><div><label>Palabra clave</label><input id="pK" value="${esc(e.palabra_clave || '')}" placeholder="Ej.: PROMO50" maxlength="40"></div>
         <div><label>Válida hasta <span class="opt">(opcional)</span></label><input id="pV" type="date" value="${esc(e.vence || '')}" min="${hoy}"></div></div>
       <label>Mensaje que enviará tu asistente</label><textarea id="pR" placeholder="Ej.: 🎉 ¡Tienes 50% de descuento en tu primera consulta! Válido hasta el 31/10. ¿Te agendo una cita?">${esc(e.respuesta || '')}</textarea>
+      <label>Imagen <span class="opt">(opcional: se envía junto con el mensaje)</span></label>
+      <div class="fotos">${e.imagen_url ? `<div class="th"><img src="${esc(e.imagen_url)}" alt=""><button type="button" id="pImgDel" title="Quitar">✕</button></div>` : ''}
+        <label class="addf" id="pImgBox">📷<span>${e.imagen_url ? 'Cambiar' : 'Agregar'}</span><input type="file" id="pImg" accept="image/*"></label></div>
       <label>Nota interna <span class="opt">(opcional, solo la ves tú)</span></label><input id="pD" value="${esc(e.descripcion || '')}" placeholder="Ej.: Promo de Instagram de octubre">
       <label class="sw" style="margin-top:12px"><input type="checkbox" id="pA" ${e.activa !== false ? 'checked' : ''}> Activa</label>
       <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="pSave" type="button">Guardar</button><button class="btn ghost" id="pCancel" type="button">Cancelar</button></div>
@@ -378,7 +408,7 @@ function paintPromos(){
     ${PROMOS.length ? PROMOS.map(x => { const vencida = x.vence && x.vence < hoy;
       return `<div class="promo ${x.activa && !vencida ? '' : 'off'}"><div><span class="kw">${esc(x.palabra_clave)}</span>
         ${!x.activa ? ' <span class="tg">Pausada</span>' : vencida ? ' <span class="tg">Vencida</span>' : ' <span class="tg b">Activa</span>'}
-        <div class="bubble" style="margin-top:8px">${esc(x.respuesta)}</div>
+        ${x.imagen_url ? `<img class="pimg" src="${esc(x.imagen_url)}" alt="">` : ''}<div class="bubble" style="margin-top:8px">${esc(x.respuesta)}</div>
         <div class="meta">${x.vence ? 'Válida hasta ' + fd(x.vence) + ' · ' : ''}Usada ${x.usos || 0} ${x.usos === 1 ? 'vez' : 'veces'}${x.descripcion ? ' · ' + esc(x.descripcion) : ''}</div></div>
         <div class="acts"><button class="btn ghost sm" data-pe="${x.id}" type="button">Editar</button>
           <button class="btn ghost sm" data-pt="${x.id}" type="button">${x.activa ? 'Pausar' : 'Activar'}</button>
@@ -388,9 +418,13 @@ function paintPromos(){
   if ($('pNew')) $('pNew').onclick = () => { promoEdit = { activa: true }; paintPromos(); $('pK').focus(); };
   if (e) {
     $('pCancel').onclick = () => { promoEdit = null; paintPromos(); };
+    const keep = () => Object.assign(e, { palabra_clave: $('pK').value, respuesta: $('pR').value, vence: $('pV').value, descripcion: $('pD').value, activa: $('pA').checked });
+    if ($('pImgDel')) $('pImgDel').onclick = () => { keep(); e.imagen_url = null; paintPromos(); };
+    $('pImg').onchange = async (ev) => { const f = ev.target.files[0]; if (!f) return; keep(); $('pImgBox').classList.add('busy'); $('pImgBox').querySelector('span').textContent = 'Subiendo…';
+      try { e.imagen_url = await subirFoto(f); paintPromos(); } catch (err) { paintPromos(); msg($('pMsg'), 'No se pudo subir la imagen: ' + err.message, 'bad'); } };
     $('pSave').onclick = async () => {
       const row = { palabra_clave: $('pK').value.trim(), respuesta: $('pR').value.trim(), vence: $('pV').value || null,
-                    descripcion: $('pD').value.trim() || null, activa: $('pA').checked };
+                    descripcion: $('pD').value.trim() || null, activa: $('pA').checked, imagen_url: e.imagen_url || null };
       if (!row.palabra_clave || !row.respuesta) { msg($('pMsg'), 'Escribe la palabra clave y el mensaje.', 'bad'); return; }
       const q = e.id ? sb.from('promotions').update(row).eq('id', e.id) : sb.from('promotions').insert(Object.assign({ tenant_id: tenant.id }, row));
       const { error } = await q;
@@ -729,9 +763,9 @@ async function fromTenant(t){
   // respuestas a preguntas guardadas: las que coinciden con una pregunta conocida vuelven a su casilla
   const known = new Set([...Object.values(FUNCS).flatMap(x => x.q), ...CATS.flatMap(c => c.q)]);
   for (const r of (t.info_extra || [])) { if (known.has(r.pregunta)) f.respuestas[r.pregunta] = r.respuesta; else f.extra.push({ pregunta: r.pregunta, respuesta: r.respuesta }); }
-  const { data: kb } = await sb.from('knowledge_base').select('nombre,descripcion,precio,datos_extra').eq('activo', true).order('created_at');
+  const { data: kb } = await sb.from('knowledge_base').select('nombre,descripcion,precio,datos_extra,imagen_url').eq('activo', true).order('created_at');
   f.catalogo = (kb || []).map(k => ({ nombre: k.nombre, precio: k.precio != null ? String(k.precio) : ((k.datos_extra || {}).precio_texto || ''),
-    descripcion: k.descripcion || '', duracion_min: (k.datos_extra || {}).duracion_min || '' }));
+    descripcion: k.descripcion || '', duracion_min: (k.datos_extra || {}).duracion_min || '', imagenes: Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [] }));
   return f;
 }
 function saveDraft(){
@@ -856,7 +890,7 @@ function rPreguntas(){
 }
 // Paso 5
 function rCatalogo(){
-  const it = catOf(F.categoria).it, citas = F.funciones.includes('citas'), tasas = F.funciones.includes('tasas');
+  const it = catOf(F.categoria).it, citas = F.funciones.includes('citas'), tasas = F.funciones.includes('tasas'), fotosOk = permitida('fotos');
   return `<div style="margin-top:12px">${F.catalogo.map((x, i) => `<div class="item"><button class="x" type="button" data-act="delItem" data-i="${i}" title="Quitar">✕</button>
       <div class="row3">
         <div><span class="mini">${esc(it)}</span><input data-arr="catalogo" data-i="${i}" data-f="nombre" value="${esc(x.nombre)}" placeholder="Nombre"></div>
@@ -864,9 +898,12 @@ function rCatalogo(){
         ${citas ? `<div><span class="mini">Duración (min)</span><input data-arr="catalogo" data-i="${i}" data-f="duracion_min" value="${esc(x.duracion_min)}" type="number" min="5" step="5" placeholder="30"></div>` : '<div></div>'}
       </div>
       <span class="mini" style="margin-top:6px">Detalle <span class="opt">(opcional)</span></span>
-      <input data-arr="catalogo" data-i="${i}" data-f="descripcion" value="${esc(x.descripcion)}" placeholder="Ej.: incluye…, tallas…, marca…"></div>`).join('')}
+      <input data-arr="catalogo" data-i="${i}" data-f="descripcion" value="${esc(x.descripcion)}" placeholder="Ej.: incluye…, tallas…, marca…">
+      ${fotosOk ? `<span class="mini" style="margin-top:8px">Fotos <span class="opt">(hasta 3)</span></span><div class="fotos">${(x.imagenes || []).map((u, j) => `<div class="th"><img src="${esc(u)}" alt="" loading="lazy"><button type="button" data-act="delFoto" data-i="${i}" data-j="${j}" title="Quitar foto">✕</button></div>`).join('')}
+        ${(x.imagenes || []).length < 3 ? `<label class="addf">📷<span>Agregar</span><input type="file" accept="image/*" data-foto="${i}"></label>` : ''}</div>` : ''}</div>`).join('')}
     <button type="button" class="btn add" data-act="addItem">+ Agregar ${esc(it.toLowerCase())}</button>
-    <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Podrás cambiar esta lista más adelante.</p></div>`;
+    <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Podrás cambiar esta lista más adelante.</p>
+    ${fotosOk ? '<p class="hint">📷 Si un cliente pide ver un producto, tu asistente le envía sus fotos por WhatsApp (las fotos se activan cuando aprobemos tu formulario).</p>' : `<p class="hint">🔒 Las fotos de productos están disponibles en el Plan ${esc(planMinCon('fotos') || 'superior')}.</p>`}</div>`;
 }
 // Paso 6
 function rHorario(){
@@ -929,7 +966,8 @@ function payload(){
     funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
     que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
     catalogo: F.catalogo.filter(x => (x.nombre || '').trim()).map(x => ({ nombre: x.nombre.trim(), precio: String(x.precio || '').trim(),
-      descripcion: (x.descripcion || '').trim(), duracion_min: String(x.duracion_min || '').trim(), tipo: cat.it })),
+      descripcion: (x.descripcion || '').trim(), duracion_min: String(x.duracion_min || '').trim(), tipo: cat.it,
+      imagenes: permitida('fotos') ? (x.imagenes || []).filter(Boolean).slice(0, 3) : [] })),
     horario, duracion_cita_min: parseInt(F.duracion_cita_min || 30, 10) || 30,
     nombre_bot: F.nombre_bot.trim(), estilo: F.estilo, emojis: F.emojis, tono: ESTILOS[F.estilo].tono,
     mensaje_bienvenida: F.mensaje_bienvenida.trim(), mensaje_fuera_horario: F.mensaje_fuera_horario.trim(),
@@ -946,7 +984,7 @@ function rResumen(){
     ${sec(1, '🏷️ Categoría', `<p><b>${cat.e} ${esc(p.tipo_negocio)}</b></p>`)}
     ${sec(2, '🧩 Qué hará', `<p>${esc(p.que_hacer)}</p>`)}
     ${sec(3, '💬 Respuestas', `<p>${p.info_extra.length} dato(s) agregado(s)</p>`)}
-    ${sec(4, '🏷️ Productos y precios', p.catalogo.length ? p.catalogo.slice(0, 6).map(x => `<p>• ${esc(x.nombre)}${x.precio ? ' — ' + esc(x.precio) : ''}</p>`).join('') + (p.catalogo.length > 6 ? `<p>… y ${p.catalogo.length - 6} más</p>` : '') : '<p>Sin productos (el asistente ofrecerá pasar con un asesor si preguntan precios).</p>')}
+    ${sec(4, '🏷️ Productos y precios', p.catalogo.length ? p.catalogo.slice(0, 6).map(x => `<p>• ${esc(x.nombre)}${x.precio ? ' — ' + esc(x.precio) : ''}${x.imagenes.length ? ' · 📷 ' + x.imagenes.length : ''}</p>`).join('') + (p.catalogo.length > 6 ? `<p>… y ${p.catalogo.length - 6} más</p>` : '') : '<p>Sin productos (el asistente ofrecerá pasar con un asesor si preguntan precios).</p>')}
     ${sec(5, '🕒 Horario', `<p>${esc(dias)}</p>`)}
     ${sec(6, '🤖 Asistente', `<p><b>${esc(p.nombre_bot)}</b> · ${ESTILOS[p.estilo].n} · Emojis: ${EMOJIS[p.emojis]}</p><div class="bubble">${esc(p.mensaje_bienvenida)}</div>`)}
     ${sec(7, '❓ Preguntas frecuentes', `<p>${p.faqs.length} pregunta(s)</p>`)}
@@ -962,6 +1000,7 @@ const ACT = {
   delExtra: (el) => { F.extra.splice(+el.dataset.i, 1); render(); saveDraft(); },
   addItem: () => { F.catalogo.push({ nombre:'', precio:'', descripcion:'', duracion_min:'' }); render(); const all = document.querySelectorAll('[data-f="nombre"]'); if (all.length) all[all.length - 1].focus(); },
   delItem: (el) => { F.catalogo.splice(+el.dataset.i, 1); render(); saveDraft(); },
+  delFoto: (el) => { const x = F.catalogo[+el.dataset.i]; (x.imagenes || []).splice(+el.dataset.j, 1); const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); },
   dia: (el) => { const k = el.dataset.v; const row = el.closest('.day'); const t = row.querySelectorAll('input[type=time]');
     F.horario[k] = el.checked ? [t[0].value, t[1].value] : null; row.classList.toggle('off', !el.checked); t.forEach(x => x.disabled = !el.checked); saveDraft(); },
   copiaDia: () => { const l = F.horario.lun; if (!Array.isArray(l)) { msg($('wzMsg'), 'Primero marca el lunes y su horario.', 'warn'); return; }
@@ -984,6 +1023,15 @@ const ACT = {
   delFaq: (el) => { F.faqs.splice(+el.dataset.i, 1); faqEdit = -1; render(); saveDraft(); },
   go: (el) => goTo(+el.dataset.i)
 };
+// subir foto de un producto
+document.addEventListener('change', async (e) => {
+  const el = e.target; if (!el.dataset || el.dataset.foto == null) return;
+  const f = el.files[0]; if (!f) return; const x = F.catalogo[+el.dataset.foto]; if (!x) return;
+  const box = el.closest('.addf'); box.classList.add('busy'); box.querySelector('span').textContent = 'Subiendo…';
+  try { const url = await subirFoto(f); x.imagenes = [...(x.imagenes || []), url].slice(0, 3); saveDraft(); msg($('wzMsg'), ''); }
+  catch (err) { msg($('wzMsg'), 'No se pudo subir la foto: ' + err.message, 'bad'); }
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+});
 // horas y búsqueda (eventos que no son clic)
 document.addEventListener('input', (e) => {
   const el = e.target;

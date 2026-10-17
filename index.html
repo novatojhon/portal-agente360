@@ -270,6 +270,7 @@
   <!-- CONFIGURACIÓN -->
   <section id="tCfg" class="hidden">
     <div class="card" id="cfgStatus"></div>
+    <div class="card" id="cfgSeg"></div>
     <div class="card hidden" id="wz">
       <div class="wz-top"><span id="wzStep"></span><span class="saved" id="wzSaved"></span></div>
       <div class="prog"><i id="wzProg"></i></div>
@@ -310,7 +311,7 @@ async function start(){
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
-  await loadPlan(); await initWizard(); loadCfgStatus(); checkWa();
+  await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
 }
 
 // ---------- Pestañas ----------
@@ -478,6 +479,7 @@ function paintMetricas(M){
       <div class="axis">${pdia.map((x, i) => `<span>${i % 2 === 0 ? x.dia.slice(8, 10) + '/' + x.dia.slice(5, 7) : ''}</span>`).join('')}</div></div>
     <div class="card"><h2>Tus clientes por etapa</h2><p class="sub">Cambia la etapa de cada cliente desde "💬 Conversaciones".</p>
       <div class="funnel">${ETAPAS.map(([k, t]) => `<div class="r"><span>${t}</span><div class="t"><i style="width:${totLeads ? Math.round(100 * (et[k] || 0) / totLeads) : 0}%"></i></div><b>${n(et[k])}</b></div>`).join('')}</div>
+      ${M.seguimientos_enviados != null ? `<p class="hint" style="margin-top:10px">🔁 ${n(M.seguimientos_enviados)} seguimiento(s) enviados · ${n(M.seguimientos_respondidos)} respondieron${M.seguimientos_enviados ? ' (' + Math.round(100 * M.seguimientos_respondidos / M.seguimientos_enviados) + '%)' : ''}</p>` : ''}
       <p class="hint" style="margin-top:10px">👤 ${n(M.pasadas_a_humano)} conversación(es) pasaron a una persona · 🤖 ${n(M.respuestas_bot)} respuestas del asistente · 👤 ${n(M.respuestas_humano)} tuyas</p></div>
     ${(M.promos || []).length ? `<div class="card"><h2>Promociones más usadas</h2>${M.promos.map(p => `<p style="margin:6px 0"><span class="kw" style="background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px">${esc(p.clave)}</span> — ${n(p.usos)} ${p.usos === 1 ? 'vez' : 'veces'}</p>`).join('')}</div>` : ''}`;
   $('mD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { metDias = +b.dataset.d; loadMetricas(); });
@@ -554,7 +556,7 @@ async function loadChat(id, silencioso){
     $('cSend').onclick = enviarManual;
     $('cTxt').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarManual(); } };
   }
-  const { data } = await sb.from('messages').select('id,rol,contenido,created_at,media_url').eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
+  const { data } = await sb.from('messages').select('id,rol,contenido,created_at,media_url,tipo').eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
   if (convSel !== id) return;
   const ms = (data || []).reverse(), box = $('cMsgs');
   const abajo = !silencioso || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -563,7 +565,7 @@ async function loadChat(id, silencioso){
     const d = new Date(m.created_at).toLocaleDateString('es-VE', { weekday:'short', day:'2-digit', month:'short' });
     const sep = d !== dia ? `<div class="dayx">${d}</div>` : ''; dia = d;
     const k = m.rol === 'cliente' ? 'c' : m.rol === 'humano' ? 'h' : 'a';
-    const who = k === 'a' ? '🤖 Asistente' : k === 'h' ? '👤 Tú' : '';
+    const who = k === 'a' ? (m.tipo === 'seguimiento' ? '🔁 Seguimiento' : '🤖 Asistente') : k === 'h' ? '👤 Tú' : '';
     return `${sep}<div class="m ${k}">${who ? `<span class="who">${who}</span>` : ''}${/^https?:\/\//.test(m.media_url || '') ? `<a class="foto" href="${esc(m.media_url)}" target="_blank" rel="noopener"><img src="${esc(m.media_url)}" alt="Foto enviada" loading="lazy"></a>` : ''}${esc(m.contenido || '')}<small>${new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })}</small></div>`;
   }).join('') || '<p class="hint">Sin mensajes.</p>';
   if (abajo) box.scrollTop = box.scrollHeight;
@@ -605,7 +607,7 @@ function startRealtime(){
 // ---------- Mi plan (consumo, vencimiento, respuestas adicionales) ----------
 const FN_PLAN = { citas:'Agendar citas', reservas:'Reservas', pedidos:'Ventas y pedidos', delivery:'Envíos o delivery', cotizaciones:'Cotizaciones',
   membresias:'Planes o membresías', tasas:'Tasas del día', paquetes:'Paquetes y viajes', soporte:'Soporte técnico', promociones:'Promociones',
-  fotos:'Fotos de productos', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos' };
+  fotos:'Fotos de productos', seguimiento:'Seguimiento automático', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos' };
 const usd = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('es-VE', { maximumFractionDigits: 2 });
 const fd = (d) => d ? d.split('-').reverse().join('/') : '—';
 async function loadPlan(){
@@ -1069,6 +1071,33 @@ const ESTADOS = {
   rechazado: ['bad','Necesitamos que ajustes algunos datos.'],
   error: ['bad','Hubo un problema al preparar tu asistente. Vuelve a enviar el formulario.']
 };
+// ---------- Seguimiento automático ----------
+function paintSeg(){
+  const box = $('cfgSeg'); if (!box || !tenant) return;
+  if (!tiene('seguimiento')) { box.innerHTML = `<h2>🔒 Seguimiento automático</h2><p class="sub" style="margin:0">Disponible en el Plan ${esc(planMinCon('seguimiento') || 'superior')}. Mira los planes en la pestaña "📊 Mi plan".</p>`; return; }
+  const c = Object.assign({ activo: true, horas: [24, 72], promo: true }, tenant.seguimiento || {});
+  const h = (c.horas || []).map(Number).sort((a, b) => a - b), h1 = h[0] || 24, h2 = h[1] || 0;
+  const opt = (arr, v) => arr.map(([x, t]) => `<option value="${x}" ${x === v ? 'selected' : ''}>${t}</option>`).join('');
+  box.innerHTML = `<h2>🔁 Seguimiento automático</h2>
+    <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Solo en tu horario de atención, nunca a quien ya compró, agendó o dijo que no.</p>
+    <label class="sw"><input type="checkbox" id="sgA" ${c.activo ? 'checked' : ''}> Activado</label>
+    <div class="row" style="margin-top:10px">
+      <div><label>Primer seguimiento</label><select id="sg1">${opt([[4,'A las 4 horas'],[12,'A las 12 horas'],[24,'Al día siguiente (24 h)'],[48,'A los 2 días']], h1)}</select></div>
+      <div><label>Segundo seguimiento</label><select id="sg2">${opt([[0,'No enviar segundo'],[48,'A los 2 días'],[72,'A los 3 días'],[120,'A los 5 días']], h2)}</select></div>
+    </div>
+    <label class="sw" style="margin-top:10px"><input type="checkbox" id="sgP" ${c.promo ? 'checked' : ''}> Ofrecer mi promoción vigente en el segundo seguimiento</label>
+    <div style="margin-top:12px"><button class="btn" id="sgS" type="button">Guardar</button></div>
+    <div id="sgM" class="note hidden"></div>`;
+  $('sgS').onclick = async () => {
+    const a = +$('sg1').value, b = +$('sg2').value;
+    if (b && b <= a) { msg($('sgM'), 'El segundo seguimiento debe ir después del primero.', 'bad'); return; }
+    $('sgS').disabled = true;
+    const { data, error } = await sb.rpc('mi_config_seguimiento', { p_activo: $('sgA').checked, p_horas: b ? [a, b] : [a], p_promo: $('sgP').checked });
+    $('sgS').disabled = false;
+    if (error || !data || !data.ok) { msg($('sgM'), 'No se pudo guardar: ' + ((error && error.message) || (data && data.mensaje) || ''), 'bad'); return; }
+    tenant.seguimiento = data.seguimiento; msg($('sgM'), '✓ Guardado', 'ok');
+  };
+}
 async function loadCfgStatus(){
   const { data } = await sb.from('onboarding_forms').select('id,estado,comentario_revision,created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
   const box = $('cfgStatus');

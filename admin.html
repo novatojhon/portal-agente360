@@ -226,11 +226,12 @@ function rCli(){
           <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
           ${Number(x.extra_pendiente) > 0 ? `<div class="small" style="color:var(--bad)">Extra por cobrar: <b>${money(x.extra_pendiente)}</b></div>` : ''}
           <div class="small">${x.autoriza_extra ? '✅ Autorizó extra' + (x.extra_tope ? ' (tope ' + x.extra_tope + ')' : '') : 'Sin autorizar extra'}</div></div>
-        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button></div>
+        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button></div>
       </div>`; }).join('') || '<p class="sub">No hay clientes.</p>';
     $('lCli').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => dPago(c.find(x => x.id === b.dataset.pay)));
     $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
     $('lCli').querySelectorAll('[data-hist]').forEach(b => b.onclick = () => dHist(c.find(x => x.id === b.dataset.hist)));
+    $('lCli').querySelectorAll('[data-seg]').forEach(b => b.onclick = () => dSeg(c.find(x => x.id === b.dataset.seg)));
   };
   $('qCli').oninput = paint; $('bNew').onclick = dNuevo; paint();
 }
@@ -283,6 +284,34 @@ function dEditar(x){
     const r = await rpc('admin_actualizar_cliente', { p_tenant: x.id, p: { plan: $('eP').value, estado_cuenta: $('eE').value,
       ciclo: $('eC').value, bot_activo: $('eB').checked, autoriza_extra: $('eX').checked, activo: $('eA').checked, notas: $('eN').value } }).catch(() => null);
     if (r) { closeDlg(); toast('Cliente actualizado'); load(); }
+  };
+}
+async function dSeg(x){
+  const cfg = await rpc('admin_seguimiento', { p_tenant: x.id }).catch(() => null);
+  if (cfg === null) return;
+  const mins = Array.isArray(cfg.minutos) && cfg.minutos.length ? cfg.minutos.map(Number)
+             : (Array.isArray(cfg.horas) && cfg.horas.length ? cfg.horas.map(h => Number(h) * 60) : [1440, 4320]);
+  const fmt = (m) => m < 60 ? m + ' min' : m % 1440 === 0 ? (m / 1440) + ' día(s)' : m % 60 === 0 ? (m / 60) + ' h' : m + ' min';
+  openDlg(`<h3>🔁 Seguimiento automático</h3><p class="sub">${esc(x.negocio)}</p>
+    <div class="chks"><label class="chk"><input type="checkbox" id="sA" ${cfg.activo !== false ? 'checked' : ''}> Activado</label>
+      <label class="chk"><input type="checkbox" id="sP" ${cfg.promo !== false ? 'checked' : ''}> Ofrecer promoción desde el 2.º intento</label>
+      <label class="chk"><input type="checkbox" id="sH" ${cfg.ignorar_horario ? 'checked' : ''}> Ignorar horario de atención (pruebas)</label></div>
+    <div class="row" style="margin-top:12px"><div><label>Cantidad de intentos</label><select id="sN">${[1,2,3,4,5].map(n => `<option ${n === mins.length ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+    <div id="sT" class="row"></div>
+    <p class="small">⏱️ Cada tiempo se cuenta en <b>minutos desde el último mensaje del cliente</b> (1440 = 24 h; 4320 = 3 días). Para probar usa, por ejemplo, 2 y 5. El sistema revisa cada 5 minutos, así que puede tardar hasta 5 min más. Si el cliente guarda su seguimiento en su portal, vuelve a sus horas.</p>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="sOk">Guardar</button></div>`);
+  const paintT = () => { const n = +$('sN').value, cur = [...document.querySelectorAll('#sT input')].map(i => +i.value);
+    $('sT').innerHTML = Array.from({ length: n }, (_, i) => { const v = cur[i] || mins[i] || (i ? (cur[i - 1] || mins[i - 1] || 60) * 2 : 1440);
+      return `<div><label>Intento ${i + 1} (minutos)</label><input type="number" min="1" max="14400" value="${v}"><span class="small">${fmt(v)}</span></div>`; }).join('');
+    $('sT').querySelectorAll('input').forEach(i => i.oninput = () => { i.nextElementSibling.textContent = i.value ? fmt(+i.value) : ''; }); };
+  $('sN').onchange = paintT; paintT();
+  $('sOk').onclick = async () => {
+    const m = [...document.querySelectorAll('#sT input')].map(i => parseInt(i.value, 10));
+    if (m.some(v => !(v >= 1 && v <= 14400))) return toast('Cada tiempo debe estar entre 1 y 14400 minutos');
+    for (let i = 1; i < m.length; i++) if (m[i] <= m[i - 1]) return toast('Cada intento debe ir después del anterior');
+    const r = await rpc('admin_config_seguimiento', { p_tenant: x.id, p_activo: $('sA').checked, p_minutos: m, p_promo: $('sP').checked, p_ignorar_horario: $('sH').checked }).catch(() => null);
+    if (!r) return; if (!r.ok) return toast(r.mensaje || 'No se pudo guardar');
+    closeDlg(); toast('Seguimiento guardado: ' + m.map(fmt).join(' → '));
   };
 }
 async function dHist(x){

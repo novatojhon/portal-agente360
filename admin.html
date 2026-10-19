@@ -226,14 +226,31 @@ function rCli(){
           <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
           ${Number(x.extra_pendiente) > 0 ? `<div class="small" style="color:var(--bad)">Extra por cobrar: <b>${money(x.extra_pendiente)}</b></div>` : ''}
           <div class="small">${x.autoriza_extra ? '✅ Autorizó extra' + (x.extra_tope ? ' (tope ' + x.extra_tope + ')' : '') : 'Sin autorizar extra'}</div></div>
-        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button></div>
+        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button><button class="btn sm" data-cfg="${x.id}">⚙️ Configurar</button><button class="btn sm ghost" data-key="${x.id}">🔑 Clave</button><button class="btn sm ghost" data-pru="${x.id}">📱 PRUEBAS</button></div>
       </div>`; }).join('') || '<p class="sub">No hay clientes.</p>';
     $('lCli').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => dPago(c.find(x => x.id === b.dataset.pay)));
     $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
     $('lCli').querySelectorAll('[data-hist]').forEach(b => b.onclick = () => dHist(c.find(x => x.id === b.dataset.hist)));
     $('lCli').querySelectorAll('[data-seg]').forEach(b => b.onclick = () => dSeg(c.find(x => x.id === b.dataset.seg)));
+    $('lCli').querySelectorAll('[data-cfg]').forEach(b => b.onclick = async () => { if (await rpc('admin_configurar', { p_tenant: b.dataset.cfg }).catch(() => null)) location.href = 'index.html'; });
+    $('lCli').querySelectorAll('[data-key]').forEach(b => b.onclick = () => dClave(c.find(x => x.id === b.dataset.key)));
+    $('lCli').querySelectorAll('[data-pru]').forEach(b => b.onclick = () => dPruebas(c.find(x => x.id === b.dataset.pru)));
   };
   $('qCli').oninput = paint; $('bNew').onclick = dNuevo; paint();
+}
+function dClave(x){
+  openDlg(`<h3>🔑 Contraseña del portal</h3><p class="sub">${esc(x.negocio)} · ${esc(x.email || 'sin correo')}</p>
+    <label>Nueva contraseña (mín. 6)</label><input id="kC" type="text" autocomplete="new-password">
+    <div class="note">Si el cliente aún no tiene acceso, se crea con su correo.</div>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="kOk">Guardar</button></div>`);
+  $('kOk').onclick = async () => { const r = await rpc('admin_clave_cliente', { p_tenant: x.id, p_clave: $('kC').value }).catch(() => null);
+    if (r) { closeDlg(); toast((r.creado ? 'Acceso creado: ' : 'Contraseña cambiada: ') + r.email); } };
+}
+function dPruebas(x){
+  openDlg(`<h3>📱 WhatsApp de pruebas</h3><p class="sub">El número de pruebas (instancia <b>PRUEBAS</b>) pasará a atender como <b>${esc(x.negocio)}</b>. El negocio que lo tenía deja de responder por ese número hasta que se lo devuelvas con este mismo botón.</p>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="pOk">Prestar el WhatsApp</button></div>`);
+  $('pOk').onclick = async () => { const r = await rpc('admin_mover_instancia', { p_instancia: 'PRUEBAS', p_tenant: x.id }).catch(() => null);
+    if (r) { closeDlg(); toast('WhatsApp PRUEBAS: de ' + r.antes + ' → ' + r.ahora); load(); } };
 }
 const planOpts = (sel) => D.planes.map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.nombre)} — ${money(p.precio_mensual)}/mes</option>`).join('');
 
@@ -325,12 +342,13 @@ function dNuevo(){
   openDlg(`<h3>+ Nuevo cliente</h3><p class="sub">Empieza en prueba de ${D.ajustes.dias_prueba} días.</p>
     <label>Nombre del negocio</label><input id="nN">
     <div class="row"><div><label>Correo de acceso al portal</label><input id="nE" type="email"></div><div><label>WhatsApp del dueño (avisos)</label><input id="nT" placeholder="0412-1234567"></div></div>
+    <div class="row"><div><label>Contraseña de acceso (mín. 6)</label><input id="nC" type="text" autocomplete="new-password" placeholder="Se la das al cliente"></div><div></div></div>
     <div class="row"><div><label>Plan</label><select id="nP">${planOpts(D.ajustes.plan_prueba)}</select></div><div><label>Nombre de la instancia en Evolution</label><input id="nI" placeholder="Ej.: CLINICA_SOL"></div></div>
-    <div class="note warn">Antes o después de crearlo: 1) crea la instancia con ese mismo nombre en Evolution y apunta su webhook a <b>/webhook/agente360</b>; 2) crea su usuario en Supabase → Authentication (Auto Confirm) con ese correo. Si el usuario ya existe, se enlaza solo.</div>
+    <div class="note warn">El acceso del cliente (correo y contraseña) se crea aquí mismo. La instancia es opcional: si es un negocio de prueba déjala vacía y usa el botón <b>📱 PRUEBAS</b>. Para un cliente real: crea la instancia con ese mismo nombre en Evolution y apunta su webhook a <b>/webhook/agente360</b>.</div>
     <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="nOk">Crear cliente</button></div>`);
   $('nOk').onclick = async () => {
-    const r = await rpc('admin_crear_cliente', { p: { negocio: $('nN').value.trim(), email: $('nE').value.trim(), telefono: $('nT').value.trim(), plan: $('nP').value, instancia: $('nI').value.trim() } }).catch(() => null);
-    if (r) { closeDlg(); toast(r.usuario_enlazado ? 'Cliente creado y enlazado a su usuario' : 'Cliente creado. Falta crear su usuario en Authentication.'); load(); }
+    const r = await rpc('admin_crear_cliente', { p: { negocio: $('nN').value.trim(), email: $('nE').value.trim(), telefono: $('nT').value.trim(), plan: $('nP').value, instancia: $('nI').value.trim(), clave: $('nC').value } }).catch(() => null);
+    if (r) { closeDlg(); toast(r.usuario_creado ? 'Cliente y acceso creados ✅' : r.usuario_enlazado ? 'Cliente creado y enlazado a su usuario' : 'Cliente creado sin acceso. Usa 🔑 Clave para crearle uno.'); load(); }
   };
 }
 

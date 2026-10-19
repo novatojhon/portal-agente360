@@ -353,6 +353,8 @@ async function dForm(id){
       ${li('Funciones', (r.funciones || []).map(k => FUNC[k] || k).join(', '))}${li('A qué se dedica', r.descripcion)}${li('Dirección', r.direccion)}
       ${li('Teléfono', r.telefono)}${li('Pagos', r.metodos_pago)}${li('Años de experiencia', r.anios_experiencia)}
       ${li('Productos', (r.catalogo || []).map(x => x.nombre + (x.precio ? ' ' + x.precio : '')).join(' · '))}
+      ${li('Datos para agendar', (r.datos_cita || []).join(', '))}
+      ${li('Profesionales', (r.profesionales || []).map(x => x.nombre + (x.especialidad ? ' (' + x.especialidad + ')' : '') + (x.precio ? ' $' + x.precio : '')).join(' · '))}
       ${li('Respuestas', (r.info_extra || []).map(x => x.pregunta + ' → ' + x.respuesta).join(' | '))}
       ${li('Preguntas frecuentes', (r.faqs || []).map(x => x.pregunta + ' → ' + x.respuesta).join(' | '))}
       ${li('Bienvenida', r.mensaje_bienvenida)}</table>

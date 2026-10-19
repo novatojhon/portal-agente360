@@ -165,6 +165,10 @@
   .promo .kw{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;letter-spacing:.3px}
   .promo .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
   .promo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .cday{font-weight:700;margin:16px 0 4px;font-size:14px}
+  .cita{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:6px}
+  .cita .h{font-weight:700;font-size:15px} .cita small{display:block;color:var(--muted);font-size:12.5px}
+  .cita.off{opacity:.5}
   .kpis2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
   .kpis2 div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
   .kpis2 b{display:block;font-size:24px;line-height:1.2}
@@ -227,6 +231,7 @@
   <nav class="tabs">
     <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
     <button class="tab" data-t="conv">💬 Conversaciones</button>
+    <button class="tab" data-t="agenda">📅 Agenda</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="met">📈 Métricas</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
@@ -258,6 +263,7 @@
   </section>
 
   <!-- PROMOCIONES Y MÉTRICAS -->
+  <section id="tAgenda" class="hidden"></section>
   <section id="tPromo" class="hidden"></section>
   <section id="tMet" class="hidden"></section>
 
@@ -320,7 +326,8 @@ function openTab(t){
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
   if (t === 'conv') openInbox();
-  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met');
+  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda');
+  if (t === 'agenda') loadAgenda();
   if (t === 'promo') loadPromos();
   if (t === 'met') loadMetricas();
 }
@@ -438,6 +445,105 @@ function paintPromos(){
   $('tPromo').querySelectorAll('[data-pe]').forEach(b => b.onclick = () => { promoEdit = Object.assign({}, PROMOS.find(x => x.id === b.dataset.pe)); paintPromos(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   $('tPromo').querySelectorAll('[data-pt]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pt); await sb.from('promotions').update({ activa: !x.activa }).eq('id', x.id); loadPromos(); });
   $('tPromo').querySelectorAll('[data-pd]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pd); if (!confirm('¿Borrar la promoción ' + x.palabra_clave + '?')) return; await sb.from('promotions').delete().eq('id', x.id); loadPromos(); });
+}
+
+// ---------- Agenda: profesionales (doctores, barberos…) y próximas citas ----------
+let RECS = [], CITAS = [], recEdit = null, citaFiltro = '';
+const DSEM = [['lun','Lun'],['mar','Mar'],['mie','Mié'],['jue','Jue'],['vie','Vie'],['sab','Sáb'],['dom','Dom']];
+const horTxt = (h) => { const d = DSEM.filter(([k]) => h && Array.isArray(h[k])).map(([k, n]) => `${n} ${h[k][0]}-${h[k][1]}`); return d.length ? d.join(', ') : 'Horario del negocio'; };
+const hoyLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const DLARGO = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const h12 = (t) => { const [H, M] = String(t || '').slice(0, 5).split(':').map(Number); if (isNaN(H)) return t || ''; return ((H % 12) || 12) + ':' + String(M).padStart(2, '0') + (H < 12 ? ' am' : ' pm'); };
+async function loadAgenda(){
+  if (!tiene('citas')) { $('tAgenda').innerHTML = bloqueo('citas', 'Agenda y profesionales'); return; }
+  const [r1, r2] = await Promise.all([
+    sb.from('recursos').select('*').order('orden').order('nombre'),
+    sb.from('appointments').select('id,fecha,hora_inicio,nombre_cliente,telefono_cliente,servicio,estado,recurso_id,notas,datos_paciente')
+      .gte('fecha', hoyLocal()).order('fecha').order('hora_inicio').limit(300)
+  ]);
+  if (r1.error) { $('tAgenda').innerHTML = '<div class="card"><p class="sub">La agenda por profesional aún no está instalada (falta el SQL 24).</p></div>'; return; }
+  RECS = r1.data || []; CITAS = r2.data || []; paintAgenda();
+}
+function paintAgenda(){
+  const e = recEdit, h = (e && e.horario) || {};
+  const nombreRec = (id) => (RECS.find(x => x.id === id) || {}).nombre || '';
+  const citas = CITAS.filter(c => !citaFiltro || c.recurso_id === citaFiltro);
+  let dia = '', lista = '';
+  for (const c of citas) {
+    if (c.fecha !== dia) { dia = c.fecha; const d = new Date(dia + 'T12:00:00'); lista += `<div class="cday">${DLARGO[d.getDay()]} ${fd(dia)}</div>`; }
+    const off = c.estado === 'cancelada';
+    lista += `<div class="cita ${off ? 'off' : ''}"><div class="h">${esc(h12(c.hora_inicio))}</div>
+      <div><b>${esc(c.nombre_cliente || 'Sin nombre')}</b>${c.servicio ? ' · ' + esc(c.servicio) : ''}
+        ${c.datos_paciente ? `<small>${Object.entries(c.datos_paciente).map(([k, v]) => esc(k) + ': <b>' + esc(v) + '</b>').join(' · ')}</small>` : ''}
+        <small>${[c.recurso_id ? '🩺 ' + esc(nombreRec(c.recurso_id)) + ((RECS.find(x => x.id === c.recurso_id) || {}).ubicacion ? ' (' + esc(RECS.find(x => x.id === c.recurso_id).ubicacion) + ')' : '') : '', c.telefono_cliente ? '📞 +' + esc(c.telefono_cliente) : '', off ? '<b>Cancelada</b>' : ''].filter(Boolean).join(' · ')}</small></div>
+      <div>${off ? '' : `<button class="btn ghost sm" data-cc="${c.id}" type="button" style="color:var(--bad)">Cancelar</button>`}</div></div>`;
+  }
+  $('tAgenda').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>👩‍⚕️ Profesionales</h2><p class="sub" style="margin:0">Doctores, barberos, estilistas… Cada uno con su especialidad, precio y horario. Tu asistente agenda con el que esté libre o con el que pida el cliente.</p></div>
+      ${e ? '' : '<button class="btn" id="rNew" type="button">+ Agregar profesional</button>'}</div>
+    ${e ? `<div class="grp"><h3>${e.id ? 'Editar profesional' : 'Nuevo profesional'}</h3>
+      <div class="row"><div><label>Nombre</label><input id="rN" value="${esc(e.nombre || '')}" placeholder="Ej.: Dra. María Pérez"></div>
+        <div><label>Especialidad o servicio</label><input id="rE" value="${esc(e.especialidad || '')}" placeholder="Ej.: Pediatría"></div></div>
+      <label>Consultorio o lugar <span class="opt">(opcional: el asistente se lo dice al cliente al confirmar)</span></label>
+      <input id="rU" value="${esc(e.ubicacion || '')}" placeholder="Ej.: Consultorio 2, piso 3">
+      <div class="row"><div><label>Precio de la consulta ($)</label><input id="rP" value="${esc(e.precio ?? '')}" inputmode="decimal" placeholder="Ej.: 40"></div>
+        <div><label>Duración de cada cita (minutos)</label><input id="rD" type="number" min="5" step="5" value="${esc(e.duracion_min ?? '')}" placeholder="Ej.: 30"></div></div>
+      <label>WhatsApp del profesional <span class="opt">(opcional: recibe aviso de cada cita nueva o cancelada)</span></label>
+      <input id="rT" type="tel" value="${esc(e.telefono_aviso || '')}" placeholder="Ej.: 0414-1234567">
+      <label class="sw" style="margin-top:8px"><input type="checkbox" id="rAv" ${e.avisar_citas !== false ? 'checked' : ''}> Enviarle un aviso por WhatsApp de cada cita nueva o cancelada</label>
+      <p class="hint" style="margin:4px 0 0">Si lo desmarcas, solo recibe su lista cuando escribe <b>pacientes</b> al WhatsApp del negocio.</p>
+      <label>Días y horas que atiende</label>
+      <div>${DSEM.map(([k, n]) => { const v = Array.isArray(h[k]) ? h[k] : null;
+        return `<div class="day ${v ? '' : 'off'}"><label class="sw"><input type="checkbox" data-rd="${k}" ${v ? 'checked' : ''}> ${n}</label>
+          <input type="time" data-rh="${k}" data-p="0" value="${v ? v[0] : '08:00'}" ${v ? '' : 'disabled'}><input type="time" data-rh="${k}" data-p="1" value="${v ? v[1] : '12:00'}" ${v ? '' : 'disabled'}></div>`; }).join('')}</div>
+      <label class="sw" style="margin-top:12px"><input type="checkbox" id="rA" ${e.activo !== false ? 'checked' : ''}> Activo (recibe citas)</label>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="rSave" type="button">Guardar</button><button class="btn ghost" id="rCancel" type="button">Cancelar</button></div>
+      <div id="rMsg" class="note bad hidden"></div></div>` : ''}
+    ${RECS.length ? RECS.map(x => `<div class="promo ${x.activo ? '' : 'off'}"><div><b>${esc(x.nombre)}</b>${x.especialidad ? ' · ' + esc(x.especialidad) : ''}
+        ${x.activo ? '' : ' <span class="tg">Pausado</span>'}
+        <div class="meta">${x.ubicacion ? '📍 ' + esc(x.ubicacion) + ' · ' : ''}${x.precio != null ? '💲 $' + esc(x.precio) + ' · ' : ''}${x.duracion_min ? '⏱️ ' + esc(x.duracion_min) + ' min · ' : ''}🗓️ ${esc(horTxt(x.horario))}${x.telefono_aviso ? ' · 📲 ' + esc(x.telefono_aviso) + (x.avisar_citas === false ? ' (solo cuando pide su agenda)' : ' (recibe avisos)') : ''}</div></div>
+        <div class="acts"><button class="btn ghost sm" data-re="${x.id}" type="button">Editar</button>
+          <button class="btn ghost sm" data-rt="${x.id}" type="button">${x.activo ? 'Pausar' : 'Activar'}</button>
+          <button class="btn ghost sm" data-rx="${x.id}" type="button" style="color:var(--bad)">Borrar</button></div></div>`).join('')
+      : (e ? '' : '<p class="hint" style="margin-top:12px">Si en tu negocio atiende una sola persona no necesitas agregar profesionales: tu asistente usa el horario general.</p>')}
+    ${RECS.some(x => x.telefono_aviso) ? '<p class="hint" style="margin-top:12px">📲 Cada profesional puede escribir <b>pacientes</b> (o <b>pacientes mañana</b>, <b>agenda del jueves</b>) al WhatsApp del negocio desde su número y recibe su lista de citas.</p>' : ''}
+  </div>
+  <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>📅 Próximas citas</h2><p class="sub" style="margin:0">Las que agenda tu asistente por WhatsApp. Si cancelas una, el profesional recibe el aviso.</p></div>
+      ${RECS.length ? `<select id="cF" style="max-width:240px"><option value="">Todos los profesionales</option>${RECS.map(x => `<option value="${x.id}" ${citaFiltro === x.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>` : ''}</div>
+    ${lista || '<p class="hint" style="margin-top:12px">No hay citas próximas.</p>'}</div>`;
+
+  if ($('rNew')) $('rNew').onclick = () => { recEdit = { activo: true, horario: {} }; paintAgenda(); $('rN').focus(); };
+  if ($('cF')) $('cF').onchange = (ev) => { citaFiltro = ev.target.value; paintAgenda(); };
+  if (e) {
+    $('tAgenda').querySelectorAll('[data-rd]').forEach(cb => cb.onchange = () => {
+      const row = cb.closest('.day'); row.classList.toggle('off', !cb.checked); row.querySelectorAll('input[type=time]').forEach(t => t.disabled = !cb.checked); });
+    $('rCancel').onclick = () => { recEdit = null; paintAgenda(); };
+    $('rSave').onclick = async () => {
+      const horario = {};
+      for (const [k] of DSEM) { const on = $('tAgenda').querySelector(`[data-rd="${k}"]`).checked;
+        const t = [...$('tAgenda').querySelectorAll(`[data-rh="${k}"]`)].map(i => i.value);
+        horario[k] = on && t[0] && t[1] && t[0] < t[1] ? t : null; }
+      const precio = $('rP').value.trim().replace(',', '.');
+      const row = { nombre: $('rN').value.trim(), especialidad: $('rE').value.trim() || null, ubicacion: $('rU').value.trim() || null,
+        precio: precio === '' ? null : Number(precio), duracion_min: parseInt($('rD').value, 10) || null,
+        telefono_aviso: $('rT').value.trim() || null, avisar_citas: $('rAv').checked, horario: Object.values(horario).some(Boolean) ? horario : null, activo: $('rA').checked };
+      if (!row.nombre) { msg($('rMsg'), 'Escribe el nombre del profesional.', 'bad'); return; }
+      if (row.precio != null && isNaN(row.precio)) { msg($('rMsg'), 'El precio debe ser un número (ej.: 40).', 'bad'); return; }
+      const q = e.id ? sb.from('recursos').update(row).eq('id', e.id) : sb.from('recursos').insert(Object.assign({ tenant_id: tenant.id, orden: RECS.length + 1 }, row));
+      const { error } = await q;
+      if (error) { msg($('rMsg'), 'No se pudo guardar: ' + error.message, 'bad'); return; }
+      recEdit = null; loadAgenda();
+    };
+  }
+  $('tAgenda').querySelectorAll('[data-re]').forEach(b => b.onclick = () => { recEdit = JSON.parse(JSON.stringify(RECS.find(x => x.id === b.dataset.re))); recEdit.horario = recEdit.horario || {}; paintAgenda(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('tAgenda').querySelectorAll('[data-rt]').forEach(b => b.onclick = async () => { const x = RECS.find(y => y.id === b.dataset.rt); await sb.from('recursos').update({ activo: !x.activo }).eq('id', x.id); loadAgenda(); });
+  $('tAgenda').querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { const x = RECS.find(y => y.id === b.dataset.rx);
+    if (!confirm('¿Borrar a ' + x.nombre + '? Sus citas se conservan, pero quedan sin profesional asignado.')) return;
+    await sb.from('recursos').delete().eq('id', x.id); loadAgenda(); });
+  $('tAgenda').querySelectorAll('[data-cc]').forEach(b => b.onclick = async () => { const c = CITAS.find(y => y.id === b.dataset.cc);
+    if (!confirm('¿Cancelar la cita de ' + (c.nombre_cliente || 'este cliente') + ' (' + fd(c.fecha) + ' ' + h12(c.hora_inicio) + ')? Avísale al cliente.')) return;
+    await sb.from('appointments').update({ estado: 'cancelada', notas: ((c.notas || '') + ' [Cancelada desde el portal]').trim() }).eq('id', c.id); loadAgenda(); });
 }
 
 // ---------- Métricas ----------
@@ -746,7 +852,7 @@ function blank(){
   return { nombre_negocio:'', descripcion:'', anios_experiencia:'', direccion:'', telefono:'', redes:'', pagos:[], pago_otro:'',
     categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
     nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
-    mensaje_fuera_horario:'', fuera_editado:false, faqs:[] };
+    mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'] };
 }
 async function fromTenant(t){
   const f = blank();
@@ -767,6 +873,10 @@ async function fromTenant(t){
   // respuestas a preguntas guardadas: las que coinciden con una pregunta conocida vuelven a su casilla
   const known = new Set([...Object.values(FUNCS).flatMap(x => x.q), ...CATS.flatMap(c => c.q)]);
   for (const r of (t.info_extra || [])) { if (known.has(r.pregunta)) f.respuestas[r.pregunta] = r.respuesta; else f.extra.push({ pregunta: r.pregunta, respuesta: r.respuesta }); }
+  if (Array.isArray(t.datos_cita) && t.datos_cita.length) f.datos_cita = t.datos_cita.slice();
+  const { data: rc } = await sb.from('recursos').select('nombre,especialidad,ubicacion,precio,duracion_min,telefono_aviso,avisar_citas,horario').eq('activo', true).order('orden').order('nombre');
+  f.profesionales = (rc || []).map(r => ({ nombre: r.nombre || '', especialidad: r.especialidad || '', ubicacion: r.ubicacion || '',
+    precio: r.precio != null ? String(r.precio) : '', duracion_min: r.duracion_min != null ? String(r.duracion_min) : '', telefono_aviso: r.telefono_aviso || '', avisar_citas: r.avisar_citas !== false, horario: r.horario || {} }));
   const { data: kb } = await sb.from('knowledge_base').select('nombre,descripcion,precio,datos_extra,imagen_url').eq('activo', true).order('created_at');
   f.catalogo = (kb || []).map(k => ({ nombre: k.nombre, precio: k.precio != null ? String(k.precio) : ((k.datos_extra || {}).precio_texto || ''),
     descripcion: k.descripcion || '', duracion_min: (k.datos_extra || {}).duracion_min || '', imagenes: Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [] }));
@@ -787,6 +897,10 @@ const STEPS = [
   { e:'🧩', t:'¿Qué hará tu asistente?', s:'Ya marcamos lo más común para tu categoría. Toca para marcar o desmarcar.', r: rFunciones, v: () => '' },
   { e:'💬', t:'Unas preguntas sobre cómo trabajas', s:'Aquí están todas las preguntas. Marca solo las que quieras responder.', r: rPreguntas, v: () => '' },
   { e:'🛍️', t:'Productos y precios', s:'Agrega lo que vendes u ofreces. El asistente solo dará estos precios.', r: rCatalogo, v: () => '' },
+  { e:'👩‍⚕️', t:'Tus citas y profesionales', s:'Qué datos pide tu asistente para agendar y quién atiende. Agrega cada doctor, barbero o estilista con su horario: varios pueden atender a la misma hora.', r: rProfesionales,
+    skip: () => !F.funciones.includes('citas'),
+    v: () => { const i = (F.profesionales || []).findIndex(x => !(x.nombre || '').trim() && ((x.especialidad || '').trim() || (x.precio || '').trim()));
+      return i >= 0 ? `Escribe el nombre del profesional #${i + 1}.` : ''; } },
   { e:'🕒', t:'Horario de atención', s:'Marca los días que abres y la hora.', r: rHorario, v: () => '' },
   { e:'🤖', t:'La personalidad de tu asistente', s:'Dale un nombre y elige cómo habla con tus clientes.', r: rPersonalidad,
     v: () => !F.nombre_bot.trim() ? 'Ponle un nombre a tu asistente.' : '' },
@@ -796,8 +910,9 @@ const STEPS = [
 
 function render(){
   const S = STEPS[step];
-  $('wzStep').textContent = `Paso ${step + 1} de ${STEPS.length}`;
-  $('wzProg').style.width = ((step + 1) / STEPS.length * 100) + '%';
+  const vis = STEPS.filter(x => !(x.skip && x.skip())), pos = vis.indexOf(S) + 1;
+  $('wzStep').textContent = `Paso ${pos} de ${vis.length}`;
+  $('wzProg').style.width = (pos / vis.length * 100) + '%';
   $('wzBody').innerHTML = `<div class="wz-title"><span class="em">${S.e}</span><div><h2>${S.t}</h2><p>${S.s}</p></div></div>` + S.r();
   show($('wzBack'), step > 0);
   $('wzNext').textContent = step === STEPS.length - 1 ? 'Enviar para revisión 🚀' : 'Siguiente →';
@@ -808,9 +923,10 @@ $('wzNext').onclick = async () => {
   const err = STEPS[step].v(); if (err) { msg($('wzMsg'), err, 'bad'); return; }
   if (step === STEPS.length - 1) return enviar();
   if (step === 1) presetFunciones();
-  step++; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' });
+  step++; while (STEPS[step].skip && STEPS[step].skip()) step++;
+  saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' });
 };
-$('wzBack').onclick = () => { if (step > 0) { step--; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); } };
+$('wzBack').onclick = () => { if (step > 0) { step--; while (step > 0 && STEPS[step].skip && STEPS[step].skip()) step--; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); } };
 function goTo(i){ step = i; saveDraft(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
 
 // Enlaza campos simples (data-k) y campos de listas (data-arr / data-i / data-f)
@@ -824,6 +940,11 @@ function bindAll(){
   }));
   $('wzBody').querySelectorAll('[data-arr]').forEach(el => el.addEventListener('input', () => {
     F[el.dataset.arr][+el.dataset.i][el.dataset.f] = el.value; saveDraft();
+  }));
+  $('wzBody').querySelectorAll('[data-pav]').forEach(el => el.addEventListener('change', () => { F.profesionales[+el.dataset.pav].avisar_citas = el.checked; saveDraft(); }));
+  $('wzBody').querySelectorAll('[data-ph]').forEach(el => el.addEventListener('input', () => {
+    const x = F.profesionales[+el.dataset.ph]; x.horario = x.horario || {};
+    if (Array.isArray(x.horario[el.dataset.d])) x.horario[el.dataset.d][+el.dataset.p] = el.value; saveDraft();
   }));
   $('wzBody').querySelectorAll('[data-qa]').forEach(el => el.addEventListener('input', () => {
     const q = el.dataset.q;
@@ -909,6 +1030,36 @@ function rCatalogo(){
     <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Podrás cambiar esta lista más adelante.</p>
     ${fotosOk ? '<p class="hint">📷 Si un cliente pide ver un producto, tu asistente le envía sus fotos por WhatsApp (las fotos se activan cuando aprobemos tu formulario).</p>' : `<p class="hint">🔒 Las fotos de productos están disponibles en el Plan ${esc(planMinCon('fotos') || 'superior')}.</p>`}</div>`;
 }
+// Paso: profesionales (solo si agenda citas)
+const PDIAS = [['lun','Lun'],['mar','Mar'],['mie','Mié'],['jue','Jue'],['vie','Vie'],['sab','Sáb'],['dom','Dom']];
+const DATOS_SUG = ['Nombre y apellido','Edad','Cédula de identidad','Número de celular','Correo electrónico','Motivo de la consulta','Seguro médico'];
+function rProfesionales(){
+  const L = F.profesionales || (F.profesionales = []), D = F.datos_cita || (F.datos_cita = []);
+  const extras = D.filter(d => !DATOS_SUG.includes(d));
+  return `<div class="grp" style="margin-top:12px"><h3>📝 Datos que tu asistente pide para agendar</h3>
+      <p class="hint" style="margin:0 0 8px">Toca los que necesitas. Tu asistente los pedirá todos antes de confirmar la cita y llegarán al profesional.</p>
+      <div class="chips">${[...DATOS_SUG, ...extras].map(d => `<button type="button" class="chip ${D.includes(d) ? 'on' : ''}" data-act="datoCita" data-v="${esc(d)}">${esc(d)}</button>`).join('')}</div>
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="datoOtro" placeholder="¿Otro dato? Ej.: Fecha de nacimiento"><button type="button" class="btn ghost" data-act="datoAdd">Agregar</button></div></div>
+    <h3 style="margin-top:18px">👩‍⚕️ Profesionales</h3>
+    <div>${L.map((x, i) => { const h = x.horario || {};
+    return `<div class="item"><button class="x" type="button" data-act="delProf" data-i="${i}" title="Quitar">✕</button>
+      <div class="row"><div><span class="mini">Nombre</span><input data-arr="profesionales" data-i="${i}" data-f="nombre" value="${esc(x.nombre)}" placeholder="Ej.: Dra. María Pérez"></div>
+        <div><span class="mini">Especialidad o servicio</span><input data-arr="profesionales" data-i="${i}" data-f="especialidad" value="${esc(x.especialidad)}" placeholder="Ej.: Pediatría"></div></div>
+      <div class="row3">
+        <div><span class="mini">Consultorio o lugar <span class="opt">(opcional)</span></span><input data-arr="profesionales" data-i="${i}" data-f="ubicacion" value="${esc(x.ubicacion)}" placeholder="Ej.: Consultorio 2"></div>
+        <div><span class="mini">Precio ($)</span><input data-arr="profesionales" data-i="${i}" data-f="precio" value="${esc(x.precio)}" inputmode="decimal" placeholder="Ej.: 40"></div>
+        <div><span class="mini">Duración (min)</span><input data-arr="profesionales" data-i="${i}" data-f="duracion_min" value="${esc(x.duracion_min)}" type="number" min="5" step="5" placeholder="30"></div></div>
+      <span class="mini" style="margin-top:6px">WhatsApp del profesional <span class="opt">(opcional: le llegan las citas nuevas y canceladas)</span></span>
+      <input data-arr="profesionales" data-i="${i}" data-f="telefono_aviso" value="${esc(x.telefono_aviso)}" type="tel" placeholder="Ej.: 0414-1234567">
+      <label class="sw" style="margin-top:6px"><input type="checkbox" data-pav="${i}" ${x.avisar_citas !== false ? 'checked' : ''}> Enviarle un aviso de cada cita nueva o cancelada <span class="opt">(si no, solo cuando escribe "pacientes")</span></label>
+      <span class="mini" style="margin-top:8px">Días que atiende <span class="opt">(toca los días; si no marcas ninguno, usa el horario del negocio)</span></span>
+      <div class="chips">${PDIAS.map(([k, n]) => `<button type="button" class="chip ${Array.isArray(h[k]) ? 'on' : ''}" data-act="profDia" data-i="${i}" data-v="${k}">${n}</button>`).join('')}</div>
+      ${PDIAS.filter(([k]) => Array.isArray(h[k])).map(([k, n]) => `<div class="day"><span><b>${n}</b></span>
+        <input type="time" data-ph="${i}" data-d="${k}" data-p="0" value="${esc(h[k][0])}"><input type="time" data-ph="${i}" data-d="${k}" data-p="1" value="${esc(h[k][1])}"></div>`).join('')}
+    </div>`; }).join('')}
+    <button type="button" class="btn add" data-act="addProf">+ Agregar profesional</button>
+    <p class="hint" style="margin-top:10px">💡 Si en tu negocio atiende una sola persona, puedes dejar este paso vacío: tu asistente usará el horario general. Podrás cambiar a tus profesionales después en la pestaña "📅 Agenda".</p></div>`;
+}
 // Paso 6
 function rHorario(){
   const h = F.horario || {};
@@ -975,7 +1126,12 @@ function payload(){
     horario, duracion_cita_min: parseInt(F.duracion_cita_min || 30, 10) || 30,
     nombre_bot: F.nombre_bot.trim(), estilo: F.estilo, emojis: F.emojis, tono: ESTILOS[F.estilo].tono,
     mensaje_bienvenida: F.mensaje_bienvenida.trim(), mensaje_fuera_horario: F.mensaje_fuera_horario.trim(),
-    faqs: F.faqs.filter(f => f.pregunta && (f.respuesta || '').trim()).map(f => ({ pregunta: f.pregunta.trim(), respuesta: f.respuesta.trim() }))
+    faqs: F.faqs.filter(f => f.pregunta && (f.respuesta || '').trim()).map(f => ({ pregunta: f.pregunta.trim(), respuesta: f.respuesta.trim() })),
+    datos_cita: fn.includes('citas') ? (F.datos_cita || []).filter(Boolean) : [],
+    profesionales: fn.includes('citas') ? (F.profesionales || []).filter(x => (x.nombre || '').trim()).map(x => {
+      const h = {}; for (const [k] of PDIAS) h[k] = Array.isArray((x.horario || {})[k]) && x.horario[k][0] && x.horario[k][1] && x.horario[k][0] < x.horario[k][1] ? x.horario[k] : null;
+      return { nombre: x.nombre.trim(), especialidad: (x.especialidad || '').trim(), ubicacion: (x.ubicacion || '').trim(), precio: String(x.precio || '').trim(),
+        duracion_min: String(x.duracion_min || '').trim(), telefono_aviso: (x.telefono_aviso || '').trim(), avisar_citas: x.avisar_citas !== false, horario: Object.values(h).some(Boolean) ? h : null }; }) : []
   };
 }
 function rResumen(){
@@ -989,9 +1145,10 @@ function rResumen(){
     ${sec(2, '🧩 Qué hará', `<p>${esc(p.que_hacer)}</p>`)}
     ${sec(3, '💬 Respuestas', `<p>${p.info_extra.length} dato(s) agregado(s)</p>`)}
     ${sec(4, '🏷️ Productos y precios', p.catalogo.length ? p.catalogo.slice(0, 6).map(x => `<p>• ${esc(x.nombre)}${x.precio ? ' — ' + esc(x.precio) : ''}${x.imagenes.length ? ' · 📷 ' + x.imagenes.length : ''}</p>`).join('') + (p.catalogo.length > 6 ? `<p>… y ${p.catalogo.length - 6} más</p>` : '') : '<p>Sin productos (el asistente ofrecerá pasar con un asesor si preguntan precios).</p>')}
-    ${sec(5, '🕒 Horario', `<p>${esc(dias)}</p>`)}
-    ${sec(6, '🤖 Asistente', `<p><b>${esc(p.nombre_bot)}</b> · ${ESTILOS[p.estilo].n} · Emojis: ${EMOJIS[p.emojis]}</p><div class="bubble">${esc(p.mensaje_bienvenida)}</div>`)}
-    ${sec(7, '❓ Preguntas frecuentes', `<p>${p.faqs.length} pregunta(s)</p>`)}
+    ${p.funciones.includes('citas') ? sec(5, '👩‍⚕️ Profesionales', (p.datos_cita.length ? `<p><b>Datos que pedirá:</b> ${esc(p.datos_cita.join(', '))}</p>` : '') + (p.profesionales.length ? p.profesionales.map(x => `<p>• <b>${esc(x.nombre)}</b>${x.especialidad ? ' — ' + esc(x.especialidad) : ''}${x.ubicacion ? ' · 📍 ' + esc(x.ubicacion) : ''}${x.precio ? ' · $' + esc(x.precio) : ''}</p>`).join('') : '<p>Sin profesionales (una sola agenda con el horario del negocio).</p>')) : ''}
+    ${sec(6, '🕒 Horario', `<p>${esc(dias)}</p>`)}
+    ${sec(7, '🤖 Asistente', `<p><b>${esc(p.nombre_bot)}</b> · ${ESTILOS[p.estilo].n} · Emojis: ${EMOJIS[p.emojis]}</p><div class="bubble">${esc(p.mensaje_bienvenida)}</div>`)}
+    ${sec(8, '❓ Preguntas frecuentes', `<p>${p.faqs.length} pregunta(s)</p>`)}
   </div>`;
 }
 
@@ -1004,6 +1161,15 @@ const ACT = {
   delExtra: (el) => { F.extra.splice(+el.dataset.i, 1); render(); saveDraft(); },
   addItem: () => { F.catalogo.push({ nombre:'', precio:'', descripcion:'', duracion_min:'' }); render(); const all = document.querySelectorAll('[data-f="nombre"]'); if (all.length) all[all.length - 1].focus(); },
   delItem: (el) => { F.catalogo.splice(+el.dataset.i, 1); render(); saveDraft(); },
+  addProf: () => { F.profesionales = F.profesionales || []; F.profesionales.push({ nombre:'', especialidad:'', ubicacion:'', precio:'', duracion_min:'', telefono_aviso:'', horario:{} }); render();
+    const all = document.querySelectorAll('[data-arr="profesionales"][data-f="nombre"]'); if (all.length) all[all.length - 1].focus(); saveDraft(); },
+  datoCita: (el) => { const v = el.dataset.v; F.datos_cita = F.datos_cita || []; F.datos_cita = F.datos_cita.includes(v) ? F.datos_cita.filter(x => x !== v) : [...F.datos_cita, v]; el.classList.toggle('on'); saveDraft(); },
+  datoAdd: () => { const v = ($('datoOtro').value || '').trim(); if (!v) return; F.datos_cita = F.datos_cita || []; if (!F.datos_cita.includes(v)) F.datos_cita.push(v); const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); },
+  delProf: (el) => { F.profesionales.splice(+el.dataset.i, 1); render(); saveDraft(); },
+  profDia: (el) => { const x = F.profesionales[+el.dataset.i], k = el.dataset.v; x.horario = x.horario || {};
+    if (Array.isArray(x.horario[k])) x.horario[k] = null;
+    else { const prev = PDIAS.map(([d]) => x.horario[d]).filter(Array.isArray).pop(); x.horario[k] = prev ? [...prev] : (Array.isArray(F.horario[k]) ? [...F.horario[k]] : ['08:00','12:00']); }
+    const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); },
   delFoto: (el) => { const x = F.catalogo[+el.dataset.i]; (x.imagenes || []).splice(+el.dataset.j, 1); const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); },
   dia: (el) => { const k = el.dataset.v; const row = el.closest('.day'); const t = row.querySelectorAll('input[type=time]');
     F.horario[k] = el.checked ? [t[0].value, t[1].value] : null; row.classList.toggle('off', !el.checked); t.forEach(x => x.disabled = !el.checked); saveDraft(); },
@@ -1046,7 +1212,7 @@ document.addEventListener('input', (e) => {
 // --------- Enviar ---------
 async function enviar(){
   if (!tenant) return;
-  for (let i = 0; i < STEPS.length; i++) { const err = STEPS[i].v(); if (err) { goTo(i); msg($('wzMsg'), err, 'bad'); return; } }
+  for (let i = 0; i < STEPS.length; i++) { if (STEPS[i].skip && STEPS[i].skip()) continue; const err = STEPS[i].v(); if (err) { goTo(i); msg($('wzMsg'), err, 'bad'); return; } }
   $('wzNext').disabled = true; msg($('wzMsg'), '');
   const { data, error } = await sb.from('onboarding_forms').insert({ tenant_id: tenant.id, respuestas: payload(), estado: 'enviado' }).select('id').single();
   $('wzNext').disabled = false;

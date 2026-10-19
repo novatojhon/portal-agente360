@@ -903,7 +903,10 @@ const STEPS = [
   { e:'👩‍⚕️', t:'Tus citas y profesionales', s:'Qué datos pide tu asistente para agendar y quién atiende. Agrega cada doctor, barbero o estilista con su horario: varios pueden atender a la misma hora.', r: rProfesionales,
     skip: () => !F.funciones.includes('citas'),
     v: () => { const i = (F.profesionales || []).findIndex(x => !(x.nombre || '').trim() && ((x.especialidad || '').trim() || (x.precio || '').trim()));
-      return i >= 0 ? `Escribe el nombre del profesional #${i + 1}.` : ''; } },
+      if (i >= 0) return `Escribe el nombre del profesional #${i + 1}.`;
+      const conPrecio = (F.profesionales || []).some(x => (x.nombre || '').trim() && String(x.precio || '').trim()) || sinPrecioOk();
+      if (!conPrecio && !F._avisoPrecio) { F._avisoPrecio = true; return 'Ningún profesional ni servicio tiene precio: tu asistente no podrá decir cuánto cuesta. Agrégalo, o toca "Siguiente" otra vez para seguir sin precio.'; }
+      return ''; } },
   { e:'🕒', t:'Horario de atención', s:'Marca los días que abres y la hora.', r: rHorario, v: () => '' },
   { e:'🤖', t:'La personalidad de tu asistente', s:'Dale un nombre y elige cómo habla con tus clientes.', r: rPersonalidad,
     v: () => !F.nombre_bot.trim() ? 'Ponle un nombre a tu asistente.' : '' },
@@ -968,7 +971,7 @@ function rComercio(){
     `<div class="row"><div>${field('anios_experiencia', 'Años de experiencia', true, 'type="number" min="0" max="200" placeholder="Ej.: 10"')}</div>
       <div>${field('telefono', 'Teléfono de contacto', true, 'type="tel" placeholder="Ej.: 0412-1234567"')}</div></div>` +
     field('direccion', 'Dirección', true, 'placeholder="Ej.: Av. Bolívar, local 5, Valencia"') +
-    field('redes', 'Redes sociales o página web', true, 'placeholder="Ej.: @minegocio en Instagram"') +
+    field('redes', 'Redes sociales o página web', true, 'placeholder="Ej.: Instagram @minegocio · Facebook: Mi Negocio · Web: minegocio.com"') +
     `<label>¿Cómo te pueden pagar?<span class="opt">(toca las que aceptas)</span></label>
      <div class="chips">${PAGOS.map(p => `<button type="button" class="chip ${F.pagos.includes(p) ? 'on' : ''}" data-act="pago" data-v="${p}">${p}</button>`).join('')}</div>
      <input data-k="pago_otro" value="${esc(F.pago_otro)}" placeholder="¿Otra forma de pago? Escríbela aquí" style="margin-top:8px">`;
@@ -1036,6 +1039,7 @@ function rCatalogo(){
 // Paso: profesionales (solo si agenda citas)
 const PDIAS = [['lun','Lun'],['mar','Mar'],['mie','Mié'],['jue','Jue'],['vie','Vie'],['sab','Sáb'],['dom','Dom']];
 const DATOS_SUG = ['Nombre y apellido','Edad','Cédula de identidad','Número de celular','Correo electrónico','Motivo de la consulta','Seguro médico'];
+function sinPrecioOk(){ return (F.catalogo || []).some(x => (x.nombre || '').trim() && String(x.precio || '').trim()); }
 function rProfesionales(){
   const L = F.profesionales || (F.profesionales = []), D = F.datos_cita || (F.datos_cita = []);
   const extras = D.filter(d => !DATOS_SUG.includes(d));
@@ -1044,6 +1048,7 @@ function rProfesionales(){
       <div class="chips">${[...DATOS_SUG, ...extras].map(d => `<button type="button" class="chip ${D.includes(d) ? 'on' : ''}" data-act="datoCita" data-v="${esc(d)}">${esc(d)}</button>`).join('')}</div>
       <div style="display:flex;gap:8px;margin-top:8px"><input id="datoOtro" placeholder="¿Otro dato? Ej.: Fecha de nacimiento"><button type="button" class="btn ghost" data-act="datoAdd">Agregar</button></div></div>
     <h3 style="margin-top:18px">👩‍⚕️ Profesionales</h3>
+    ${!L.length && !sinPrecioOk() ? '<div class="note bad">⚠️ Aún no hay profesionales ni servicios con precio. Tu asistente no podrá decir cuánto cuesta la consulta y nadie recibirá el aviso de las citas por WhatsApp. Si atiendes tú solo, toca <b>🙋 Yo mismo atiendo</b>.</div>' : ''}
     <div>${L.map((x, i) => { const h = x.horario || {};
     return `<div class="item"><button class="x" type="button" data-act="delProf" data-i="${i}" title="Quitar">✕</button>
       <div class="row"><div><span class="mini">Nombre</span><input data-arr="profesionales" data-i="${i}" data-f="nombre" value="${esc(x.nombre)}" placeholder="Ej.: Dra. María Pérez"></div>
@@ -1060,8 +1065,8 @@ function rProfesionales(){
       ${PDIAS.filter(([k]) => Array.isArray(h[k])).map(([k, n]) => `<div class="day"><span><b>${n}</b></span>
         <input type="time" data-ph="${i}" data-d="${k}" data-p="0" value="${esc(h[k][0])}"><input type="time" data-ph="${i}" data-d="${k}" data-p="1" value="${esc(h[k][1])}"></div>`).join('')}
     </div>`; }).join('')}
-    <button type="button" class="btn add" data-act="addProf">+ Agregar profesional</button>
-    <p class="hint" style="margin-top:10px">💡 Si en tu negocio atiende una sola persona, puedes dejar este paso vacío: tu asistente usará el horario general. Podrás cambiar a tus profesionales después en la pestaña "📅 Agenda".</p></div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn add" data-act="addProf">+ Agregar profesional</button><button type="button" class="btn add" data-act="yoAtiendo">🙋 Yo mismo atiendo</button></div>
+    <p class="hint" style="margin-top:10px">💡 Si en tu negocio atiende una sola persona, toca "🙋 Yo mismo atiendo" y escribe el precio de la consulta: así tu asistente da el precio y te avisa por WhatsApp de cada cita. Podrás cambiar a tus profesionales después en la pestaña "📅 Agenda".</p></div>`;
 }
 // Paso 6
 function rHorario(){
@@ -1168,6 +1173,11 @@ const ACT = {
     const all = document.querySelectorAll('[data-arr="profesionales"][data-f="nombre"]'); if (all.length) all[all.length - 1].focus(); saveDraft(); },
   datoCita: (el) => { const v = el.dataset.v; F.datos_cita = F.datos_cita || []; F.datos_cita = F.datos_cita.includes(v) ? F.datos_cita.filter(x => x !== v) : [...F.datos_cita, v]; el.classList.toggle('on'); saveDraft(); },
   datoAdd: () => { const v = ($('datoOtro').value || '').trim(); if (!v) return; F.datos_cita = F.datos_cita || []; if (!F.datos_cita.includes(v)) F.datos_cita.push(v); const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); },
+  yoAtiendo: () => { F.profesionales = F.profesionales || [];
+    const c0 = (F.catalogo || []).find(x => (x.nombre || '').trim());
+    F.profesionales.push({ nombre: F.nombre_negocio.trim(), especialidad: c0 ? c0.nombre.trim() : '', ubicacion:'', precio: c0 ? String(c0.precio || '') : '', duracion_min:'',
+      telefono_aviso: (F.telefono || '').trim(), avisar_citas: true, horario:{} });
+    render(); const all = document.querySelectorAll('[data-arr="profesionales"][data-f="precio"]'); if (all.length) all[all.length - 1].focus(); saveDraft(); },
   delProf: (el) => { F.profesionales.splice(+el.dataset.i, 1); render(); saveDraft(); },
   profDia: (el) => { const x = F.profesionales[+el.dataset.i], k = el.dataset.v; x.horario = x.horario || {};
     if (Array.isArray(x.horario[k])) x.horario[k] = null;

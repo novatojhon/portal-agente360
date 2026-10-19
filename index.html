@@ -204,6 +204,7 @@
 </head>
 <body>
 
+<div id="admBar" class="hidden" style="background:#7c3aed;color:#fff;padding:8px 16px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap"><span>🛠️ <b>Modo administrador</b> — estás configurando: <b id="admNeg"></b></span><button class="btn sm" id="admSalir" style="background:#fff;color:#7c3aed">Volver al panel admin</button></div>
 <header id="hdr" class="hidden">
   <div class="bar">
     <div class="logo">IA</div>
@@ -307,7 +308,8 @@ $('fLogin').addEventListener('submit', async (e) => {
   $('bLogin').disabled = false;
   if (error) msg($('loginMsg'), 'Correo o contraseña incorrectos.', 'bad'); else start();
 });
-$('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('logout').onclick = async () => { try { await sb.rpc('admin_salir_config'); } catch {} await sb.auth.signOut(); location.reload(); };
+$('admSalir').onclick = async () => { try { await sb.rpc('admin_salir_config'); } catch {} location.href = 'admin.html'; };
 
 async function start(){
   const { data: { session } } = await sb.auth.getSession();
@@ -317,6 +319,7 @@ async function start(){
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
+  try { const { data: am } = await sb.rpc('admin_modo_actual'); if (am && am.tenant_id) { $('admNeg').textContent = am.negocio; show($('admBar'), true); } } catch {}
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
 }
 

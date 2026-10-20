@@ -143,7 +143,8 @@ async function start(){
   show($('vLogin'), false); show($('hdr'), true); show($('vApp'), true);
   await load();
 }
-async function load(){ D = await rpc('admin_datos'); rCli(); rFrm(); rPla(); rAju(); loadCon(); }
+let CALQ = {};
+async function load(){ D = await rpc('admin_datos'); try { CALQ = (await sb.rpc('admin_calidad')).data || {}; } catch { CALQ = {}; } rCli(); rFrm(); rPla(); rAju(); loadCon(); }
 
 // ---------- Conexiones (estado del WhatsApp de cada cliente) ----------
 let C2 = null;
@@ -218,7 +219,8 @@ function rCli(){
         <div class="name"><b>${esc(x.negocio)}</b><small>${esc(x.email || 'sin correo')} · ${esc(x.categoria || '')}</small><br>
           <span class="pill brand">${esc(x.plan_nombre || x.plan)}</span> <span class="pill ${ek}">${et}</span>
           ${x.whatsapp ? `<span class="pill ${x.whatsapp === 'conectada' ? 'ok' : 'bad'}">WhatsApp ${x.whatsapp === 'conectada' ? 'conectado' : 'desconectado'}</span>` : '<span class="pill">Sin WhatsApp</span>'}
-          ${x.formulario === 'pendiente_revision' ? '<span class="pill warn">Formulario por revisar</span>' : ''}</div>
+          ${x.formulario === 'pendiente_revision' ? '<span class="pill warn">Formulario por revisar</span>' : ''}
+          ${CALQ[x.id] ? `<span class="pill ${CALQ[x.id].promedio >= 4 ? 'ok' : CALQ[x.id].promedio >= 3 ? 'warn' : 'bad'}" title="Encuesta de satisfacción, últimos 30 días">⭐ ${Number(CALQ[x.id].promedio).toFixed(1)} (${CALQ[x.id].n})</span>` : ''}</div>
         <div><div class="small">Vence: <b>${fdate(x.vence)}</b></div>
           <div class="small">${dv == null ? '' : dv < 0 ? `<span style="color:var(--bad)">Venció hace ${-dv} día(s)${x.en_gracia ? ' · en gracia' : ''}</span>` : `Faltan ${dv} día(s)`}</div>
           ${!x.puede_responder ? `<span class="pill bad">Bot detenido: ${MOTIVO[x.motivo] || x.motivo}</span>` : ''}</div>

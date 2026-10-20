@@ -179,6 +179,12 @@
   .kpis2 div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
   .kpis2 b{display:block;font-size:24px;line-height:1.2}
   .kpis2 span{font-size:12.5px;color:var(--muted)}
+  .stars,.kpis2 .stars{color:#f5a623;letter-spacing:1px}
+  .ccm{border-top:1px solid var(--line);padding:10px 0;font-size:14px}
+  .ccm:first-child{border-top:0}
+  .ccm small{color:var(--muted)}
+  .encw{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:620px){.encw{grid-template-columns:1fr}}
   .bars{display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:18px;border-bottom:1px solid var(--line);position:relative}
   .bars .b{flex:1;background:var(--brand);border-radius:4px 4px 0 0;min-height:1px;position:relative;opacity:.85;cursor:default}
   .bars .b:hover{opacity:1}
@@ -241,6 +247,7 @@
     <button class="tab" data-t="agenda">📅 Agenda</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab" data-t="cal">⭐ Calidad</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
   </nav>
@@ -273,6 +280,7 @@
   <section id="tAgenda" class="hidden"></section>
   <section id="tPromo" class="hidden"></section>
   <section id="tMet" class="hidden"></section>
+  <section id="tCal" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -335,7 +343,8 @@ function openTab(t){
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
   if (t === 'conv') openInbox();
-  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda');
+  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal');
+  if (t === 'cal') loadCalidad();
   if (t === 'agenda') loadAgenda();
   if (t === 'promo') loadPromos();
   if (t === 'met') loadMetricas();
@@ -598,6 +607,77 @@ function paintMetricas(M){
       <p class="hint" style="margin-top:10px">👤 ${n(M.pasadas_a_humano)} conversación(es) pasaron a una persona · 🤖 ${n(M.respuestas_bot)} respuestas del asistente · 👤 ${n(M.respuestas_humano)} tuyas</p></div>
     ${(M.promos || []).length ? `<div class="card"><h2>Promociones más usadas</h2>${M.promos.map(p => `<p style="margin:6px 0"><span class="kw" style="background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px">${esc(p.clave)}</span> — ${n(p.usos)} ${p.usos === 1 ? 'vez' : 'veces'}</p>`).join('')}</div>` : ''}`;
   $('mD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { metDias = +b.dataset.d; loadMetricas(); });
+}
+
+// ---------- Calidad del servicio (encuesta de satisfacción) ----------
+let calDias = 30, CAL = null;
+async function loadCalidad(){
+  $('tCal').innerHTML = '<div class="card"><p class="hint" style="margin:0">Cargando…</p></div>';
+  const { data, error } = await sb.rpc('calidad_resumen', { p_dias: calDias });
+  if (error || !data || !data.ok) { $('tCal').innerHTML = '<div class="card"><p class="sub">No se pudo cargar la calidad del servicio' + (error ? ': ' + esc(error.message) : '') + '.</p></div>'; return; }
+  CAL = data; paintCalidad();
+}
+function paintCalidad(){
+  const M = CAL, c = M.config || {}, ci = c.citas || {}, pe = c.pedidos || {};
+  const n = (x) => Number(x || 0).toLocaleString('es');
+  const st = (v) => { const r = Math.round(Number(v || 0)); return '<span class="stars">' + '★'.repeat(r) + '☆'.repeat(5 - r) + '</span>'; };
+  const conPed = (tenant.funciones || []).includes('pedidos');
+  const tasa = M.enviadas ? Math.round(100 * M.respondidas / M.enviadas) : 0;
+  const dist = M.distribucion || {}, maxD = Math.max(1, ...[1,2,3,4,5].map(k => dist[k] || 0));
+  const felices = (dist[4] || 0) + (dist[5] || 0), tristes = (dist[1] || 0) + (dist[2] || 0);
+  const sem = M.semanas || [];
+  const cuando = (k, o) => `<div><label>${k === 'citas' ? '📅 Después de una cita' : '🛵 Después de un pedido entregado'}</label>
+      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option></select>
+      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'horas'
+        ? `<label class="hint">¿Cuántas horas después?</label><input type="number" id="e_${k}_horas" min="1" max="72" value="${o.horas || (k === 'citas' ? 3 : 1)}">`
+        : `<label class="hint">¿A qué hora del día siguiente?</label><input type="time" id="e_${k}_hora" value="${esc(o.hora || '10:00')}">`}</div></div>`;
+  $('tCal').innerHTML = `
+    <div class="card"><h2>⭐ Encuesta de satisfacción</h2>
+      <p class="sub">Tu asistente le pregunta al cliente cómo le fue: <i>"¿Cómo calificarías tu experiencia del 1 al 5? ⭐"</i>. Si pone 1, 2 o 3, le pregunta qué mejorar. Si pone 1 o 2, <b>te avisamos al WhatsApp del negocio</b> para que lo contactes.</p>
+      <label class="sw" style="margin:6px 0 14px"><input type="checkbox" id="eAct" ${c.activo ? 'checked' : ''}> Activar la encuesta</label>
+      <div class="encw">${conPed ? '' : cuando('citas', ci)}${conPed ? cuando('pedidos', pe) : ''}</div>
+      <p class="hint" style="margin-top:8px">Solo se envía entre 8:00 am y 8:30 pm, y máximo una encuesta cada 3 días por cliente.</p>
+      <label style="margin-top:12px">Mensaje de la encuesta <span class="hint">(opcional, déjalo vacío para usar el nuestro)</span></label>
+      <textarea id="eTxt" rows="2" placeholder="Hola 👋 Gracias por elegirnos. ¿Cómo calificarías tu experiencia?">${esc(c.texto || '')}</textarea>
+      <p class="hint">Siempre agregamos al final: "Responde con un número del 1 al 5 ⭐".</p>
+      <label style="margin-top:12px">Enlace para dejar reseña <span class="hint">(opcional: Google, Instagram…)</span></label>
+      <input id="eUrl" placeholder="https://g.page/r/…" value="${esc(c.resena_url || '')}">
+      <p class="hint">Se lo enviamos solo a los clientes que califican con 4 o 5.</p>
+      <div style="margin-top:14px"><button class="btn" id="eSave">Guardar</button></div>
+      <div id="eMsg" class="note hidden"></div></div>
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>📊 Calidad del servicio</h2><p class="sub" style="margin:0">Últimos ${M.dias} días</p></div>
+      <div class="chips" id="cD">${[7, 30, 90].map(d => `<button type="button" class="chip ${d === calDias ? 'on' : ''}" data-d="${d}">${d} días</button>`).join('')}</div></div></div>
+    <div class="kpis2" style="margin-bottom:16px">
+      <div><b>${M.promedio != null ? Number(M.promedio).toFixed(1) + ' / 5' : '—'}</b><span>${M.promedio != null ? st(M.promedio) : 'Calificación promedio'}</span></div>
+      <div><b>${n(M.respondidas)}</b><span>Respondieron (de ${n(M.enviadas)} · ${tasa}%)</span></div>
+      <div><b>${M.respondidas ? Math.round(100 * felices / M.respondidas) : 0}%</b><span>😊 Satisfechos (4 y 5)</span></div>
+      <div><b>${n(tristes)}</b><span>😟 Insatisfechos (1 y 2)</span></div>
+    </div>
+    ${M.respondidas ? `<div class="card"><h2>¿Cómo te califican?</h2>
+      <div class="funnel">${[5,4,3,2,1].map(k => `<div class="r"><span>${st(k)}</span><div class="t"><i style="width:${Math.round(100 * (dist[k] || 0) / maxD)}%;${k <= 2 ? 'background:#e5484d' : k === 3 ? 'background:#f5a623' : ''}"></i></div><b>${n(dist[k])}</b></div>`).join('')}</div></div>` : ''}
+    ${sem.length > 1 ? `<div class="card"><h2>Evolución por semana</h2><p class="sub">Promedio de cada semana (últimas 8)</p>
+      <div class="bars">${sem.map(x => `<div class="b" style="height:${Math.round(20 * x.promedio)}%;max-width:70px"><span class="tip">Semana del ${esc(x.semana)}: ${Number(x.promedio).toFixed(1)} (${n(x.n)})</span></div>`).join('')}</div>
+      <div class="axis">${sem.map(x => `<span>${esc(x.semana)}</span>`).join('')}</div></div>` : ''}
+    ${(M.por_profesional || []).length ? `<div class="card"><h2>Por profesional</h2>${M.por_profesional.map(x => `<p style="margin:6px 0">${esc(x.nombre)} — ${st(x.promedio)} <b>${Number(x.promedio).toFixed(1)}</b> <span class="hint">(${n(x.n)})</span></p>`).join('')}</div>` : ''}
+    ${(M.por_tipo || []).length ? `<div class="card"><h2>Por tipo de pedido</h2>${M.por_tipo.map(x => `<p style="margin:6px 0">${x.tipo === 'retiro' ? '🏪 Retiro en el local' : '🛵 Delivery'} — ${st(x.promedio)} <b>${Number(x.promedio).toFixed(1)}</b> <span class="hint">(${n(x.n)})</span></p>`).join('')}</div>` : ''}
+    <div class="card"><h2>Últimas respuestas</h2>
+      ${(M.comentarios || []).length ? M.comentarios.map(x => `<div class="ccm">${st(x.puntuacion)} <b>${esc(x.nombre || 'Cliente')}</b> <small>· ${esc(x.fecha)} · ${x.origen === 'cita' ? 'Cita' + (x.profesional ? ' con ' + esc(x.profesional) : '') : 'Pedido'}</small>
+        ${x.comentario ? `<div style="margin-top:4px">"${esc(x.comentario)}"</div>` : ''}</div>`).join('')
+        : `<p class="hint" style="margin:0">${c.activo ? 'Todavía no hay respuestas. Las encuestas se envían solas después de cada ' + (conPed ? 'pedido entregado' : 'cita') + '.' : 'Activa la encuesta arriba para empezar a medir la calidad de tu servicio.'}</p>`}</div>`;
+  $('cD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { calDias = +b.dataset.d; loadCalidad(); });
+  const leer = () => { const o = { activo: $('eAct').checked, texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(), citas: Object.assign({}, ci), pedidos: Object.assign({}, pe) };
+    ['citas', 'pedidos'].forEach(k => { if (!$('e_' + k + '_modo')) return; o[k].modo = $('e_' + k + '_modo').value;
+      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
+    return o; };
+  ['citas', 'pedidos'].forEach(k => { const s = $('e_' + k + '_modo'); if (s) s.onchange = () => { const o = leer(); CAL.config = o; paintCalidad(); }; });
+  $('eSave').onclick = async () => {
+    const o = leer();
+    if (o.resena_url && !/^https?:\/\//i.test(o.resena_url)) { msg($('eMsg'), 'El enlace de reseña debe empezar con https://', 'bad'); return; }
+    const { data, error } = await sb.rpc('mi_config_encuesta', { p: o });
+    if (error) { msg($('eMsg'), 'No se pudo guardar: ' + error.message, 'bad'); return; }
+    CAL.config = data.encuesta; paintCalidad(); msg($('eMsg'), o.activo ? '✅ Guardado. La encuesta está activa.' : '✅ Guardado. La encuesta está apagada.', 'ok');
+  };
 }
 
 // ---------- Conversaciones (bandeja de entrada) ----------

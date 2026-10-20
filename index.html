@@ -75,6 +75,12 @@
   .tile.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset}
   .tile.fixed{cursor:default;opacity:.85}
   .grp{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+  .micw{position:relative;display:block}
+  .micw > input,.micw > textarea{padding-right:46px;width:100%}
+  .mic{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:16px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+  .micw > textarea + .mic{top:8px;transform:none}
+  .mic.on{background:#e11d48;border-color:#e11d48;color:#fff;animation:micp 1s infinite}
+  @keyframes micp{0%{box-shadow:0 0 0 0 rgba(225,29,72,.5)}100%{box-shadow:0 0 0 10px rgba(225,29,72,0)}}
   .grp h3{margin:0 0 2px;font-size:15px}
   .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fbfcfb;position:relative}
   .item .x{position:absolute;top:8px;right:8px;border:0;background:none;cursor:pointer;font-size:16px;color:var(--muted)}
@@ -915,6 +921,7 @@ const STEPS = [
 ];
 
 function render(){
+  stopMic();
   const S = STEPS[step];
   const vis = STEPS.filter(x => !(x.skip && x.skip())), pos = vis.indexOf(S) + 1;
   $('wzStep').textContent = `Paso ${pos} de ${vis.length}`;
@@ -960,6 +967,32 @@ function bindAll(){
   }));
   $('wzBody').querySelectorAll('[data-act]').forEach(el => el.addEventListener('click', () => { msg($('wzMsg'), ''); ACT[el.dataset.act](el); }));
   $('wzBody').addEventListener('input', () => msg($('wzMsg'), ''), { once: true });
+  addMics();
+}
+// 🎤 Dictar respuestas por voz (Chrome, Edge, Android y Safari recientes)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micRec = null, micBtn = null;
+function stopMic(){ try { micRec && micRec.stop(); } catch {} if (micBtn) micBtn.classList.remove('on'); micRec = null; micBtn = null; }
+function addMics(){
+  if (!SR) return;
+  $('wzBody').querySelectorAll('textarea, input:not([type]), input[type="text"]').forEach(el => {
+    if (el.closest('.micw') || /precio|duracion|telefono/.test(el.dataset.f || '') || el.inputMode === 'decimal') return;
+    const w = document.createElement('span'); w.className = 'micw'; el.parentNode.insertBefore(w, el); w.appendChild(el);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mic'; b.title = 'Dictar con tu voz'; b.textContent = '🎤'; w.appendChild(b);
+    b.addEventListener('click', () => {
+      if (micBtn === b) return stopMic();
+      stopMic();
+      const r = new SR(); r.lang = 'es-VE'; r.interimResults = true; r.continuous = true;
+      const base = el.value ? el.value.replace(/\s+$/, '') + ' ' : '';
+      r.onresult = (ev) => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+        t = t.trim(); if (t && (!base || /[.!?]\s*$/.test(base))) t = t.charAt(0).toUpperCase() + t.slice(1);
+        el.value = base + t; el.dispatchEvent(new Event('input', { bubbles: true })); };
+      r.onerror = (ev) => { if (ev.error === 'not-allowed') msg($('wzMsg'), 'Permite el uso del micrófono en tu navegador para dictar.', 'bad'); stopMic(); };
+      r.onend = () => { if (micRec === r) stopMic(); };
+      micRec = r; micBtn = b; b.classList.add('on'); el.focus();
+      try { r.start(); } catch { stopMic(); }
+    });
+  });
 }
 const field = (k, label, opt, attrs = '') => `<label>${label}${opt ? '<span class="opt">(opcional)</span>' : ''}</label><input data-k="${k}" value="${esc(F[k])}" ${attrs}>`;
 const area  = (k, label, opt, ph = '') => `<label>${label}${opt ? '<span class="opt">(opcional)</span>' : ''}</label><textarea data-k="${k}" placeholder="${esc(ph)}">${esc(F[k])}</textarea>`;

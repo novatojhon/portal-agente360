@@ -179,6 +179,15 @@
   .kpis2 div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
   .kpis2 b{display:block;font-size:24px;line-height:1.2}
   .kpis2 span{font-size:12.5px;color:var(--muted)}
+  .ped{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:var(--card)}
+  .ped.alerta{border-color:#f5a623;box-shadow:0 0 0 2px rgba(245,166,35,.25)}
+  .ped .hd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+  .ped .det{white-space:pre-line;margin:8px 0;font-size:14px}
+  .ped .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .ped.fin{opacity:.6}
+  .ped .small{font-size:13px;color:var(--muted);margin-top:2px}
+  .btn.ok{background:var(--ok);color:#fff} .btn.bad{background:var(--bad);color:#fff}
+  .pill.brand{background:var(--brand-soft);color:var(--brand)}
   .stars,.kpis2 .stars{color:#f5a623;letter-spacing:1px}
   .ccm{border-top:1px solid var(--line);padding:10px 0;font-size:14px}
   .ccm:first-child{border-top:0}
@@ -247,6 +256,7 @@
     <button class="tab" data-t="agenda">📅 Agenda</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos</button>
     <button class="tab" data-t="cal">⭐ Calidad</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
@@ -281,6 +291,7 @@
   <section id="tPromo" class="hidden"></section>
   <section id="tMet" class="hidden"></section>
   <section id="tCal" class="hidden"></section>
+  <section id="tPed" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -334,6 +345,7 @@ async function start(){
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   try { const { data: am } = await sb.rpc('admin_modo_actual'); if (am && am.tenant_id) { $('admNeg').textContent = am.negocio; show($('admBar'), true); } } catch {}
+  show($('tabPed'), (data.funciones || []).includes('pedidos'));
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
 }
 
@@ -343,7 +355,8 @@ function openTab(t){
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
   if (t === 'conv') openInbox();
-  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal');
+  show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
+  clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
   if (t === 'cal') loadCalidad();
   if (t === 'agenda') loadAgenda();
   if (t === 'promo') loadPromos();
@@ -607,6 +620,57 @@ function paintMetricas(M){
       <p class="hint" style="margin-top:10px">👤 ${n(M.pasadas_a_humano)} conversación(es) pasaron a una persona · 🤖 ${n(M.respuestas_bot)} respuestas del asistente · 👤 ${n(M.respuestas_humano)} tuyas</p></div>
     ${(M.promos || []).length ? `<div class="card"><h2>Promociones más usadas</h2>${M.promos.map(p => `<p style="margin:6px 0"><span class="kw" style="background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px">${esc(p.clave)}</span> — ${n(p.usos)} ${p.usos === 1 ? 'vez' : 'veces'}</p>`).join('')}</div>` : ''}`;
   $('mD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { metDias = +b.dataset.d; loadMetricas(); });
+}
+
+// ---------- Pedidos (restaurante / tienda) ----------
+let pedTimer = null, PEDS = [];
+async function loadPedidos(silencioso){
+  if (!silencioso) $('tPed').innerHTML = '<div class="card"><p class="hint" style="margin:0">Cargando…</p></div>';
+  const { data, error } = await sb.rpc('mis_pedidos', { p_dias: 2 });
+  if (error) { $('tPed').innerHTML = '<div class="card"><p class="sub">No se pudieron cargar los pedidos: ' + esc(error.message) + '</p></div>'; return; }
+  PEDS = data || []; paintPedidos();
+}
+function paintPedidos(){
+  const $m = (x) => '$' + Number(x || 0).toLocaleString('es', { maximumFractionDigits: 2 });
+  const btn = (n, acc, txt, cls) => `<button class="btn sm ${cls || ''}" data-pn="${n}" data-pa="${acc}">${txt}</button>`;
+  const PILL = { esperando_pago:'warn', pago_por_verificar:'warn', confirmado:'ok', preparando:'brand', en_camino:'brand', listo_retiro:'brand', entregado:'', cancelado:'bad' };
+  const act = PEDS.filter(p => !['entregado','cancelado'].includes(p.estado)), fin = PEDS.filter(p => ['entregado','cancelado'].includes(p.estado));
+  const card = (p) => {
+    const f = ['entregado','cancelado'].includes(p.estado);
+    let b = '';
+    if (!f) {
+      if (p.cancel_solicitada) b += btn(p.numero, 'anular', '❌ Anular (lo pidió el cliente)', 'bad') + btn(p.numero, 'mantener', '👍 Mantener', 'ghost');
+      if (['esperando_pago','pago_por_verificar'].includes(p.estado)) b += btn(p.numero, '1', '💰 Pago recibido', 'ok') + (p.estado === 'pago_por_verificar' ? btn(p.numero, 'no pagó', '⚠️ No llegó el pago', 'ghost') : '');
+      if (p.estado === 'confirmado') b += btn(p.numero, '2', '👨‍🍳 Preparando');
+      if (p.estado === 'preparando') b += btn(p.numero, '3', p.tipo === 'delivery' ? '🛵 Salió' : '🛍️ Listo para retirar');
+      if (['en_camino','listo_retiro'].includes(p.estado)) b += btn(p.numero, 'entregado', '✅ Entregado', 'ok');
+      if (!p.cancel_solicitada) b += btn(p.numero, 'anular', 'Anular', 'ghost');
+    }
+    return `<div class="ped ${p.cancel_solicitada || p.estado === 'pago_por_verificar' ? 'alerta' : ''} ${f ? 'fin' : ''}">
+      <div class="hd"><b>${esc(p.num)} · ${esc(p.cliente || 'Cliente')}</b><span class="pill ${PILL[p.estado] || ''}">${esc(p.estado_txt)}</span></div>
+      <div class="small">${esc(p.hora)} · hace ${p.hace_min} min · ${p.telefono ? '+' + esc(p.telefono) : ''}</div>
+      <div class="det">${esc(p.detalle || '')}</div>
+      <div class="small"><b>Total ${$m(p.total)}</b> · ${esc(p.forma_pago || '')}${p.referencia ? ' · Ref. ' + esc(p.referencia) : ''}</div>
+      <div class="small">${p.tipo === 'delivery' ? '🛵 Delivery: ' + esc([p.zona, p.direccion].filter(Boolean).join(' — ')) : '🛍️ Retira en el local'}${p.notas ? ' · Nota: ' + esc(p.notas) : ''}</div>
+      ${p.cancel_solicitada ? '<div class="note warn" style="margin:8px 0 0">El cliente pidió cancelar este pedido.</div>' : ''}
+      ${b ? `<div class="acts">${b}</div>` : ''}</div>`;
+  };
+  $('tPed').innerHTML = `
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>🛵 Pedidos</h2><p class="sub" style="margin:0">Se actualiza solo cada 20 segundos. Cada botón le avisa al cliente por WhatsApp.</p></div>
+      <button class="btn ghost" id="pRef">Actualizar</button></div>
+      <p class="hint" style="margin:10px 0 0">También puedes hacerlo desde el WhatsApp del negocio: en el chat del cliente reacciona con 👍 (pago recibido), 👨‍🍳 (preparando) o 🛵 (salió).</p></div>
+    <div class="card"><h2>Activos (${act.length})</h2>${act.length ? act.map(card).join('') : '<p class="hint" style="margin:0">No hay pedidos activos ahora.</p>'}</div>
+    ${fin.length ? `<div class="card"><h2>Terminados (últimos 2 días)</h2>${fin.map(card).join('')}</div>` : ''}`;
+  $('pRef').onclick = () => loadPedidos();
+  $('tPed').querySelectorAll('[data-pn]').forEach(b => b.onclick = async () => {
+    if (b.dataset.pa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
+    b.disabled = true;
+    const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.pn, p_accion: b.dataset.pa });
+    if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }
+    try { fetch(CFG.N8N_URL + '/webhook/avisos360-ya', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
+    loadPedidos(true);
+  });
 }
 
 // ---------- Calidad del servicio (encuesta de satisfacción) ----------

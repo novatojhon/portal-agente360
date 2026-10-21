@@ -690,9 +690,10 @@ function paintCalidad(){
   const dist = M.distribucion || {}, maxD = Math.max(1, ...[1,2,3,4,5].map(k => dist[k] || 0));
   const felices = (dist[4] || 0) + (dist[5] || 0), tristes = (dist[1] || 0) + (dist[2] || 0);
   const sem = M.semanas || [];
-  const cuando = (k, o) => `<div><label>${k === 'citas' ? '📅 Después de una cita' : '🛵 Después de un pedido entregado'}</label>
-      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option></select>
-      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'horas'
+  const cuando = (k, o) => `<div><label>${k === 'citas' ? '📅 Después de una cita' : '🛵 Después de un pedido'}</label>
+      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option><option value="inmediato" ${o.modo === 'inmediato' ? 'selected' : ''}>Al instante (para pruebas)</option></select>
+      ${k === 'pedidos' ? `<label class="hint" style="margin-top:8px">¿Desde cuándo?</label><select id="e_pedidos_desde"><option value="pago" ${o.desde !== 'salida' ? 'selected' : ''}>Desde que se confirma el pago</option><option value="salida" ${o.desde === 'salida' ? 'selected' : ''}>Desde que sale el pedido 🛵</option></select>` : ''}
+      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'inmediato' ? `<p class="hint" style="margin:0">⚡ Sale enseguida, a cualquier hora y sin límite por cliente. Úsalo solo para probar.</p>` : o.modo === 'horas'
         ? `<label class="hint">¿Cuántas horas después?</label><input type="number" id="e_${k}_horas" min="1" max="72" value="${o.horas || (k === 'citas' ? 3 : 1)}">`
         : `<label class="hint">¿A qué hora del día siguiente?</label><input type="time" id="e_${k}_hora" value="${esc(o.hora || '10:00')}">`}</div></div>`;
   $('tCal').innerHTML = `
@@ -732,7 +733,7 @@ function paintCalidad(){
   $('cD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { calDias = +b.dataset.d; loadCalidad(); });
   const leer = () => { const o = { activo: $('eAct').checked, texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(), citas: Object.assign({}, ci), pedidos: Object.assign({}, pe) };
     ['citas', 'pedidos'].forEach(k => { if (!$('e_' + k + '_modo')) return; o[k].modo = $('e_' + k + '_modo').value;
-      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
+      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if (k === 'pedidos' && $('e_pedidos_desde')) o[k].desde = $('e_pedidos_desde').value; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
     return o; };
   ['citas', 'pedidos'].forEach(k => { const s = $('e_' + k + '_modo'); if (s) s.onchange = () => { const o = leer(); CAL.config = o; paintCalidad(); }; });
   $('eSave').onclick = async () => {

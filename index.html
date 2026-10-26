@@ -23,8 +23,11 @@
   .bar h1{font-size:16px;margin:0;flex:1;min-width:0}
   .bar small{display:block;color:var(--muted);font-weight:500}
   main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
-  .tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto}
-  .tab{border:1px solid var(--line);background:var(--card);padding:9px 14px;border-radius:999px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);white-space:nowrap}
+  .tabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+  .tab{border:1px solid var(--line);background:var(--card);padding:11px 12px;border-radius:14px;cursor:pointer;font:inherit;font-weight:600;color:var(--ink);white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .tab:hover{border-color:var(--ink)}
+  .tab .bdg{background:#e5484d;color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;padding:0 6px;display:inline-grid;place-items:center}
+  @media (max-width:520px){.tabs{grid-template-columns:repeat(2,1fr)}.tab{white-space:normal;text-align:center;font-size:14px;padding:10px 8px}}
   .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
   .card h2{font-size:18px;margin:0 0 4px}
@@ -117,6 +120,83 @@
   .saved{font-size:12px;color:var(--muted)}
   /* ---------- Conversaciones ---------- */
   main.wide{max-width:1180px}
+  main.xwide{max-width:1360px}
+
+@keyframes o-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes o-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes o-dots{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes o-parcel{0%{transform:translate(0px,0px);opacity:0}8%{opacity:1}86%{opacity:1}100%{transform:translate(190px,110px);opacity:0}}
+@keyframes o-receipt{0%,30%{transform:translateY(8px);opacity:0}45%,80%{transform:translateY(0px);opacity:1}100%{transform:translateY(-6px);opacity:0}}
+@keyframes o-chat{0%,10%{opacity:0}25%,90%{opacity:1}100%{opacity:0}}
+@keyframes o-steam{0%{opacity:0;transform:translateY(4px)}50%{opacity:.9}100%{opacity:0;transform:translateY(-10px)}}
+@keyframes o-spark{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+@keyframes o-sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes o-neon{0%,100%{opacity:1}48%{opacity:1}50%{opacity:.55}52%{opacity:1}}
+@keyframes o-flame{0%,100%{opacity:.6}50%{opacity:1}}
+.ofi-sc .r1{animation:o-bob 3.2s ease-in-out infinite}
+.ofi-sc .r2{animation:o-bob 3.6s ease-in-out -1s infinite}
+.ofi-sc .r3{animation:o-bob 2.8s ease-in-out -.6s infinite}
+.ofi-sc .pin{animation:o-float 2.6s ease-in-out infinite}
+.ofi-sc .p2{animation-delay:-.9s}.ofi-sc .p3{animation-delay:-1.7s}
+.ofi-sc .d1{animation:o-dots 1.1s infinite}.ofi-sc .d2{animation:o-dots 1.1s .18s infinite}.ofi-sc .d3{animation:o-dots 1.1s .36s infinite}
+.ofi-sc .parcel{animation:o-parcel 7.8s linear infinite}
+.ofi-sc .receipt{animation:o-receipt 4s ease-in-out infinite}
+.ofi-sc .b1{animation:o-chat 6s infinite}.ofi-sc .b2{animation:o-chat 6s .8s infinite}.ofi-sc .b3{animation:o-chat 6s 1.6s infinite}.ofi-sc .b4{animation:o-chat 6s 2.4s infinite}
+.ofi-sc .steam{animation:o-steam 2.4s ease-out infinite}
+.ofi-sc .spark{stroke-dasharray:260;animation:o-spark 3s ease-out infinite alternate}
+.ofi-sc .leaf{transform-origin:0 0;animation:o-sway 5s ease-in-out infinite}
+.ofi-sc .neon{animation:o-neon 6s infinite}
+.ofi-sc .flame{animation:o-flame .5s ease-in-out infinite}
+.ofi-sc .glow{filter:drop-shadow(0 0 4px #5ff2ff)}
+@keyframes o-route{0%,35%{transform:translate(0px,0px)}39%{transform:translate(-103.9px,-60px)}43%{transform:translate(-181.9px,15px)}55%{transform:translate(95.3px,175px)}60%,70%{transform:translate(212.2px,107.5px)}75%{transform:translate(95.3px,175px)}87%{transform:translate(-181.9px,15px)}91%{transform:translate(-103.9px,-60px)}95%,100%{transform:translate(0px,0px)}}
+@keyframes o-sit{0%,35%{opacity:1}35.01%,94.99%{opacity:0}95%,100%{opacity:1}}
+@keyframes o-wkB{0%,34.99%{opacity:0}35%,38.99%{opacity:1}39%,90.99%{opacity:0}91%,94.99%{opacity:1}95%,100%{opacity:0}}
+@keyframes o-wkF{0%,38.99%{opacity:0}39%,90.99%{opacity:1}91%,100%{opacity:0}}
+.ofi-sc .sit{animation:o-sit 30s linear infinite}
+.ofi-sc .wkB{opacity:0;animation:o-route 30s linear infinite,o-wkB 30s linear infinite}
+.ofi-sc .wkF{opacity:0;animation:o-route 30s linear infinite,o-wkF 30s linear infinite}
+
+  /* ---------- Oficina en vivo ---------- */
+  .ofi{background:radial-gradient(1100px 650px at 50% 42%,#22305E,#0B1226 70%);color:#EEF2FF;border-radius:20px;padding:16px;margin-bottom:16px;overflow:hidden}
+  .ofi.noche{background:radial-gradient(1100px 650px at 50% 42%,#1B2154,#070A1C 70%)}
+  .ofi a{color:#8ff3c8}
+  .ofi-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .ofi-top .live{width:10px;height:10px;border-radius:50%;background:#22C08A;animation:o-pulse 1.8s infinite;flex:none}
+  @keyframes o-pulse{0%{box-shadow:0 0 0 0 rgba(34,192,138,.55)}70%{box-shadow:0 0 0 10px rgba(34,192,138,0)}100%{box-shadow:0 0 0 0 rgba(34,192,138,0)}}
+  .ofi-top b{font-size:15px}.ofi-top small{color:#A8B3D6;font-size:13px}
+  .ofi-g{display:grid;grid-template-columns:270px minmax(0,1fr) 270px;gap:14px;align-items:start}
+  .ofi-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .ofi-sc{width:100%;aspect-ratio:1060/860;align-self:center}
+  .ofi-sc svg{width:100%;height:100%;display:block}
+  .oc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px}
+  .oc h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:15px}
+  .oc h3 i{width:11px;height:11px;border-radius:50%;display:block;flex:none}
+  .oc h3 span{margin-left:auto;font-size:12px;font-weight:600;color:#A8B3D6}
+  .oc h3 .bdg2{color:#1b1206;background:#F5A25D;border-radius:99px;padding:2px 9px}
+  .oi{background:rgba(255,255,255,.05);border-radius:12px;padding:9px 10px;margin-top:8px;font-size:13px}
+  .oi:first-of-type{margin-top:0}
+  .oi .r{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .oi .s{color:#A8B3D6;font-size:12px;margin-top:2px}
+  .oi .m{font-weight:800;font-size:16px}
+  .oi .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:none}
+  .oi.ch{display:flex;gap:10px;align-items:center}
+  .ob{width:100%;min-height:42px;margin-top:8px;border:0;border-radius:11px;background:#22C08A;color:#06261a;font:inherit;font-weight:800;cursor:pointer}
+  .ob.g{background:transparent;border:1px solid rgba(255,255,255,.22);color:#EEF2FF;font-weight:600}
+  .ob:disabled{opacity:.5}
+  .oe{color:#A8B3D6;font-size:13px;margin:0}
+  .typ{display:inline-flex;gap:3px;margin-left:6px}.typ i{width:5px;height:5px;border-radius:50%;background:#22C08A;animation:o-dots 1.1s infinite}.typ i:nth-child(2){animation-delay:.18s}.typ i:nth-child(3){animation-delay:.36s}
+  .olock{opacity:.75;border-style:dashed}
+  .ofi-tk{margin-top:12px;display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 14px;overflow:hidden}
+  .ofi-tk b{color:#8ff3c8;font-size:12px;flex:none}
+  .ofi-tk .w{overflow:hidden;flex:1}.ofi-tk .w>div{display:flex;gap:36px;width:max-content;animation:o-ticker 45s linear infinite}
+  .ofi-tk span{font-size:13px;color:#D6DCF2;white-space:nowrap}.ofi-tk span em{font-style:normal;color:#A8B3D6;margin-right:6px}
+  @keyframes o-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .ofi .stars{color:#F5C451;letter-spacing:2px}
+  @media (max-width:1100px){.ofi-g{grid-template-columns:1fr 1fr}.ofi-sc{grid-column:1/-1;order:-1}}
+  @media (max-width:640px){.ofi{padding:12px;border-radius:16px}.ofi-g{grid-template-columns:1fr}}
+  @media (max-height:520px) and (orientation:landscape){.ofi-g{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.ofi-sc{grid-column:auto;order:-1;grid-row:span 2}}
+  @media (prefers-reduced-motion:reduce){.ofi *{animation:none!important}}
+
   .inbox{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 190px);min-height:480px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
   .ilist{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
   .ilist .top{padding:12px;border-bottom:1px solid var(--line)}
@@ -251,12 +331,13 @@
 
 <main id="vApp" class="hidden">
   <nav class="tabs">
-    <button class="tab on" data-t="wa">📱 Mi WhatsApp</button>
+    <button class="tab on" data-t="ofi">🏢 Oficina en vivo</button>
+    <button class="tab" data-t="wa">📱 Mi WhatsApp</button>
     <button class="tab" data-t="conv">💬 Conversaciones</button>
-    <button class="tab" data-t="agenda">📅 Agenda</button>
+    <button class="tab" data-t="agenda" id="tabAgenda">📅 Agenda</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="met">📈 Métricas</button>
-    <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos</button>
+    <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos <span class="bdg hidden" id="pedBdg"></span></button>
     <button class="tab" data-t="cal">⭐ Calidad</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
@@ -264,6 +345,7 @@
   <div id="planBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <!-- WHATSAPP -->
+  <section id="tOfi" class="hidden"></section>
   <section id="tWa">
     <div class="card">
       <h2>Estado de mi WhatsApp</h2>
@@ -345,8 +427,15 @@ async function start(){
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   try { const { data: am } = await sb.rpc('admin_modo_actual'); if (am && am.tenant_id) { $('admNeg').textContent = am.negocio; show($('admBar'), true); } } catch {}
-  show($('tabPed'), (data.funciones || []).includes('pedidos'));
+  const fnc = data.funciones || [], vende = fnc.includes('pedidos');
+  show($('tabPed'), vende);
+  // Agenda solo para negocios que agendan citas
+  show($('tabAgenda'), fnc.includes('citas') || !vende);
+  // En comercios, Pedidos va primero y se abre de entrada
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','promo','cal','wa','conv','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
+  if (vende) setInterval(contarPedidos, 30000);
+  openTab('ofi');
 }
 
 // ---------- Pestañas ----------
@@ -354,6 +443,8 @@ function openTab(t){
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
+  $('vApp').classList.toggle('xwide', t === 'ofi');
+  show($('tOfi'), t === 'ofi'); clearInterval(ofiTimer); if (t === 'ofi') { loadOficina(); ofiTimer = setInterval(() => { if (!document.hidden && !$('tOfi').classList.contains('hidden')) loadOficina(true); }, 15000); }
   if (t === 'conv') openInbox();
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
@@ -363,6 +454,429 @@ function openTab(t){
   if (t === 'met') loadMetricas();
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
+
+
+// ---------- Oficina en vivo ----------
+let ofiTimer = null, OFI = null, ofiKey = '';
+const OFI_N = {
+  tienda: { escritorio: 'RECEPCIÓN', mostrador: 'CAJA', pos: '$', c1: '#22C08A', c2: '#F08A3C', c3: '#3D8BFF', pin2: '$', pin3: 'M-9 -4 L0 -9 L9 -4 L0 1 Z M-9 -4 V6 L0 11 V1 M9 -4 V6 L0 11',
+    pT: '#e8c793', pL: '#d1a86f', pR: '#bb935c', etiqueta: 'ENVÍOS', floor: 'floorT', wallA: '#F4EFE7', wallB: '#E8E1D5', neon: '#E8833A',
+    z1: 'Recepción', z2: 'Caja', z3: 'Despacho' },
+  restaurante: { escritorio: 'PEDIDOS', mostrador: 'CAJA', pos: '$', c1: '#C0392B', c2: '#E5484D', c3: '#F08A3C', pin2: '$', pin3: 'M0 -10 C6 -4 8 0 6 5 C4 10 -4 10 -6 5 C-8 0 -4 -2 -2 -6 C-1 -2 1 -1 0 -10Z',
+    pT: '#E5484D', pL: '#C0392B', pR: '#A93226', etiqueta: 'DELIVERY', floor: 'floorR', wallA: '#F7EBDD', wallB: '#EDDDCB', neon: '#E5484D',
+    z1: 'Pedidos', z2: 'Caja', z3: 'Cocina' },
+  clinica: { escritorio: 'RECEPCIÓN', mostrador: 'CITAS', pos: '', c1: '#8E6BD9', c2: '#1BA39C', c3: '#3D8BFF', pin2: '+', pin3: 'M-6 -9 v7 a6 6 0 0 0 12 0 v-7 M0 4 v3 a5 5 0 0 0 10 0 v-2',
+    pT: '#e8c793', pL: '#d1a86f', pR: '#bb935c', etiqueta: '', floor: 'floorC', wallA: '#EFF6F6', wallB: '#E2ECEE', neon: '#1BA39C',
+    z1: 'Recepción', z2: 'Citas nuevas', z3: 'Hoy en consulta' }
+};
+function ofiN(D){
+  const tipo = D.tipo, n0 = OFI_N[tipo] || OFI_N.tienda, K = D.kpi || {};
+  return Object.assign({}, n0, {
+    letrero: String(D.negocio || '').toUpperCase().slice(0, 24),
+    alt: 'Oficina de ' + (D.negocio || 'tu negocio') + ' con tu equipo virtual trabajando',
+    pos: tipo === 'clinica' ? (((D.citas_hoy || [])[0] || {}).hora || '') : ((D.pagos || [])[0] ? D.pagos[0].total : n0.pos),
+    k1: String(K.mensajes ?? 0), l1: 'mensajes',
+    k2: String(tipo === 'clinica' ? (K.citas ?? 0) : (K.ventas ?? 0)), l2: tipo === 'clinica' ? 'citas hoy' : (tipo === 'restaurante' ? 'pedidos' : 'ventas'),
+    k3: tipo === 'clinica' ? String(K.citas_nuevas ?? 0) : (K.total || '$0'), l3: tipo === 'clinica' ? 'nuevas' : (K.total_bs || 'vendido hoy')
+  });
+}
+function ofiEscena(D){
+  const tipo = D.tipo, noche = D.noche;
+  const n = ofiN(D);
+  const v = { tienda: tipo === 'tienda' ? 'inline' : 'none', rest: tipo === 'restaurante' ? 'inline' : 'none', clin: tipo === 'clinica' ? 'inline' : 'none', envios: tipo === 'clinica' ? 'none' : 'inline' };
+  const t = noche ? {
+    floorId: 'floorN', skyId: 'skyN', grout: 'rgba(255,255,255,.05)', wallA: '#2E3558', wallB: '#262C4C', base: '#1C2240',
+    frame: '#4A3E3A', mount: '#1A2440', city: '#232B4A', neonBlur: '6px', stars: 1,
+    wood: '#6E5340', woodL: '#5A4333', woodR: '#4C392B', rug: '#4A4060', counterT: '#E4E8F0', counterL: '#C9CFDA', counterR: '#B6BDCA',
+    deskT: '#E4E8F0', deskL: '#C9CFDA', deskR: '#B6BDCA'
+  } : {
+    floorId: n.floor, skyId: 'skyD', grout: 'rgba(0,0,0,.06)', wallA: n.wallA, wallB: n.wallB, base: '#CFC5B4',
+    frame: '#8A6E52', mount: '#5E8A6A', city: '#7E8CA8', neonBlur: '0px', stars: 0,
+    wood: '#B88A5A', woodL: '#9C7247', woodR: '#8A633D', rug: '#D9CDB8', counterT: '#FFFFFF', counterL: '#E9EDF3', counterR: '#D3D9E3',
+    deskT: '#FFFFFF', deskL: '#E7EBF2', deskR: '#D2D8E2'
+  };
+  const est = (D.estantes || []).filter(Boolean);
+  n.icono = /^[a-z]+$/.test(D.icono || '') ? D.icono : 'regalo';
+  n.e1 = String(est[0] || 'Novedades').toUpperCase().slice(0, 16); n.e2 = String(est[1] || 'Productos').toUpperCase().slice(0, 16); n.e3 = String(est[2] || 'Ofertas').toUpperCase().slice(0, 16);
+  t.plate = noche ? '#3A4472' : '#1F2A44';
+  for (const k in n) if (typeof n[k] === 'string' && k !== 'pin3') n[k] = esc(n[k]);
+  return `<svg viewBox="-385 -255 1060 860" width="100%" height="100%" style="display: block" role="img" aria-label="${n.alt}">
+<defs>
+<linearGradient id="floorT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDBF94"></stop><stop offset="1" stop-color="#C9A574"></stop></linearGradient>
+<linearGradient id="floorR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D98B62"></stop><stop offset="1" stop-color="#C2714A"></stop></linearGradient>
+<linearGradient id="floorC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E4ECF2"></stop><stop offset="1" stop-color="#CFDCE6"></stop></linearGradient>
+<linearGradient id="floorN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5A4A62"></stop><stop offset="1" stop-color="#3E3452"></stop></linearGradient>
+<linearGradient id="skyD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DBDEB"></stop><stop offset="1" stop-color="#E3F2FB"></stop></linearGradient>
+<linearGradient id="skyN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1230"></stop><stop offset="1" stop-color="#2A2F5E"></stop></linearGradient>
+<pattern id="belt" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#2b3245"></rect><rect width="8" height="16" fill="#353d52"><animate attributeName="x" from="0" to="16" dur="0.6s" repeatCount="indefinite"></animate></rect></pattern>
+<pattern id="tiles" width="20" height="12" patternUnits="userSpaceOnUse"><rect width="20" height="12" fill="#FFFFFF"></rect><rect x="0" y="0" width="20" height="12" fill="none" stroke="#dfe4ea" stroke-width="1.5"></rect></pattern>
+<radialGradient id="lamp" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFD98A" stop-opacity=".55"></stop><stop offset="1" stop-color="#FFD98A" stop-opacity="0"></stop></radialGradient>
+
+<g id="pp-headset">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="currentColor"></rect>
+<path d="M-7 -76 L0 -67 L7 -76 Z" fill="#ffffff" opacity=".85"></path>
+<rect x="6" y="-62" width="9" height="5" rx="1" fill="#ffffff"></rect>
+<g><rect x="-28" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="-23" cy="-43" r="5" fill="#E8B48F"></circle><animateTransform attributeName="transform" type="rotate" values="0 -23 -72;-16 -23 -72;0 -23 -72" dur="1s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="23" cy="-43" r="5" fill="#E8B48F"></circle><animateTransform attributeName="transform" type="rotate" values="0 23 -72;16 23 -72;0 23 -72" dur="1s" begin=".5s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#E0A982"></rect>
+<ellipse cx="19" cy="-94" rx="7" ry="13" fill="#4A2E22"></ellipse>
+<circle cx="0" cy="-99" r="19" fill="#E8B48F"></circle>
+<path d="M-20 -99 C-21 -126 21 -126 20 -99 C14 -112 -4 -116 -20 -99Z" fill="#4A2E22"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.9;.95;1" dur="4s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.9;.95;1" dur="4s" repeatCount="indefinite"></animate></ellipse>
+<circle cx="-12" cy="-90" r="3" fill="#F29B9B" opacity=".55"></circle><circle cx="12" cy="-90" r="3" fill="#F29B9B" opacity=".55"></circle>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#8a4b3a" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<path d="M-20 -101 A20 20 0 0 1 20 -101" stroke="#2a2f3d" stroke-width="3" fill="none"></path>
+<rect x="-24" y="-106" width="7" height="12" rx="3" fill="#2a2f3d"></rect>
+<path d="M-21 -96 Q-19 -85 -9 -86" stroke="#2a2f3d" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+</g>
+
+<g id="pp-cap">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="#3B4258"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="#3B4258"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect>
+<rect x="-20" y="-77" width="40" height="47" rx="13" fill="currentColor"></rect>
+<path d="M-7 -77 L0 -68 L7 -77 Z" fill="#ffffff" opacity=".85"></path>
+<g><rect x="-29" y="-75" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="-24" cy="-44" r="5" fill="#C98E68"></circle><animateTransform attributeName="transform" type="rotate" values="0 -24 -73;-18 -24 -73;0 -24 -73" dur="1.3s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="19" y="-75" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="24" cy="-44" r="5" fill="#C98E68"></circle></g>
+<rect x="-5" y="-84" width="10" height="9" fill="#B97E5A"></rect>
+<circle cx="0" cy="-100" r="19" fill="#C98E68"></circle>
+<path d="M-19 -102 C-19 -122 19 -122 19 -102 Z" fill="currentColor"></path>
+<path d="M2 -103 L28 -103 Q30 -99 26 -98 L2 -98 Z" fill="currentColor"></path>
+<rect x="-19" y="-105" width="38" height="4" fill="#ffffff" opacity=".35"></rect>
+<ellipse cx="-7" cy="-96" rx="2.3" ry="2.9" fill="#24160f"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.88;.93;1" dur="4.6s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-96" rx="2.3" ry="2.9" fill="#24160f"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.88;.93;1" dur="4.6s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-6 -88 Q0 -83 6 -88" stroke="#6b3a28" stroke-width="2" fill="none" stroke-linecap="round"></path>
+</g>
+
+<g id="pp-chef">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect>
+<rect x="-21" y="-78" width="42" height="50" rx="13" fill="#F8F8F6"></rect>
+<circle cx="-6" cy="-62" r="2" fill="#c9ccd2"></circle><circle cx="6" cy="-62" r="2" fill="#c9ccd2"></circle><circle cx="-6" cy="-50" r="2" fill="#c9ccd2"></circle><circle cx="6" cy="-50" r="2" fill="#c9ccd2"></circle>
+<path d="M-9 -78 L0 -68 L9 -78 Z" fill="currentColor"></path>
+<g><rect x="-30" y="-76" width="10" height="30" rx="5" fill="#F8F8F6"></rect><circle cx="-25" cy="-45" r="5" fill="#F1C7A4"></circle><animateTransform attributeName="transform" type="rotate" values="0 -25 -74;-28 -25 -74;0 -25 -74" dur=".8s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="20" y="-76" width="10" height="30" rx="5" fill="#F8F8F6"></rect><circle cx="25" cy="-45" r="5" fill="#F1C7A4"></circle></g>
+<rect x="-5" y="-85" width="10" height="9" fill="#E3B48F"></rect>
+<circle cx="0" cy="-101" r="19" fill="#F1C7A4"></circle>
+<path d="M-15 -112 h30 v-6 h-30 z" fill="#F8F8F6"></path>
+<circle cx="-11" cy="-127" r="10" fill="#FFFFFF"></circle><circle cx="0" cy="-131" r="11" fill="#FFFFFF"></circle><circle cx="11" cy="-127" r="10" fill="#FFFFFF"></circle>
+<rect x="-15" y="-126" width="30" height="16" fill="#FFFFFF"></rect>
+<path d="M-13 -96 Q-7 -92 -1 -95 Q5 -92 11 -96" stroke="#3a2a22" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+<ellipse cx="-7" cy="-101" rx="2.2" ry="2.8" fill="#2a1d18"><animate attributeName="ry" values="2.8;2.8;.4;2.8" keyTimes="0;.9;.95;1" dur="3.8s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-101" rx="2.2" ry="2.8" fill="#2a1d18"><animate attributeName="ry" values="2.8;2.8;.4;2.8" keyTimes="0;.9;.95;1" dur="3.8s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-4 -88 Q0 -85 4 -88" stroke="#8a4b3a" stroke-width="2" fill="none" stroke-linecap="round"></path>
+</g>
+
+<g id="pp-apron">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="#2E3446"></rect>
+<path d="M-13 -66 h26 v34 a6 6 0 0 1 -6 6 h-14 a6 6 0 0 1 -6 -6z" fill="currentColor"></path>
+<path d="M-13 -66 L-9 -76 M13 -66 L9 -76" stroke="currentColor" stroke-width="3"></path>
+<g><rect x="-28" y="-74" width="10" height="30" rx="5" fill="#2E3446"></rect><circle cx="-23" cy="-43" r="5" fill="#8D5A3C"></circle><animateTransform attributeName="transform" type="rotate" values="0 -23 -72;-14 -23 -72;0 -23 -72" dur="1.1s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="30" rx="5" fill="#2E3446"></rect><circle cx="23" cy="-43" r="5" fill="#8D5A3C"></circle></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#7B4C32"></rect>
+<circle cx="0" cy="-99" r="19" fill="#8D5A3C"></circle>
+<circle cx="0" cy="-123" r="9" fill="#1d1410"></circle>
+<path d="M-20 -99 C-21 -124 21 -124 20 -99 C12 -110 -10 -112 -20 -99Z" fill="#1d1410"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#120c09"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.86;.91;1" dur="4.4s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#120c09"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.86;.91;1" dur="4.4s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#4a2a1c" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<circle cx="-12" cy="-90" r="3" fill="#E07A6A" opacity=".45"></circle><circle cx="12" cy="-90" r="3" fill="#E07A6A" opacity=".45"></circle>
+</g>
+
+<g id="pp-scrubs">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="currentColor"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="currentColor"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="currentColor"></rect>
+<path d="M-8 -76 L0 -64 L8 -76 Z" fill="#F0C2A0"></path>
+<rect x="5" y="-60" width="9" height="8" rx="2" fill="#ffffff" opacity=".7"></rect>
+<g><rect x="-28" y="-74" width="10" height="24" rx="5" fill="currentColor"></rect><rect x="-27" y="-54" width="8" height="12" rx="4" fill="#F0C2A0"></rect><animateTransform attributeName="transform" type="rotate" values="0 -23 -72;-12 -23 -72;0 -23 -72" dur="1.2s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="24" rx="5" fill="currentColor"></rect><rect x="19" y="-54" width="8" height="12" rx="4" fill="#F0C2A0"></rect></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#E3AE8A"></rect>
+<ellipse cx="-17" cy="-92" rx="6" ry="14" fill="#C2783A"></ellipse>
+<circle cx="0" cy="-99" r="19" fill="#F0C2A0"></circle>
+<path d="M-20 -99 C-21 -126 21 -126 20 -99 C10 -114 -8 -112 -20 -99Z" fill="#C2783A"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.92;.96;1" dur="5s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.92;.96;1" dur="5s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#8a4b3a" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<circle cx="-12" cy="-90" r="3" fill="#F29B9B" opacity=".55"></circle><circle cx="12" cy="-90" r="3" fill="#F29B9B" opacity=".55"></circle>
+</g>
+
+<g id="pp-doctor">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect>
+<rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect>
+<rect x="-21" y="-78" width="42" height="56" rx="12" fill="#FFFFFF"></rect>
+<path d="M-7 -78 h14 v30 h-14z" fill="currentColor"></path>
+<path d="M-7 -78 L-3 -64 L-11 -70 Z M7 -78 L3 -64 L11 -70 Z" fill="#e6e9ef"></path>
+<path d="M-9 -76 Q-12 -58 -2 -54 Q6 -52 9 -62" stroke="#59606f" stroke-width="2.5" fill="none"></path><circle cx="9" cy="-62" r="3.5" fill="#9aa3b5"></circle>
+<g><rect x="-30" y="-76" width="10" height="32" rx="5" fill="#FFFFFF"></rect><circle cx="-25" cy="-43" r="5" fill="#8D5A3C"></circle></g>
+<g><rect x="20" y="-76" width="10" height="32" rx="5" fill="#FFFFFF"></rect><circle cx="25" cy="-43" r="5" fill="#8D5A3C"></circle><animateTransform attributeName="transform" type="rotate" values="0 25 -74;-24 25 -74;0 25 -74" dur="2.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-5" y="-85" width="10" height="9" fill="#7B4C32"></rect>
+<circle cx="0" cy="-101" r="19" fill="#8D5A3C"></circle>
+<path d="M-19 -103 C-19 -122 19 -122 19 -103 C12 -112 -12 -112 -19 -103Z" fill="#1d1410"></path>
+<rect x="-14" y="-104" width="11" height="8" rx="3" fill="none" stroke="#1d1410" stroke-width="2"></rect><rect x="3" y="-104" width="11" height="8" rx="3" fill="none" stroke="#1d1410" stroke-width="2"></rect><line x1="-3" y1="-100" x2="3" y2="-100" stroke="#1d1410" stroke-width="2"></line>
+<ellipse cx="-8" cy="-100" rx="2" ry="2.5" fill="#120c09"></ellipse><ellipse cx="8" cy="-100" rx="2" ry="2.5" fill="#120c09"></ellipse>
+<path d="M-5 -90 Q0 -86 5 -90" stroke="#4a2a1c" stroke-width="2" fill="none" stroke-linecap="round"></path>
+</g>
+<g id="ic-reloj" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="0" cy="0" r="6"></circle><path d="M-4 -6 V-11 H4 V-6 M-4 6 V11 H4 V6 M0 -3 V0 L2 2"></path></g>
+<g id="ic-lentes" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="-6" cy="1" r="4.5"></circle><circle cx="6" cy="1" r="4.5"></circle><path d="M-1.5 0 Q0 -2 1.5 0 M-10.5 0 L-12 -4 M10.5 0 L12 -4"></path></g>
+<g id="ic-zapato" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-11 6 V-4 Q-8 -5 -5 -1 L1 2 Q9 2 11 5 V7 H-11 Z M-5 -1 L-3 -3 M-2 1 L0 -1"></path></g>
+<g id="ic-ropa" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-4 -9 L-11 -5 L-8 0 L-6 -1 V9 H6 V-1 L8 0 L11 -5 L4 -9 Q0 -6 -4 -9 Z"></path></g>
+<g id="ic-celular" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="-5" y="-10" width="10" height="20" rx="2"></rect><path d="M-1.5 7 H1.5"></path></g>
+<g id="ic-perfume" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="-6" y="-3" width="12" height="12" rx="3"></rect><path d="M-2 -3 V-7 H2 V-3 M-3 -9 H3"></path></g>
+<g id="ic-joya" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-7 -3 L-3 -8 H3 L7 -3 L0 7 Z M-7 -3 H7"></path></g>
+<g id="ic-bolso" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="-8" y="-3" width="16" height="11" rx="2"></rect><path d="M-4 -3 Q-4 -9 0 -9 Q4 -9 4 -3"></path></g>
+<g id="ic-repuesto" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="0" cy="0" r="3.5"></circle><path d="M0 -9 V-6 M0 6 V9 M-9 0 H-6 M6 0 H9 M-6.4 -6.4 L-4.2 -4.2 M4.2 4.2 L6.4 6.4 M-6.4 6.4 L-4.2 4.2 M4.2 -4.2 L6.4 -6.4"></path></g>
+<g id="ic-libro" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-9 -8 H-2 Q0 -8 0 -6 V9 Q0 7 -2 7 H-9 Z M9 -8 H2 Q0 -8 0 -6 V9 Q0 7 2 7 H9 Z"></path></g>
+<g id="ic-regalo" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-8 -3 H8 V9 H-8 Z M-9 -7 H9 V-3 H-9 Z M0 -7 V9 M0 -7 Q-6 -12 -6 -8 Q-5 -7 0 -7 Q5 -7 6 -8 Q6 -12 0 -7"></path></g>
+<g id="pp-walk">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<g><rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="-16 -7 -32;16 -7 -32;-16 -7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="16 7 -32;-16 7 -32;16 7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="currentColor"></rect>
+<path d="M-7 -76 L0 -67 L7 -76 Z" fill="#ffffff" opacity=".85"></path>
+<g><rect x="-28" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="-23" cy="-43" r="5" fill="#E8B48F"></circle><animateTransform attributeName="transform" type="rotate" values="14 -23 -72;-14 -23 -72;14 -23 -72" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="23" cy="-43" r="5" fill="#E8B48F"></circle><rect x="20" y="-50" width="10" height="13" rx="1.5" fill="#ffffff" stroke="#cfd5e0"></rect></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#E0A982"></rect>
+<ellipse cx="19" cy="-94" rx="7" ry="13" fill="#4A2E22"></ellipse>
+<circle cx="0" cy="-99" r="19" fill="#E8B48F"></circle>
+<path d="M-20 -99 C-21 -126 21 -126 20 -99 C14 -112 -4 -116 -20 -99Z" fill="#4A2E22"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"></ellipse><ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"></ellipse>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#8a4b3a" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<path d="M-20 -101 A20 20 0 0 1 20 -101" stroke="#2a2f3d" stroke-width="3" fill="none"></path>
+<rect x="-24" y="-106" width="7" height="12" rx="3" fill="#2a2f3d"></rect>
+</g>
+</defs>
+
+<rect x="0" y="0" width="760" height="420" fill="url(#${t.floorId})" transform="matrix(0.866 0.5 -0.866 0.5 0 0)"></rect>
+<line x1="82.3" y1="47.5" x2="-281.4" y2="257.5" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="164.5" y1="95.0" x2="-199.2" y2="305.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="246.8" y1="142.5" x2="-116.9" y2="352.5" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="329.1" y1="190.0" x2="-34.6" y2="400.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="411.4" y1="237.5" x2="47.6" y2="447.5" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="493.6" y1="285.0" x2="129.9" y2="495.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="575.9" y1="332.5" x2="212.2" y2="542.5" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="-72.7" y1="42.0" x2="585.4" y2="422.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="-145.5" y1="84.0" x2="512.7" y2="464.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="-218.2" y1="126.0" x2="439.9" y2="506.0" stroke="${t.grout}" stroke-width="1"></line>
+<line x1="-291.0" y1="168.0" x2="367.2" y2="548.0" stroke="${t.grout}" stroke-width="1"></line>
+<rect x="0" y="-240" width="760" height="240" fill="${t.wallA}" transform="matrix(0.866 0.5 0 1 0 0)"></rect>
+<rect x="0" y="-240" width="420" height="240" fill="${t.wallB}" transform="matrix(-0.866 0.5 0 1 0 0)"></rect>
+<rect x="0" y="-10" width="760" height="10" fill="${t.base}" transform="matrix(0.866 0.5 0 1 0 0)"></rect>
+<rect x="0" y="-10" width="420" height="10" fill="${t.base}" transform="matrix(-0.866 0.5 0 1 0 0)"></rect>
+
+<g transform="matrix(0.866 0.5 0 1 0 0)">
+<rect x="40" y="-200" width="250" height="122" rx="6" fill="${t.frame}"></rect>
+<rect x="47" y="-193" width="236" height="108" rx="3" fill="url(#${t.skyId})"></rect>
+<g opacity="${t.stars}"><circle cx="250" cy="-172" r="9" fill="#F6E7B0"></circle><circle cx="90" cy="-178" r="1.4" fill="#fff"></circle><circle cx="130" cy="-168" r="1.2" fill="#fff"></circle><circle cx="196" cy="-182" r="1.3" fill="#fff"></circle><circle cx="160" cy="-186" r="1" fill="#fff"></circle></g>
+<path d="M47 -120 L80 -150 L105 -138 L140 -162 L175 -140 L210 -158 L245 -136 L283 -150 L283 -85 L47 -85 Z" fill="${t.mount}"></path>
+<path d="M47 -100 h18 v-22 h14 v22 h10 v-34 h16 v34 h12 v-14 h20 v14 h14 v-28 h12 v28 h16 v-18 h18 v18 h12 v-40 h16 v40 h14 v-22 h18 v22 h21 v15 h-236 Z" fill="${t.city}"></path>
+<g opacity="${t.stars}" fill="#FFD98A"><rect x="70" y="-112" width="3" height="3"></rect><rect x="96" y="-126" width="3" height="3"></rect><rect x="140" y="-104" width="3" height="3"></rect><rect x="186" y="-118" width="3" height="3"></rect><rect x="232" y="-130" width="3" height="3"></rect><rect x="256" y="-106" width="3" height="3"></rect></g>
+<rect x="47" y="-139" width="236" height="3" fill="${t.frame}"></rect>
+<rect x="163" y="-193" width="4" height="108" fill="${t.frame}"></rect>
+<text x="165" y="-212" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" font-size="17" fill="${n.neon}" class="neon" letter-spacing="1" style="filter: drop-shadow(0 0 ${t.neonBlur} ${n.neon})">${n.letrero}</text>
+<circle cx="340" cy="-170" r="18" fill="#fff" stroke="${t.frame}" stroke-width="3"></circle>
+<line x1="340" y1="-170" x2="340" y2="-182" stroke="#222" stroke-width="2"></line>
+<line x1="340" y1="-170" x2="349" y2="-166" stroke="#222" stroke-width="2"><animateTransform attributeName="transform" type="rotate" from="0 340 -170" to="360 340 -170" dur="60s" repeatCount="indefinite"></animateTransform></line>
+</g>
+
+<g display="${v.tienda}">
+<rect x="470" y="0" width="270" height="30" fill="${t.wood}" transform="matrix(0.866 0.5 -0.866 0.5 0 -186)"></rect><rect x="470" y="-186" width="270" height="6" fill="${t.woodL}" transform="matrix(0.866 0.5 0 1 -26.0 15.0)"></rect><rect x="0" y="-186" width="30" height="6" fill="${t.woodR}" transform="matrix(-0.866 0.5 0 1 640.8 370.0)"></rect>
+<rect x="480" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -206)"></rect><rect x="480" y="-206" width="30" height="20" fill="#2d5b8a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-206" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 441.7 255.0)"></rect>
+<rect x="530" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -206)"></rect><rect x="530" y="-206" width="30" height="20" fill="#3d6b5a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-206" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 485.0 280.0)"></rect>
+<rect x="580" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -206)"></rect><rect x="580" y="-206" width="30" height="20" fill="#1f2a44" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-206" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 528.3 305.0)"></rect>
+<rect x="630" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -206)"></rect><rect x="630" y="-206" width="30" height="20" fill="#8a2f2f" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-206" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 571.6 330.0)"></rect>
+<rect x="680" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -206)"></rect><rect x="680" y="-206" width="30" height="20" fill="#c49a3a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-206" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 614.9 355.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -22.5 13.0)"><use href="#ic-${n.icono}" transform="translate(495 -196) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(545 -196) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(595 -196) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(645 -196) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(695 -196) scale(0.62)"></use></g>
+<g transform="matrix(0.866 0.5 0 1 0 0)"><rect x="478" y="-223" width="92" height="13" rx="3" fill="${t.plate}"></rect><text x="524" y="-213.5" text-anchor="middle" font-family="Sora, sans-serif" font-weight="700" font-size="8.5" fill="#fff">${n.e1}</text></g>
+<rect x="470" y="0" width="270" height="30" fill="${t.wood}" transform="matrix(0.866 0.5 -0.866 0.5 0 -136)"></rect><rect x="470" y="-136" width="270" height="6" fill="${t.woodL}" transform="matrix(0.866 0.5 0 1 -26.0 15.0)"></rect><rect x="0" y="-136" width="30" height="6" fill="${t.woodR}" transform="matrix(-0.866 0.5 0 1 640.8 370.0)"></rect>
+<rect x="480" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -156)"></rect><rect x="480" y="-156" width="30" height="20" fill="#c49a3a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-156" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 441.7 255.0)"></rect>
+<rect x="530" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -156)"></rect><rect x="530" y="-156" width="30" height="20" fill="#2d5b8a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-156" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 485.0 280.0)"></rect>
+<rect x="580" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -156)"></rect><rect x="580" y="-156" width="30" height="20" fill="#3d6b5a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-156" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 528.3 305.0)"></rect>
+<rect x="630" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -156)"></rect><rect x="630" y="-156" width="30" height="20" fill="#1f2a44" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-156" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 571.6 330.0)"></rect>
+<rect x="680" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -156)"></rect><rect x="680" y="-156" width="30" height="20" fill="#8a2f2f" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-156" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 614.9 355.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -22.5 13.0)"><use href="#ic-${n.icono}" transform="translate(495 -146) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(545 -146) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(595 -146) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(645 -146) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(695 -146) scale(0.62)"></use></g>
+<g transform="matrix(0.866 0.5 0 1 0 0)"><rect x="478" y="-173" width="92" height="13" rx="3" fill="${t.plate}"></rect><text x="524" y="-163.5" text-anchor="middle" font-family="Sora, sans-serif" font-weight="700" font-size="8.5" fill="#fff">${n.e2}</text></g>
+<rect x="470" y="0" width="270" height="30" fill="${t.wood}" transform="matrix(0.866 0.5 -0.866 0.5 0 -86)"></rect><rect x="470" y="-86" width="270" height="6" fill="${t.woodL}" transform="matrix(0.866 0.5 0 1 -26.0 15.0)"></rect><rect x="0" y="-86" width="30" height="6" fill="${t.woodR}" transform="matrix(-0.866 0.5 0 1 640.8 370.0)"></rect>
+<rect x="480" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -106)"></rect><rect x="480" y="-106" width="30" height="20" fill="#8a2f2f" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-106" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 441.7 255.0)"></rect>
+<rect x="530" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -106)"></rect><rect x="530" y="-106" width="30" height="20" fill="#c49a3a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-106" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 485.0 280.0)"></rect>
+<rect x="580" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -106)"></rect><rect x="580" y="-106" width="30" height="20" fill="#2d5b8a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-106" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 528.3 305.0)"></rect>
+<rect x="630" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -106)"></rect><rect x="630" y="-106" width="30" height="20" fill="#3d6b5a" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-106" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 571.6 330.0)"></rect>
+<rect x="680" y="4" width="30" height="22" fill="#efe9dc" transform="matrix(0.866 0.5 -0.866 0.5 0 -106)"></rect><rect x="680" y="-106" width="30" height="20" fill="#1f2a44" transform="matrix(0.866 0.5 0 1 -22.5 13.0)"></rect><rect x="4" y="-106" width="22" height="20" fill="#d8d0bf" transform="matrix(-0.866 0.5 0 1 614.9 355.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -22.5 13.0)"><use href="#ic-${n.icono}" transform="translate(495 -96) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(545 -96) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(595 -96) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(645 -96) scale(0.62)"></use><use href="#ic-${n.icono}" transform="translate(695 -96) scale(0.62)"></use></g>
+<g transform="matrix(0.866 0.5 0 1 0 0)"><rect x="478" y="-123" width="92" height="13" rx="3" fill="${t.plate}"></rect><text x="524" y="-113.5" text-anchor="middle" font-family="Sora, sans-serif" font-weight="700" font-size="8.5" fill="#fff">${n.e3}</text></g>
+</g>
+
+<g display="${v.rest}">
+<g transform="matrix(0.866 0.5 0 1 0 0)"><rect x="480" y="-175" width="260" height="105" fill="url(#tiles)"></rect></g>
+<rect x="520" y="0" width="180" height="44" fill="#c9ced6" transform="matrix(0.866 0.5 -0.866 0.5 0 -196)"></rect><rect x="520" y="-196" width="180" height="26" fill="#aeb4be" transform="matrix(0.866 0.5 0 1 -38.1 22.0)"></rect><rect x="0" y="-196" width="44" height="26" fill="#9aa1ac" transform="matrix(-0.866 0.5 0 1 606.2 350.0)"></rect>
+<rect x="500" y="6" width="220" height="70" fill="#d4d9e0" transform="matrix(0.866 0.5 -0.866 0.5 0 -70)"></rect><rect x="500" y="-70" width="220" height="70" fill="#b8bec8" transform="matrix(0.866 0.5 0 1 -65.8 38.0)"></rect><rect x="6" y="-70" width="70" height="70" fill="#a3aab5" transform="matrix(-0.866 0.5 0 1 623.5 360.0)"></rect>
+<g transform="matrix(0.866 0.5 -0.866 0.5 0 -70)"><rect x="500" y="6" width="220" height="70" fill="#3a3f4a"></rect><circle cx="545" cy="41" r="16" fill="#1f232b"></circle><circle cx="610" cy="41" r="16" fill="#1f232b"></circle><circle cx="675" cy="41" r="16" fill="#1f232b"></circle><circle cx="545" cy="41" r="10" fill="none" stroke="#FF7A2F" stroke-width="3" class="flame"></circle><circle cx="610" cy="41" r="10" fill="none" stroke="#FF7A2F" stroke-width="3" class="flame"></circle><circle cx="675" cy="41" r="10" fill="none" stroke="#FF7A2F" stroke-width="3" class="flame"></circle></g>
+<rect x="530" y="26" width="30" height="30" fill="#c6ccd6" transform="matrix(0.866 0.5 -0.866 0.5 0 -96)"></rect><rect x="530" y="-96" width="30" height="26" fill="#9da4b0" transform="matrix(0.866 0.5 0 1 -48.5 28.0)"></rect><rect x="26" y="-96" width="30" height="26" fill="#8a919d" transform="matrix(-0.866 0.5 0 1 485.0 280.0)"></rect>
+<rect x="660" y="26" width="30" height="30" fill="#2f343e" transform="matrix(0.866 0.5 -0.866 0.5 0 -88)"></rect><rect x="660" y="-88" width="30" height="18" fill="#22262e" transform="matrix(0.866 0.5 0 1 -48.5 28.0)"></rect><rect x="26" y="-88" width="30" height="18" fill="#1a1d24" transform="matrix(-0.866 0.5 0 1 597.5 345.0)"></rect>
+<path class="steam" d="M436.5 193.0 q-4 -7 0 -14 q4 -7 0 -14" stroke="#c9d1de" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+<path class="steam" d="M549.0 258.0 q-4 -7 0 -14 q4 -7 0 -14" stroke="#c9d1de" stroke-width="2.5" fill="none" stroke-linecap="round" style="animation-delay: -1.1s"></path>
+<g transform="matrix(0.866 0.5 0 1 -65.8 38.0)"><rect x="505" y="-58" width="210" height="16" rx="3" fill="#C0392B"></rect><text x="610" y="-46" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" font-size="11" fill="#fff" letter-spacing="2">COCINA</text></g>
+</g>
+
+<g display="${v.clin}">
+<rect x="520" y="0" width="200" height="34" fill="#F4F7FA" transform="matrix(0.866 0.5 -0.866 0.5 0 -190)"></rect><rect x="520" y="-190" width="200" height="190" fill="#E6ECF2" transform="matrix(0.866 0.5 0 1 -29.4 17.0)"></rect><rect x="0" y="-190" width="34" height="190" fill="#D5DDE6" transform="matrix(-0.866 0.5 0 1 623.5 360.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -29.4 17.0)"><rect x="528" y="-182" width="90" height="110" rx="3" fill="#cfe3ea" stroke="#b9cdd6"></rect><rect x="622" y="-182" width="90" height="110" rx="3" fill="#cfe3ea" stroke="#b9cdd6"></rect><rect x="540" y="-160" width="20" height="12" fill="#fff"></rect><rect x="566" y="-160" width="20" height="12" fill="#fff"></rect><rect x="640" y="-160" width="20" height="12" fill="#fff"></rect><rect x="680" y="-126" width="20" height="12" fill="#fff"></rect><rect x="545" y="-126" width="20" height="12" fill="#fff"></rect><rect x="528" y="-64" width="184" height="56" rx="3" fill="#E6ECF2" stroke="#cdd6df"></rect><path d="M612 -48 h8 v-8 h8 v8 h8 v8 h-8 v8 h-8 v-8 h-8z" fill="#E5484D"></path></g>
+<g transform="matrix(0.866 0.5 0 1 0 0)"><rect x="380" y="-172" width="76" height="172" rx="3" fill="#FFFFFF" stroke="#cfd8e2" stroke-width="3"></rect><rect x="388" y="-160" width="60" height="18" rx="3" fill="#1BA39C"></rect><text x="418" y="-147" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" font-size="8" fill="#fff">CONSULTORIO 1</text><circle cx="446" cy="-86" r="3.5" fill="#9aa3b5"></circle></g>
+</g>
+
+<g transform="matrix(0.866 -0.5 0 1 -346.4 200.0)">
+<rect x="0" y="-214" width="232" height="126" rx="8" fill="#0d1424" stroke="#2c3550" stroke-width="4"></rect>
+<text x="16" y="-188" font-family="Sora, sans-serif" font-weight="700" font-size="13" fill="#8ff3c8">HOY · EN VIVO</text>
+<text x="16" y="-150" font-family="Sora, sans-serif" font-weight="800" font-size="30" fill="#ffffff" data-k="k1">${n.k1}</text><text x="16" y="-134" font-family="Inter, sans-serif" font-size="10" fill="#9fb0d8" data-k="l1">${n.l1}</text>
+<text x="88" y="-150" font-family="Sora, sans-serif" font-weight="800" font-size="30" fill="#ffffff" data-k="k2">${n.k2}</text><text x="88" y="-134" font-family="Inter, sans-serif" font-size="10" fill="#9fb0d8" data-k="l2">${n.l2}</text>
+<text x="140" y="-150" font-family="Sora, sans-serif" font-weight="800" font-size="30" fill="#5ff2ff" data-k="k3">${n.k3}</text><text x="140" y="-134" font-family="Inter, sans-serif" font-size="10" fill="#9fb0d8" data-k="l3">${n.l3}</text>
+<polyline class="spark" points="16,-102 46,-110 76,-106 106,-118 136,-114 166,-126 214,-122" fill="none" stroke="#22C08A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+</g>
+
+<rect x="30" y="200" width="260" height="200" fill="${t.rug}" transform="matrix(0.866 0.5 -0.866 0.5 0 0)" rx="22"></rect>
+
+<g transform="translate(281.4 232.5)"><g class="r2">
+<use href="#pp-cap" color="#F08A3C" display="${v.tienda}"></use>
+<use href="#pp-apron" color="#E5484D" display="${v.rest}"></use>
+<use href="#pp-scrubs" color="#1BA39C" display="${v.clin}"></use>
+</g></g>
+<rect x="320" y="110" width="170" height="60" fill="${t.counterT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -72)"></rect><rect x="320" y="-72" width="170" height="72" fill="${t.counterL}" transform="matrix(0.866 0.5 0 1 -147.2 85.0)"></rect><rect x="110" y="-72" width="60" height="72" fill="${t.counterR}" transform="matrix(-0.866 0.5 0 1 424.3 245.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -147.2 85.0)"><rect x="335" y="-58" width="140" height="22" rx="4" fill="${n.c2}"></rect><text x="405" y="-42" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" font-size="13" fill="#fff" letter-spacing="2">${n.mostrador}</text></g>
+<rect x="420" y="125" width="34" height="26" fill="#2b3245" transform="matrix(0.866 0.5 -0.866 0.5 0 -78)"></rect><rect x="420" y="-78" width="34" height="6" fill="#1c2233" transform="matrix(0.866 0.5 0 1 -130.8 75.5)"></rect><rect x="125" y="-78" width="26" height="6" fill="#151a28" transform="matrix(-0.866 0.5 0 1 393.2 227.0)"></rect>
+<rect x="426" y="128" width="22" height="6" fill="#2b3245" transform="matrix(0.866 0.5 -0.866 0.5 0 -104)"></rect><rect x="426" y="-104" width="22" height="26" fill="#0d1424" transform="matrix(0.866 0.5 0 1 -116.0 67.0)"></rect><rect x="128" y="-104" width="6" height="26" fill="#151a28" transform="matrix(-0.866 0.5 0 1 388.0 224.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -116.0 67.0)"><rect x="428" y="-102" width="18" height="22" rx="2" fill="#5ff2ff" class="glow"></rect><text x="437" y="-87" text-anchor="middle" font-family="Sora" font-weight="800" font-size="8" fill="#0d1424" data-k="pos">${n.pos}</text></g>
+<g class="receipt"><rect x="270.2" y="182.0" width="13" height="26" rx="2" fill="#ffffff" stroke="#d5dae4"></rect><line x1="273.2" y1="188.0" x2="280.2" y2="188.0" stroke="#9aa3b5"></line><line x1="273.2" y1="194.0" x2="280.2" y2="194.0" stroke="#9aa3b5"></line><line x1="273.2" y1="200.0" x2="278.2" y2="200.0" stroke="#9aa3b5"></line></g>
+
+<g transform="translate(-56.3 182.5)"><g class="sit"><g class="r1"><use href="#pp-headset" color="${n.c1}"></use></g></g></g>
+<g transform="translate(-56.3 182.5)"><g class="wk wkB"><use href="#pp-walk" color="${n.c1}"></use></g></g>
+<rect x="70" y="250" width="190" height="70" fill="${t.deskT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -72)"></rect><rect x="70" y="-72" width="190" height="72" fill="${t.deskL}" transform="matrix(0.866 0.5 0 1 -277.1 160.0)"></rect><rect x="250" y="-72" width="70" height="72" fill="${t.deskR}" transform="matrix(-0.866 0.5 0 1 225.2 130.0)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -277.1 160.0)"><rect x="90" y="-58" width="150" height="22" rx="4" fill="${n.c1}"></rect><text x="165" y="-42" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" font-size="13" fill="#fff" letter-spacing="2">${n.escritorio}</text></g>
+<rect x="222" y="266" width="10" height="10" fill="#2b3245" transform="matrix(0.866 0.5 -0.866 0.5 0 -82)"></rect><rect x="222" y="-82" width="10" height="10" fill="#1c2233" transform="matrix(0.866 0.5 0 1 -239.0 138.0)"></rect><rect x="266" y="-82" width="10" height="10" fill="#151a28" transform="matrix(-0.866 0.5 0 1 200.9 116.0)"></rect>
+<rect x="218" y="248" width="6" height="52" fill="#20273a" transform="matrix(0.866 0.5 -0.866 0.5 0 -142)"></rect><rect x="218" y="-142" width="6" height="60" fill="#151a28" transform="matrix(0.866 0.5 0 1 -259.8 150.0)"></rect><rect x="248" y="-142" width="52" height="60" fill="#0d1424" transform="matrix(-0.866 0.5 0 1 194.0 112.0)"></rect>
+<g transform="matrix(0.866 -0.5 0 1 -65.8 262.0)"><rect x="3" y="-139" width="46" height="54" rx="3" fill="#0F1A2E"></rect><rect class="b1" x="7" y="-133" width="26" height="9" rx="4" fill="#ffffff"></rect><rect class="b2" x="18" y="-120" width="27" height="9" rx="4" fill="#25D366"></rect><rect class="b3" x="7" y="-107" width="30" height="9" rx="4" fill="#ffffff"></rect><rect class="b4" x="22" y="-94" width="23" height="6" rx="3" fill="#25D366"></rect></g>
+<rect x="150" y="272" width="46" height="20" fill="#d6dbe6" transform="matrix(0.866 0.5 -0.866 0.5 0 -75)"></rect><rect x="150" y="-75" width="46" height="3" fill="#aab2c3" transform="matrix(0.866 0.5 0 1 -252.9 146.0)"></rect><rect x="272" y="-75" width="20" height="3" fill="#c2c9d6" transform="matrix(-0.866 0.5 0 1 169.7 98.0)"></rect>
+<rect x="92" y="262" width="12" height="12" fill="#ffffff" transform="matrix(0.866 0.5 -0.866 0.5 0 -86)"></rect><rect x="92" y="-86" width="12" height="14" fill="#e2e6ee" transform="matrix(0.866 0.5 0 1 -237.3 137.0)"></rect><rect x="262" y="-86" width="12" height="14" fill="#cfd5e0" transform="matrix(-0.866 0.5 0 1 90.1 52.0)"></rect>
+<path class="steam" d="M-147.2 93.0 q-4 -6 0 -12 q4 -6 0 -12" stroke="#b9c2d3" stroke-width="2" fill="none" stroke-linecap="round"></path>
+
+<g transform="translate(331.7 423.5)"><g class="r3">
+<use href="#pp-cap" color="#3D8BFF" display="${v.tienda}"></use>
+<use href="#pp-chef" color="#C0392B" display="${v.rest}"></use>
+<use href="#pp-doctor" color="#3D8BFF" display="${v.clin}"></use>
+</g></g>
+
+<g display="${v.envios}">
+<rect x="480" y="270" width="8" height="8" fill="#9aa3b5" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="480" y="-34" width="8" height="34" fill="#7d8698" transform="matrix(0.866 0.5 0 1 -240.7 139.0)"></rect><rect x="270" y="-34" width="8" height="34" fill="#6b7486" transform="matrix(-0.866 0.5 0 1 422.6 244.0)"></rect>
+<rect x="480" y="312" width="8" height="8" fill="#9aa3b5" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="480" y="-34" width="8" height="34" fill="#7d8698" transform="matrix(0.866 0.5 0 1 -277.1 160.0)"></rect><rect x="312" y="-34" width="8" height="34" fill="#6b7486" transform="matrix(-0.866 0.5 0 1 422.6 244.0)"></rect>
+<rect x="724" y="270" width="8" height="8" fill="#9aa3b5" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="724" y="-34" width="8" height="34" fill="#7d8698" transform="matrix(0.866 0.5 0 1 -240.7 139.0)"></rect><rect x="270" y="-34" width="8" height="34" fill="#6b7486" transform="matrix(-0.866 0.5 0 1 633.9 366.0)"></rect>
+<rect x="724" y="312" width="8" height="8" fill="#9aa3b5" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="724" y="-34" width="8" height="34" fill="#7d8698" transform="matrix(0.866 0.5 0 1 -277.1 160.0)"></rect><rect x="312" y="-34" width="8" height="34" fill="#6b7486" transform="matrix(-0.866 0.5 0 1 633.9 366.0)"></rect>
+<rect x="470" y="265" width="270" height="60" fill="url(#belt)" transform="matrix(0.866 0.5 -0.866 0.5 0 -44)"></rect><rect x="470" y="-44" width="270" height="10" fill="#3a4256" transform="matrix(0.866 0.5 0 1 -281.4 162.5)"></rect><rect x="265" y="-44" width="60" height="10" fill="#2c3344" transform="matrix(-0.866 0.5 0 1 640.8 370.0)"></rect>
+<g class="parcel" style="animation-delay: 0s"><rect x="478" y="280" width="30" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="478" y="-66" width="30" height="22" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -268.5 155.0)"></rect><rect x="280" y="-66" width="30" height="22" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 439.9 254.0)"></rect></g>
+<g class="parcel" style="animation-delay: -2.6s"><rect x="478" y="280" width="30" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="478" y="-66" width="30" height="22" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -268.5 155.0)"></rect><rect x="280" y="-66" width="30" height="22" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 439.9 254.0)"></rect></g>
+<g class="parcel" style="animation-delay: -5.2s"><rect x="478" y="280" width="30" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="478" y="-66" width="30" height="22" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -268.5 155.0)"></rect><rect x="280" y="-66" width="30" height="22" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 439.9 254.0)"></rect></g>
+<rect x="700" y="350" width="46" height="40" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="700" y="-34" width="46" height="34" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -337.7 195.0)"></rect><rect x="350" y="-34" width="40" height="34" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 646.0 373.0)"></rect>
+<rect x="705" y="355" width="36" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -60)"></rect><rect x="705" y="-60" width="36" height="26" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -333.4 192.5)"></rect><rect x="355" y="-60" width="30" height="26" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 641.7 370.5)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -337.7 195.0)"><rect x="708" y="-26" width="34" height="10" fill="#fff"></rect><text x="725" y="-18" text-anchor="middle" font-family="Sora" font-weight="800" font-size="7" fill="#c0392b">${n.etiqueta}</text></g>
+</g>
+
+<g display="${v.clin}">
+<rect x="480" y="282" width="46" height="6" fill="#1BA39C" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="480" y="-66" width="46" height="40" fill="#178C86" transform="matrix(0.866 0.5 0 1 -249.4 144.0)"></rect><rect x="282" y="-66" width="6" height="40" fill="#13786f" transform="matrix(-0.866 0.5 0 1 455.5 263.0)"></rect>
+<rect x="480" y="282" width="46" height="40" fill="#22B8B0" transform="matrix(0.866 0.5 -0.866 0.5 0 -26)"></rect><rect x="480" y="-26" width="46" height="26" fill="#1A9A93" transform="matrix(0.866 0.5 0 1 -278.9 161.0)"></rect><rect x="282" y="-26" width="40" height="26" fill="#168780" transform="matrix(-0.866 0.5 0 1 455.5 263.0)"></rect>
+<rect x="540" y="282" width="46" height="6" fill="#1BA39C" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="540" y="-66" width="46" height="40" fill="#178C86" transform="matrix(0.866 0.5 0 1 -249.4 144.0)"></rect><rect x="282" y="-66" width="6" height="40" fill="#13786f" transform="matrix(-0.866 0.5 0 1 507.5 293.0)"></rect>
+<rect x="540" y="282" width="46" height="40" fill="#22B8B0" transform="matrix(0.866 0.5 -0.866 0.5 0 -26)"></rect><rect x="540" y="-26" width="46" height="26" fill="#1A9A93" transform="matrix(0.866 0.5 0 1 -278.9 161.0)"></rect><rect x="282" y="-26" width="40" height="26" fill="#168780" transform="matrix(-0.866 0.5 0 1 507.5 293.0)"></rect>
+<rect x="600" y="282" width="46" height="6" fill="#1BA39C" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="600" y="-66" width="46" height="40" fill="#178C86" transform="matrix(0.866 0.5 0 1 -249.4 144.0)"></rect><rect x="282" y="-66" width="6" height="40" fill="#13786f" transform="matrix(-0.866 0.5 0 1 559.4 323.0)"></rect>
+<rect x="600" y="282" width="46" height="40" fill="#22B8B0" transform="matrix(0.866 0.5 -0.866 0.5 0 -26)"></rect><rect x="600" y="-26" width="46" height="26" fill="#1A9A93" transform="matrix(0.866 0.5 0 1 -278.9 161.0)"></rect><rect x="282" y="-26" width="40" height="26" fill="#168780" transform="matrix(-0.866 0.5 0 1 559.4 323.0)"></rect>
+<rect x="660" y="282" width="46" height="6" fill="#1BA39C" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="660" y="-66" width="46" height="40" fill="#178C86" transform="matrix(0.866 0.5 0 1 -249.4 144.0)"></rect><rect x="282" y="-66" width="6" height="40" fill="#13786f" transform="matrix(-0.866 0.5 0 1 611.4 353.0)"></rect>
+<rect x="660" y="282" width="46" height="40" fill="#22B8B0" transform="matrix(0.866 0.5 -0.866 0.5 0 -26)"></rect><rect x="660" y="-26" width="46" height="26" fill="#1A9A93" transform="matrix(0.866 0.5 0 1 -278.9 161.0)"></rect><rect x="282" y="-26" width="40" height="26" fill="#168780" transform="matrix(-0.866 0.5 0 1 611.4 353.0)"></rect>
+</g>
+
+<rect x="14" y="366" width="40" height="40" fill="#e8e2d6" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="14" y="-34" width="40" height="34" fill="#cfc6b5" transform="matrix(0.866 0.5 0 1 -351.6 203.0)"></rect><rect x="366" y="-34" width="40" height="34" fill="#bdb3a1" transform="matrix(-0.866 0.5 0 1 46.8 27.0)"></rect>
+<g transform="translate(-304.8 176.0)"><g class="leaf"><path d="M0 0 C-30 -20 -28 -60 -6 -70 C-2 -40 4 -20 0 0Z" fill="#2f8f5b"></path><path d="M0 0 C26 -14 34 -52 14 -66 C6 -38 2 -18 0 0Z" fill="#3aa86b"></path><path d="M0 0 C-8 -30 0 -70 4 -86 C14 -60 10 -26 0 0Z" fill="#27794c"></path></g></g>
+
+<g transform="translate(-56.3 182.5)"><g class="wk wkF"><use href="#pp-walk" color="${n.c1}"></use></g></g>
+<g opacity="${t.stars}">
+<ellipse cx="-40" cy="190" rx="190" ry="110" fill="url(#lamp)"></ellipse>
+<ellipse cx="300" cy="230" rx="170" ry="100" fill="url(#lamp)"></ellipse>
+<ellipse cx="360" cy="400" rx="200" ry="110" fill="url(#lamp)"></ellipse>
+</g>
+
+<g transform="translate(-56.3 40.5)"><g class="pin p1"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c1}"></path><circle cx="-8" cy="0" r="3" fill="#fff" class="d1"></circle><circle cx="0" cy="0" r="3" fill="#fff" class="d2"></circle><circle cx="8" cy="0" r="3" fill="#fff" class="d3"></circle></g></g>
+<g transform="translate(281.4 90.5)"><g class="pin p2"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c2}"></path><text x="0" y="6" text-anchor="middle" font-family="Sora" font-weight="800" font-size="17" fill="#fff">${n.pin2}</text></g></g>
+<g transform="translate(331.7 268.5)"><g class="pin p3"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c3}"></path><path d="${n.pin3}" stroke="#fff" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></g></g>
+</svg>`;
+}
+async function loadOficina(silencioso){
+  if (!silencioso && !OFI) $('tOfi').innerHTML = '<div class="ofi"><p class="oe">Abriendo la oficina…</p></div>';
+  const { data, error } = await sb.rpc('mi_oficina');
+  if (error || !data || !data.ok) { $('tOfi').innerHTML = '<div class="card"><p class="sub">No se pudo abrir la oficina' + (error ? ': ' + esc(error.message) : '') + '.</p></div>'; return; }
+  OFI = data; paintOficina();
+}
+function paintOficina(){
+  const D = OFI, N = OFI_N[D.tipo] || OFI_N.tienda, plan = PLAN && PLAN.plan, premium = plan === 'premium';
+  const bot = esc(D.bot);
+  // escena: solo se vuelve a dibujar si cambia algo que se ve en ella
+  const key = JSON.stringify([D.tipo, D.noche, D.negocio, D.icono, D.estantes]);
+  const chats = (D.chats || []).map((c, i) => `<div class="oi ch"><span class="av" style="background:${['#2F6FD1','#D9622B','#7A4FD1','#1BA39C'][i % 4]}">${esc(c.ini)}</span>
+      <div style="min-width:0;flex:1"><div style="font-weight:600;display:flex;align-items:center">${esc(c.nombre)}${c.escribe ? '<span class="typ"><i></i><i></i><i></i></span>' : ''}<span class="s" style="margin:0 0 0 auto">${c.hace < 1 ? 'ahora' : c.hace < 60 ? 'hace ' + c.hace + ' min' : 'hace ' + Math.round(c.hace / 60) + ' h'}</span></div>
+      <div class="s" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.quien === 'asistente' ? bot + ': ' : ''}${esc(c.texto)}</div></div></div>`).join('')
+    || '<p class="oe">Sin chats en las últimas 24 horas.</p>';
+  let z2 = '', z3 = '';
+  if (D.tipo === 'clinica') {
+    z2 = (D.citas_nuevas || []).map(c => `<div class="oi"><div class="r"><b>${esc(c.nombre)}</b><span class="s">${esc(c.cuando)}</span></div><div class="s">${esc(c.servicio)}${c.prof ? ' · ' + esc(c.prof) : ''}</div></div>`).join('') || '<p class="oe">Sin citas nuevas en las últimas 24 horas.</p>';
+    z3 = (D.citas_hoy || []).map(c => `<div class="oi"><div class="r"><b>${esc(c.hora)} · ${esc(c.nombre)}</b><span class="s">${esc(c.estado)}</span></div><div class="s">${esc(c.servicio)}</div></div>`).join('') || '<p class="oe">No hay citas para hoy.</p>';
+  } else if (D.vende) {
+    z2 = (D.pagos || []).map(p => `<div class="oi"><div class="r"><b>${esc(p.num)} · ${esc(p.nombre)}</b><span class="m">${esc(p.total)}</span></div>
+        <div class="s">${esc(p.pago)}${p.bs ? ' · ' + esc(p.bs) : ''}${p.ref ? ' · ref. ' + esc(p.ref) : ''}</div>
+        <button class="ob" data-on="${p.numero}" data-oa="1">Pago recibido</button></div>`).join('') || '<p class="oe">Sin pagos por verificar ✅</p>';
+    z3 = (D.despacho || []).map(p => `<div class="oi"><div class="r"><b>${esc(p.num)} · ${esc(p.nombre)}</b><span class="s">${esc(p.estado)}</span></div>
+        <div class="s">${esc(p.detalle || '')}${p.tipo === 'delivery' && p.zona ? ' · ' + esc(p.zona) : ''}${p.tipo === 'envio' ? ' · envío nacional' : ''}</div>
+        ${p.cancel ? `<div class="s" style="color:#F5A25D">El cliente pidió cancelar</div><button class="ob" data-on="${p.numero}" data-oa="anular" style="background:#E5484D;color:#fff">Anular</button><button class="ob g" data-on="${p.numero}" data-oa="mantener">Mantener</button>`
+                   : `<button class="ob g" data-on="${p.numero}" data-oa="${p.accion}">${esc(p.boton)}</button>`}</div>`).join('') || '<p class="oe">Nada en curso ahora.</p>';
+  }
+  const bloqueado = (txt) => `<div class="oc olock"><p class="oe">🔒 ${txt}</p></div>`;
+  const tieneZonas = D.tipo === 'clinica' ? D.citas : D.vende;
+  const cal = D.calidad || {}, dor = D.dormias || {};
+  const calCard = premium
+    ? `<div class="oc"><h3>⭐ Así te califican<span>7 días</span></h3>${cal.n ? `<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:30px">${String(cal.promedio).replace('.', ',')}</b><span class="stars">★★★★★</span></div><div class="s" style="color:#A8B3D6;font-size:12px">${cal.n} encuesta${cal.n === 1 ? '' : 's'}</div>${cal.comentario ? `<div style="font-size:13px;margin-top:8px;color:#D6DCF2">"${esc(cal.comentario)}" <span style="color:#A8B3D6">— ${esc(cal.quien || '')}</span></div>` : ''}` : '<p class="oe">Todavía no hay encuestas respondidas esta semana.</p>'}</div>`
+    : bloqueado('Con el plan Premium ves aquí cómo te califican tus clientes.');
+  const dorCard = D.noche && (dor.chats || dor.pedidos || dor.citas)
+    ? `<div class="oc" style="background:linear-gradient(135deg,#2A2F6B,#1B1F45);border-color:rgba(245,196,81,.35)"><h3 style="color:#F5C451">🌙 Mientras dormías</h3><div style="font-size:13px;line-height:1.5">Desde las ${esc(dor.desde)} tu equipo atendió <b>${dor.chats} chat${dor.chats === 1 ? '' : 's'}</b>${D.tipo === 'clinica' ? ` y agendó <b>${dor.citas} cita${dor.citas === 1 ? '' : 's'}</b>` : dor.pedidos ? ` y tomó <b>${dor.pedidos} pedido${dor.pedidos === 1 ? '' : 's'}</b> por <b>${esc(dor.total)}</b>` : ''}.</div></div>` : '';
+  const feed = (D.feed || []).map(f => `<span><em>${esc(f.h)}</em>${esc(f.txt)}</span>`).join('');
+  const top = `<span class="live"></span><b>Tu equipo virtual está trabajando</b><small>${esc(D.negocio)} · ${D.abierto ? 'abierto' : 'cerrado'} · ${esc(D.hora)} · ${D.chats_hora} chat${D.chats_hora === 1 ? '' : 's'} en la última hora</small>`;
+  const left = `<div class="oc"><h3><i style="background:${N.c1}"></i>${N.z1}<span>${(D.chats || []).length} reciente${(D.chats || []).length === 1 ? '' : 's'}</span></h3>${chats}</div>${calCard}${dorCard}`;
+  const right = tieneZonas ? `<div class="oc"><h3><i style="background:${N.c2}"></i>${N.z2}${(D.pagos || []).length ? `<span class="bdg2">${D.pagos.length} por verificar</span>` : ''}</h3>${z2}</div>
+        <div class="oc"><h3><i style="background:${N.c3}"></i>${N.z3}<span>${D.tipo === 'clinica' ? (D.citas_hoy || []).length : (D.despacho || []).length} en curso</span></h3>${z3}</div>`
+        : bloqueado('Con el plan Pro, aquí ves tus ' + (D.tipo === 'clinica' ? 'citas' : 'pedidos y pagos') + ' en vivo y los manejas con un toque.');
+  const tk = feed ? `<b>EN VIVO</b><div class="w"><div>${feed}${feed}</div></div>` : '';
+  // la escena y la cinta no se vuelven a crear si no cambiaron (así no se reinician las animaciones)
+  if (!$('ofiSc') || key !== ofiKey) {
+    $('tOfi').innerHTML = `<div class="ofi ${D.noche ? 'noche' : ''}" id="ofiBox"><div class="ofi-top" id="ofiTop">${top}</div>
+      <div class="ofi-g"><div class="ofi-col" id="ofiL">${left}</div><div class="ofi-sc" id="ofiSc"></div><div class="ofi-col" id="ofiR">${right}</div></div>
+      <div class="ofi-tk" id="ofiTk" style="${tk ? '' : 'display:none'}">${tk}</div></div>`;
+    $('ofiSc').innerHTML = ofiEscena(D); ofiKey = key; $('ofiTk').dataset.f = feed;
+  } else {
+    $('ofiTop').innerHTML = top; $('ofiL').innerHTML = left; $('ofiR').innerHTML = right;
+    const nn = ofiN(D); $('ofiSc').querySelectorAll('[data-k]').forEach(el => { const v = nn[el.dataset.k]; if (v != null && el.textContent !== String(v)) el.textContent = String(v); });
+    if ($('ofiTk').dataset.f !== feed) { $('ofiTk').innerHTML = tk; $('ofiTk').style.display = tk ? '' : 'none'; $('ofiTk').dataset.f = feed; }
+  }
+  $('tOfi').querySelectorAll('[data-on]').forEach(b => b.onclick = async () => {
+    if (b.dataset.oa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
+    b.disabled = true;
+    const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.on, p_accion: b.dataset.oa });
+    if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }
+    try { fetch(CFG.N8N_URL + '/webhook/avisos360-ya', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
+    loadOficina(true);
+  });
+}
 
 // ---------- WhatsApp (estado + QR vía n8n) ----------
 async function callWa(accion){
@@ -623,12 +1137,75 @@ function paintMetricas(M){
 }
 
 // ---------- Pedidos (restaurante / tienda) ----------
-let pedTimer = null, PEDS = [];
+function paintBadge(){
+  const n = PEDS.filter(p => !['entregado','cancelado'].includes(p.estado)).length, b = $('pedBdg');
+  if (b) { b.textContent = n; show(b, n > 0); }
+}
+async function contarPedidos(){
+  if (!$('tPed').classList.contains('hidden')) return;
+  try { const { data } = await sb.rpc('mis_pedidos', { p_dias: 2 }); PEDS = data || []; paintBadge(); } catch {}
+}
+let pedTimer = null, PEDS = [], DLV = null, dlvAbierto = false;
 async function loadPedidos(silencioso){
   if (!silencioso) $('tPed').innerHTML = '<div class="card"><p class="hint" style="margin:0">Cargando…</p></div>';
   const { data, error } = await sb.rpc('mis_pedidos', { p_dias: 2 });
   if (error) { $('tPed').innerHTML = '<div class="card"><p class="sub">No se pudieron cargar los pedidos: ' + esc(error.message) + '</p></div>'; return; }
-  PEDS = data || []; paintPedidos();
+  PEDS = data || []; paintBadge();
+  if (!DLV) { const r = await sb.rpc('mi_delivery'); DLV = (r.data && r.data.ok) ? r.data : null; }
+  if (silencioso && dlvAbierto) return;
+  paintPedidos();
+}
+function tasaCard(){
+  if (!DLV) return '';
+  const t = DLV.tasa ? String(Number(DLV.tasa).toFixed(2)).replace('.', ',') : '';
+  return `<div class="card"><h2>💱 Tasa del día</h2>
+    <p class="sub" style="margin:0 0 8px">1 $ = Bs ${t || '—'} ${DLV.tasa_at ? '· actualizada ' + esc(DLV.tasa_at) : '· <b>sin tasa</b> (los pedidos no muestran bolívares)'}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="tTasa" inputmode="decimal" placeholder="Ej.: 39,50" value="${t}" style="max-width:160px"><button class="btn" id="tSave">Guardar tasa</button></div>
+    <p class="hint" style="margin-top:6px">También puedes escribir en el WhatsApp del negocio, en "Mensaje para mí": <b>tasa 39,50</b></p><div id="tMsg" class="note hidden"></div></div>`;
+}
+function dlvCard(){
+  if (!DLV) return '';
+  const D = DLV, zon = (D.zonas && D.zonas.length) ? D.zonas : [{ nombre: '', costo: '', minutos: '' }];
+  const res = D.modo === 'gratis' ? 'Gratis' : D.modo === 'fijo' ? 'Tarifa fija $' + (D.costo || 0) : 'Por zonas (' + (D.zonas || []).length + ')' + (D.otras != null ? ' · otras $' + D.otras : '');
+  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>⚙️ Delivery</h2><p class="sub" style="margin:0">Costo del delivery: <b>${esc(res)}</b></p></div>
+      <button class="btn ghost" id="dTog">${dlvAbierto ? 'Cerrar' : 'Configurar'}</button></div>
+    ${dlvAbierto ? `<div style="margin-top:12px">
+      <label>¿Cómo cobras el delivery?</label>
+      <div class="chips" id="dModo">${[['gratis','Gratis'],['fijo','Tarifa fija'],['zonas','Por zonas']].map(([k, t]) => `<button type="button" class="chip ${D.modo === k ? 'on' : ''}" data-m="${k}">${t}</button>`).join('')}</div>
+      ${D.modo === 'fijo' ? `<label style="margin-top:12px">Costo fijo ($)</label><input id="dCosto" type="number" min="0" step="0.5" value="${D.costo ?? ''}">` : ''}
+      ${D.modo === 'zonas' ? `<label style="margin-top:12px">Zonas (nombre · costo $ · minutos de envío)</label>
+        <div id="dZonas">${zon.map((z, i) => `<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-top:6px"><input placeholder="Ej.: Chacao" data-zn="${i}" value="${esc(z.nombre || '')}"><input type="number" min="0" step="0.5" placeholder="$" data-zc="${i}" value="${z.costo ?? ''}"><input type="number" min="0" placeholder="min" data-zm="${i}" value="${z.minutos ?? ''}"><button type="button" class="btn sm ghost" data-zx="${i}">✕</button></div>`).join('')}</div>
+        <button type="button" class="btn sm ghost" id="dAdd" style="margin-top:8px">+ Agregar zona</button>
+        <label style="margin-top:12px">Otras zonas ($) <span class="hint">(déjalo vacío si NO entregas fuera de tus zonas)</span></label><input id="dOtras" type="number" min="0" step="0.5" value="${D.otras ?? ''}">` : ''}
+      ${D.modo !== 'zonas' ? `<label style="margin-top:12px">Minutos de envío</label><input id="dMin" type="number" min="0" value="${D.minutos ?? 15}">` : ''}
+      <label style="margin-top:12px">Minutos de preparación de un pedido</label><input id="dPrep" type="number" min="0" value="${D.preparacion ?? 20}">
+      <label class="sw" style="margin-top:12px"><input type="checkbox" id="dRet" ${D.retiro !== false ? 'checked' : ''}> También se puede retirar en el local</label>
+      <div style="margin-top:14px"><button class="btn" id="dSave">Guardar</button></div><div id="dMsg" class="note hidden"></div></div>` : ''}</div>`;
+}
+function dlvLeer(){
+  const D = DLV, o = { modo: D.modo, retiro: $('dRet') ? $('dRet').checked : D.retiro, preparacion: $('dPrep') ? $('dPrep').value : D.preparacion };
+  if ($('dCosto')) o.costo = $('dCosto').value; else o.costo = D.costo;
+  if ($('dMin')) o.minutos = $('dMin').value; else o.minutos = D.minutos;
+  if (D.modo === 'zonas') { o.otras = $('dOtras') ? $('dOtras').value : D.otras;
+    o.zonas = [...document.querySelectorAll('[data-zn]')].map(el => { const i = el.dataset.zn; return { nombre: el.value.trim(), costo: document.querySelector(`[data-zc="${i}"]`).value, minutos: document.querySelector(`[data-zm="${i}"]`).value }; }).filter(z => z.nombre); }
+  return o;
+}
+function dlvBind(){
+  if (!$('dTog')) return;
+  $('dTog').onclick = () => { dlvAbierto = !dlvAbierto; paintPedidos(); };
+  if (!dlvAbierto) return;
+  const guardarLocal = () => { const o = dlvLeer(); DLV = Object.assign({}, DLV, o, { costo: o.costo === '' ? null : o.costo, otras: o.otras === '' ? null : o.otras }); if (o.zonas) DLV.zonas = o.zonas; };
+  $('dModo').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { guardarLocal(); DLV.modo = b.dataset.m; paintPedidos(); });
+  if ($('dAdd')) $('dAdd').onclick = () => { guardarLocal(); DLV.zonas = (DLV.zonas || []).concat([{ nombre: '', costo: '', minutos: '' }]); paintPedidos(); };
+  document.querySelectorAll('[data-zx]').forEach(b => b.onclick = () => { guardarLocal(); DLV.zonas = (DLV.zonas || []).filter((_, i) => i !== +b.dataset.zx); paintPedidos(); });
+  $('dSave').onclick = async () => {
+    const o = dlvLeer();
+    if (o.modo === 'zonas' && !(o.zonas || []).length && (o.otras === '' || o.otras == null)) { msg($('dMsg'), 'Agrega al menos una zona o un costo para "otras zonas".', 'bad'); return; }
+    const { data, error } = await sb.rpc('mi_config_delivery', { p: o });
+    if (error) { msg($('dMsg'), 'No se pudo guardar: ' + error.message, 'bad'); return; }
+    DLV = data; dlvAbierto = false; paintPedidos();
+  };
 }
 function paintPedidos(){
   const $m = (x) => '$' + Number(x || 0).toLocaleString('es', { maximumFractionDigits: 2 });
@@ -642,7 +1219,7 @@ function paintPedidos(){
       if (p.cancel_solicitada) b += btn(p.numero, 'anular', '❌ Anular (lo pidió el cliente)', 'bad') + btn(p.numero, 'mantener', '👍 Mantener', 'ghost');
       if (['esperando_pago','pago_por_verificar'].includes(p.estado)) b += btn(p.numero, '1', '💰 Pago recibido', 'ok') + (p.estado === 'pago_por_verificar' ? btn(p.numero, 'no pagó', '⚠️ No llegó el pago', 'ghost') : '');
       if (p.estado === 'confirmado') b += btn(p.numero, '2', '👨‍🍳 Preparando');
-      if (p.estado === 'preparando') b += btn(p.numero, '3', p.tipo === 'delivery' ? '🛵 Salió' : '🛍️ Listo para retirar');
+      if (p.estado === 'preparando') b += btn(p.numero, '3', p.tipo === 'delivery' ? '🛵 Salió' : p.tipo === 'envio' ? '📦 Enviado' : '🛍️ Listo para retirar');
       if (['en_camino','listo_retiro'].includes(p.estado)) b += btn(p.numero, 'entregado', '✅ Entregado', 'ok');
       if (!p.cancel_solicitada) b += btn(p.numero, 'anular', 'Anular', 'ghost');
     }
@@ -651,18 +1228,24 @@ function paintPedidos(){
       <div class="small">${esc(p.hora)} · hace ${p.hace_min} min · ${p.telefono ? '+' + esc(p.telefono) : ''}</div>
       <div class="det">${esc(p.detalle || '')}</div>
       <div class="small"><b>Total ${$m(p.total)}</b> · ${esc(p.forma_pago || '')}${p.referencia ? ' · Ref. ' + esc(p.referencia) : ''}</div>
-      <div class="small">${p.tipo === 'delivery' ? '🛵 Delivery: ' + esc([p.zona, p.direccion].filter(Boolean).join(' — ')) : '🛍️ Retira en el local'}${p.notas ? ' · Nota: ' + esc(p.notas) : ''}</div>
+      <div class="small">${p.tipo === 'delivery' ? '🛵 Delivery: ' + esc([p.zona, p.direccion].filter(Boolean).join(' — ')) : p.tipo === 'envio' ? '📦 Envío nacional (cobro a destino)' + ([p.zona, p.direccion].filter(Boolean).length ? ' por ' + esc([p.zona, p.direccion].filter(Boolean).join(' — ')) : '') : '🛍️ Retira en el local'}${p.notas ? (p.tipo === 'envio' ? ' · Recibe: ' : ' · Nota: ') + esc(p.notas) : ''}${p.faltan_datos_envio ? ' · <b style="color:var(--bad)">⚠️ Faltan los datos de envío (se piden al confirmar el pago)</b>' : ''}</div>
       ${p.cancel_solicitada ? '<div class="note warn" style="margin:8px 0 0">El cliente pidió cancelar este pedido.</div>' : ''}
       ${b ? `<div class="acts">${b}</div>` : ''}</div>`;
   };
-  $('tPed').innerHTML = `
+  $('tPed').innerHTML = tasaCard() + dlvCard() + `
     <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>🛵 Pedidos</h2><p class="sub" style="margin:0">Se actualiza solo cada 20 segundos. Cada botón le avisa al cliente por WhatsApp.</p></div>
       <button class="btn ghost" id="pRef">Actualizar</button></div>
-      <p class="hint" style="margin:10px 0 0">También puedes hacerlo desde el WhatsApp del negocio: en el chat del cliente reacciona con 👍 (pago recibido), 👨‍🍳 (preparando) o 🛵 (salió).</p></div>
+      <p class="hint" style="margin:10px 0 0">También puedes hacerlo desde el WhatsApp del negocio: en el chat del cliente reacciona con 👍 (pago recibido), 👨‍🍳 (preparando), 🛵 (salió) o 🎁 (delivery gratis).</p></div>
     <div class="card"><h2>Activos (${act.length})</h2>${act.length ? act.map(card).join('') : '<p class="hint" style="margin:0">No hay pedidos activos ahora.</p>'}</div>
     ${fin.length ? `<div class="card"><h2>Terminados (últimos 2 días)</h2>${fin.map(card).join('')}</div>` : ''}`;
   $('pRef').onclick = () => loadPedidos();
+  dlvBind();
+  if ($('tSave')) $('tSave').onclick = async () => {
+    const { data, error } = await sb.rpc('mi_tasa', { p_tasa: $('tTasa').value });
+    if (error || !data || !data.ok) { msg($('tMsg'), 'No se pudo guardar: ' + (error ? error.message : (data && data.mensaje) || ''), 'bad'); return; }
+    const r = await sb.rpc('mi_delivery'); DLV = (r.data && r.data.ok) ? r.data : DLV; paintPedidos();
+  };
   $('tPed').querySelectorAll('[data-pn]').forEach(b => b.onclick = async () => {
     if (b.dataset.pa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
     b.disabled = true;
@@ -691,20 +1274,23 @@ function paintCalidad(){
   const felices = (dist[4] || 0) + (dist[5] || 0), tristes = (dist[1] || 0) + (dist[2] || 0);
   const sem = M.semanas || [];
   const cuando = (k, o) => `<div><label>${k === 'citas' ? '📅 Después de una cita' : '🛵 Después de un pedido'}</label>
-      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option><option value="inmediato" ${o.modo === 'inmediato' ? 'selected' : ''}>Al instante (para pruebas)</option></select>
+      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="minutos" ${o.modo === 'minutos' ? 'selected' : ''}>Unos minutos después (ej. 60 o 90)</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option><option value="inmediato" ${o.modo === 'inmediato' ? 'selected' : ''}>Al instante (para pruebas)</option></select>
       ${k === 'pedidos' ? `<label class="hint" style="margin-top:8px">¿Desde cuándo?</label><select id="e_pedidos_desde"><option value="pago" ${o.desde !== 'salida' ? 'selected' : ''}>Desde que se confirma el pago</option><option value="salida" ${o.desde === 'salida' ? 'selected' : ''}>Desde que sale el pedido 🛵</option></select>` : ''}
-      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'inmediato' ? `<p class="hint" style="margin:0">⚡ Sale enseguida, a cualquier hora y sin límite por cliente. Úsalo solo para probar.</p>` : o.modo === 'horas'
+      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'inmediato' ? `<p class="hint" style="margin:0">⚡ Sale enseguida, a cualquier hora. Úsalo solo para probar.</p>` : o.modo === 'minutos' ? `<label class="hint">¿Cuántos minutos después?</label><input type="number" id="e_${k}_minutos" min="5" max="1440" step="5" value="${o.minutos || 90}">` : o.modo === 'horas'
         ? `<label class="hint">¿Cuántas horas después?</label><input type="number" id="e_${k}_horas" min="1" max="72" value="${o.horas || (k === 'citas' ? 3 : 1)}">`
-        : `<label class="hint">¿A qué hora del día siguiente?</label><input type="time" id="e_${k}_hora" value="${esc(o.hora || '10:00')}">`}</div></div>`;
+        : `<label class="hint">¿A qué hora del día siguiente?</label><input type="time" id="e_${k}_hora" value="${esc(o.hora || '10:00')}">`}</div>
+      ${k === 'pedidos' && tenant && tenant.envio_nacional ? `<label class="hint" style="margin-top:10px">📦 Envíos nacionales: ¿cuántos días después de despacharlo?</label><input type="number" id="e_pedidos_envio_dias" min="1" max="30" value="${o.envio_dias || 3}"><p class="hint" style="margin:4px 0 0">Si lo marcas ✅ Entregado antes, la encuesta sale enseguida.</p>` : ''}</div>`;
   $('tCal').innerHTML = `
     <div class="card"><h2>⭐ Encuesta de satisfacción</h2>
-      <p class="sub">Tu asistente le pregunta al cliente cómo le fue: <i>"¿Cómo calificarías tu experiencia del 1 al 5? ⭐"</i>. Si pone 1, 2 o 3, le pregunta qué mejorar. Si pone 1 o 2, <b>te avisamos al WhatsApp del negocio</b> para que lo contactes.</p>
+      <p class="sub">Tu asistente le hace al cliente <b>3 preguntas</b> (del 1 al 5 ⭐), una por una, y al final le pide un comentario. Si alguna nota es 1 o 2, <b>te avisamos al WhatsApp del negocio</b> para que lo contactes.</p>
       <label class="sw" style="margin:6px 0 14px"><input type="checkbox" id="eAct" ${c.activo ? 'checked' : ''}> Activar la encuesta</label>
       <div class="encw">${conPed ? '' : cuando('citas', ci)}${conPed ? cuando('pedidos', pe) : ''}</div>
       <p class="hint" style="margin-top:8px">Solo se envía entre 8:00 am y 8:30 pm, y máximo una encuesta cada 3 días por cliente.</p>
-      <label style="margin-top:12px">Mensaje de la encuesta <span class="hint">(opcional, déjalo vacío para usar el nuestro)</span></label>
-      <textarea id="eTxt" rows="2" placeholder="Hola 👋 Gracias por elegirnos. ¿Cómo calificarías tu experiencia?">${esc(c.texto || '')}</textarea>
-      <p class="hint">Siempre agregamos al final: "Responde con un número del 1 al 5 ⭐".</p>
+      <label style="margin-top:12px">Las 3 preguntas <span class="hint">(déjalas vacías para usar las sugeridas)</span></label>
+      ${[0,1,2].map(i => `<input id="eQ${i}" style="margin-top:6px" placeholder="${esc((M.preguntas || [])[i] || '')}" value="${esc(((c.preguntas || [])[i]) || '')}">`).join('')}
+      <label style="margin-top:12px">Saludo de la encuesta <span class="hint">(opcional, déjalo vacío para usar el nuestro)</span></label>
+      <textarea id="eTxt" rows="2" placeholder="Hola 👋 Gracias por elegirnos. Queremos mejorar: son 3 preguntas rápidas ⭐">${esc(c.texto || '')}</textarea>
+      <p class="hint">Después del saludo va la pregunta 1/3.</p>
       <label style="margin-top:12px">Enlace para dejar reseña <span class="hint">(opcional: Google, Instagram…)</span></label>
       <input id="eUrl" placeholder="https://g.page/r/…" value="${esc(c.resena_url || '')}">
       <p class="hint">Se lo enviamos solo a los clientes que califican con 4 o 5.</p>
@@ -721,19 +1307,22 @@ function paintCalidad(){
     </div>
     ${M.respondidas ? `<div class="card"><h2>¿Cómo te califican?</h2>
       <div class="funnel">${[5,4,3,2,1].map(k => `<div class="r"><span>${st(k)}</span><div class="t"><i style="width:${Math.round(100 * (dist[k] || 0) / maxD)}%;${k <= 2 ? 'background:#e5484d' : k === 3 ? 'background:#f5a623' : ''}"></i></div><b>${n(dist[k])}</b></div>`).join('')}</div></div>` : ''}
+    ${(M.por_pregunta || []).some(v => v != null) ? `<div class="card"><h2>Por pregunta</h2><p class="sub">Promedio de cada pregunta</p>
+      <div class="funnel">${(M.preguntas || []).map((q, i) => { const v = (M.por_pregunta || [])[i]; return `<div class="r" style="grid-template-columns:minmax(120px,1fr) 2fr 44px"><span>${esc(q)}</span><div class="t"><i style="width:${v ? Math.round(20 * v) : 0}%;${v != null && v < 3 ? 'background:#e5484d' : v != null && v < 4 ? 'background:#f5a623' : ''}"></i></div><b>${v != null ? Number(v).toFixed(1) : '—'}</b></div>`; }).join('')}</div></div>` : ''}
     ${sem.length > 1 ? `<div class="card"><h2>Evolución por semana</h2><p class="sub">Promedio de cada semana (últimas 8)</p>
       <div class="bars">${sem.map(x => `<div class="b" style="height:${Math.round(20 * x.promedio)}%;max-width:70px"><span class="tip">Semana del ${esc(x.semana)}: ${Number(x.promedio).toFixed(1)} (${n(x.n)})</span></div>`).join('')}</div>
       <div class="axis">${sem.map(x => `<span>${esc(x.semana)}</span>`).join('')}</div></div>` : ''}
     ${(M.por_profesional || []).length ? `<div class="card"><h2>Por profesional</h2>${M.por_profesional.map(x => `<p style="margin:6px 0">${esc(x.nombre)} — ${st(x.promedio)} <b>${Number(x.promedio).toFixed(1)}</b> <span class="hint">(${n(x.n)})</span></p>`).join('')}</div>` : ''}
-    ${(M.por_tipo || []).length ? `<div class="card"><h2>Por tipo de pedido</h2>${M.por_tipo.map(x => `<p style="margin:6px 0">${x.tipo === 'retiro' ? '🏪 Retiro en el local' : '🛵 Delivery'} — ${st(x.promedio)} <b>${Number(x.promedio).toFixed(1)}</b> <span class="hint">(${n(x.n)})</span></p>`).join('')}</div>` : ''}
+    ${(M.por_tipo || []).length ? `<div class="card"><h2>Por tipo de pedido</h2>${M.por_tipo.map(x => `<p style="margin:6px 0">${x.tipo === 'retiro' ? '🏪 Retiro en el local' : x.tipo === 'envio' ? '📦 Envío nacional' : '🛵 Delivery'} — ${st(x.promedio)} <b>${Number(x.promedio).toFixed(1)}</b> <span class="hint">(${n(x.n)})</span></p>`).join('')}</div>` : ''}
     <div class="card"><h2>Últimas respuestas</h2>
       ${(M.comentarios || []).length ? M.comentarios.map(x => `<div class="ccm">${st(x.puntuacion)} <b>${esc(x.nombre || 'Cliente')}</b> <small>· ${esc(x.fecha)} · ${x.origen === 'cita' ? 'Cita' + (x.profesional ? ' con ' + esc(x.profesional) : '') : 'Pedido'}</small>
+        ${x.p1 != null ? `<div class="hint" style="margin:4px 0 0">${(M.preguntas || []).map((q, i) => esc(q) + ' <b>' + (x['p' + (i + 1)] ?? '—') + '</b>').join(' · ')}</div>` : ''}
         ${x.comentario ? `<div style="margin-top:4px">"${esc(x.comentario)}"</div>` : ''}</div>`).join('')
         : `<p class="hint" style="margin:0">${c.activo ? 'Todavía no hay respuestas. Las encuestas se envían solas después de cada ' + (conPed ? 'pedido entregado' : 'cita') + '.' : 'Activa la encuesta arriba para empezar a medir la calidad de tu servicio.'}</p>`}</div>`;
   $('cD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { calDias = +b.dataset.d; loadCalidad(); });
-  const leer = () => { const o = { activo: $('eAct').checked, texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(), citas: Object.assign({}, ci), pedidos: Object.assign({}, pe) };
+  const leer = () => { const o = { activo: $('eAct').checked, preguntas: [0,1,2].map(i => $('eQ' + i).value.trim()), texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(), citas: Object.assign({}, ci), pedidos: Object.assign({}, pe) };
     ['citas', 'pedidos'].forEach(k => { if (!$('e_' + k + '_modo')) return; o[k].modo = $('e_' + k + '_modo').value;
-      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if (k === 'pedidos' && $('e_pedidos_desde')) o[k].desde = $('e_pedidos_desde').value; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
+      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if (k === 'pedidos' && $('e_pedidos_desde')) o[k].desde = $('e_pedidos_desde').value; if (k === 'pedidos' && $('e_pedidos_envio_dias')) { o[k].envio_dias = Math.max(1, Math.min(30, +$('e_pedidos_envio_dias').value || 3)); delete o[k].envio_minutos; } if ($('e_' + k + '_minutos')) o[k].minutos = +$('e_' + k + '_minutos').value || 60; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
     return o; };
   ['citas', 'pedidos'].forEach(k => { const s = $('e_' + k + '_modo'); if (s) s.onchange = () => { const o = leer(); CAL.config = o; paintCalidad(); }; });
   $('eSave').onclick = async () => {

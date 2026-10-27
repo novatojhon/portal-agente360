@@ -234,7 +234,7 @@ function rCli(){
     $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
     $('lCli').querySelectorAll('[data-hist]').forEach(b => b.onclick = () => dHist(c.find(x => x.id === b.dataset.hist)));
     $('lCli').querySelectorAll('[data-seg]').forEach(b => b.onclick = () => dSeg(c.find(x => x.id === b.dataset.seg)));
-    $('lCli').querySelectorAll('[data-cfg]').forEach(b => b.onclick = async () => { if (await rpc('admin_configurar', { p_tenant: b.dataset.cfg }).catch(() => null)) location.href = 'index.html'; });
+    $('lCli').querySelectorAll('[data-cfg]').forEach(b => b.onclick = async () => { if (await rpc('admin_configurar', { p_tenant: b.dataset.cfg }).catch(() => null)) location.href = 'index.html?v=' + Date.now(); });
     $('lCli').querySelectorAll('[data-key]').forEach(b => b.onclick = () => dClave(c.find(x => x.id === b.dataset.key)));
     $('lCli').querySelectorAll('[data-pru]').forEach(b => b.onclick = () => dPruebas(c.find(x => x.id === b.dataset.pru)));
   };

@@ -1207,10 +1207,10 @@ async function loadPedidos(silencioso){
 }
 function montoCard(){
   if (!tenant || tenant.validar_monto === undefined) return '';
-  const on = tenant.validar_monto !== false;
-  return `<div class="card"><h2>🧾 Capturas de pago</h2>
-    <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="vMonto" ${on ? 'checked' : ''} style="width:20px;height:20px;margin-top:2px;flex:none">
-    <span><b>Revisar el monto de las capturas</b><br><span class="hint">Tu asistente siempre revisa que la imagen sea un pago (pago móvil, transferencia, Zelle…). ${on ? 'Además compara el monto con el total del pedido.' : '<b style="color:var(--warn)">Modo prueba: NO mira el monto</b>, acepta cualquier captura de pago aunque el monto no coincida.'}</span></span></label>
+  const prueba = tenant.validar_monto === false;
+  return `<div class="card" style="${prueba ? 'border-color:#E8B44C;background:#FFF9EC' : ''}"><h2>🧾 Capturas de pago</h2>
+    <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="vMonto" ${prueba ? 'checked' : ''} style="width:20px;height:20px;margin-top:2px;flex:none">
+    <span><b>🧪 Modo prueba: NO revisar el monto</b><br><span class="hint">${prueba ? '<b style="color:var(--warn)">Activado:</b> tu asistente acepta cualquier captura de pago (pago móvil, transferencia, Zelle…) aunque el monto no coincida. Desmárcalo cuando termines de probar.' : 'Desactivado (normal): tu asistente revisa que la imagen sea un pago y que el monto coincida con el total del pedido.'}</span></span></label>
     <div id="vMsg" class="note hidden"></div></div>`;
 }
 function tasaCard(){
@@ -1300,10 +1300,10 @@ function paintPedidos(){
   $('pRef').onclick = () => loadPedidos();
   dlvBind();
   if ($('vMonto')) $('vMonto').onchange = async (e) => {
-    const v = e.target.checked; e.target.disabled = true;
+    const v = !e.target.checked; e.target.disabled = true;
     const { data, error } = await sb.rpc('mi_validar_monto', { p_activo: v });
     e.target.disabled = false;
-    if (error || !data || !data.ok) { e.target.checked = !v; msg($('vMsg'), 'No se pudo guardar: ' + (error ? error.message : ''), 'bad'); return; }
+    if (error || !data || !data.ok) { e.target.checked = v; msg($('vMsg'), 'No se pudo guardar: ' + (error ? error.message : ''), 'bad'); return; }
     tenant.validar_monto = v; paintPedidos();
   };
   if ($('tSave')) $('tSave').onclick = async () => {

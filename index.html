@@ -152,9 +152,25 @@
 @keyframes o-sit{0%,35%{opacity:1}35.01%,94.99%{opacity:0}95%,100%{opacity:1}}
 @keyframes o-wkB{0%,34.99%{opacity:0}35%,38.99%{opacity:1}39%,90.99%{opacity:0}91%,94.99%{opacity:1}95%,100%{opacity:0}}
 @keyframes o-wkF{0%,38.99%{opacity:0}39%,90.99%{opacity:1}91%,100%{opacity:0}}
-.ofi-sc .sit{animation:o-sit 30s linear infinite}
-.ofi-sc .wkB{opacity:0;animation:o-route 30s linear infinite,o-wkB 30s linear infinite}
-.ofi-sc .wkF{opacity:0;animation:o-route 30s linear infinite,o-wkF 30s linear infinite}
+/* la recepcionista se queda sentada; solo camina cuando lleva un pedido a la caja/despacho (clase .mv) */
+.ofi-sc .wkB,.ofi-sc .wkF{opacity:0}
+.ofi-sc.mv .sit{animation:o-sit 16s linear 1 forwards}
+.ofi-sc.mv .wkB{animation:o-route 16s linear 1 forwards,o-wkB 16s linear 1 forwards}
+.ofi-sc.mv .wkF{animation:o-route 16s linear 1 forwards,o-wkF 16s linear 1 forwards}
+.ofi-sc .motoW{opacity:0}
+.ofi-sc.moto .motoW{animation:o-moto 11s linear 1 forwards}
+.ofi-sc .carga{opacity:0}
+.ofi-sc.moto .carga{animation:o-carga 11s linear 1 forwards}
+.ofi-sc.moto .pila{animation:o-pila 11s linear 1 forwards}
+.ofi-sc.moto .motoB{animation:o-carga 11s linear 1 forwards}
+.ofi.noche .faro{filter:drop-shadow(0 0 6px #FFE27A)}
+@keyframes o-moto{0%{opacity:0;transform:translate(390px,-225px)}4%{opacity:1}28%{transform:translate(0,0)}62%{transform:translate(0,0)}96%{opacity:1}100%{opacity:0;transform:translate(-380px,220px)}}
+@keyframes o-carga{0%,44%{opacity:0}48%,100%{opacity:1}}
+@keyframes o-pila{0%,42%{opacity:1}46%,100%{opacity:0}}
+/* burbujas del monitor y puntos de "escribiendo": solo cuando hay chats activos (clase .at) */
+.ofi-sc:not(.at) .b1,.ofi-sc:not(.at) .b2,.ofi-sc:not(.at) .b3,.ofi-sc:not(.at) .b4{animation-play-state:paused;opacity:.25}
+.ofi-sc:not(.at) .d1,.ofi-sc:not(.at) .d2,.ofi-sc:not(.at) .d3{animation:none;opacity:.35}
+.ofi-sc:not(.at) .p1{animation:none}
 
   /* ---------- Oficina en vivo ---------- */
   .ofi{background:radial-gradient(1100px 650px at 50% 42%,#22305E,#0B1226 70%);color:#EEF2FF;border-radius:20px;padding:16px;margin-bottom:16px;overflow:hidden}
@@ -444,7 +460,7 @@ function openTab(t){
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
   $('vApp').classList.toggle('xwide', t === 'ofi');
-  show($('tOfi'), t === 'ofi'); clearInterval(ofiTimer); if (t === 'ofi') { loadOficina(); ofiTimer = setInterval(() => { if (!document.hidden && !$('tOfi').classList.contains('hidden')) loadOficina(true); }, 15000); }
+  show($('tOfi'), t === 'ofi'); clearInterval(ofiTimer); if (t === 'ofi') { loadOficina(); ofiTimer = setInterval(() => { if (!document.hidden && !$('tOfi').classList.contains('hidden')) loadOficina(true); }, 8000); }
   if (t === 'conv') openInbox();
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
@@ -457,7 +473,9 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.datas
 
 
 // ---------- Oficina en vivo ----------
-let ofiTimer = null, OFI = null, ofiKey = '';
+let ofiTimer = null, OFI = null, ofiKey = '', ofiPrev = null;
+function ofiMoto(p){ const sc = $('ofiSc'); if (!sc || sc.classList.contains('moto')) return; const t = sc.querySelector('#motoTx'), nb = sc.querySelector('#motoNum'); if (t) t.textContent = p.tipo === 'envio' ? 'ENVÍO' : 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + (p.num || '') + ' en camino'; sc.classList.add('moto'); setTimeout(() => sc.classList.remove('moto'), 11500); }
+function ofiCaminar(){ const sc = $('ofiSc'); if (!sc || sc.classList.contains('mv')) return; sc.classList.add('mv'); setTimeout(() => sc.classList.remove('mv'), 16500); }
 const OFI_N = {
   tienda: { escritorio: 'RECEPCIÓN', mostrador: 'CAJA', pos: '$', c1: '#22C08A', c2: '#F08A3C', c3: '#3D8BFF', pin2: '$', pin3: 'M-9 -4 L0 -9 L9 -4 L0 1 Z M-9 -4 V6 L0 11 V1 M9 -4 V6 L0 11',
     pT: '#e8c793', pL: '#d1a86f', pR: '#bb935c', etiqueta: 'ENVÍOS', floor: 'floorT', wallA: '#F4EFE7', wallB: '#E8E1D5', neon: '#E8833A',
@@ -784,8 +802,8 @@ function ofiEscena(D){
 <g class="parcel" style="animation-delay: -2.6s"><rect x="478" y="280" width="30" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="478" y="-66" width="30" height="22" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -268.5 155.0)"></rect><rect x="280" y="-66" width="30" height="22" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 439.9 254.0)"></rect></g>
 <g class="parcel" style="animation-delay: -5.2s"><rect x="478" y="280" width="30" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -66)"></rect><rect x="478" y="-66" width="30" height="22" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -268.5 155.0)"></rect><rect x="280" y="-66" width="30" height="22" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 439.9 254.0)"></rect></g>
 <rect x="700" y="350" width="46" height="40" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="700" y="-34" width="46" height="34" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -337.7 195.0)"></rect><rect x="350" y="-34" width="40" height="34" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 646.0 373.0)"></rect>
-<rect x="705" y="355" width="36" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -60)"></rect><rect x="705" y="-60" width="36" height="26" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -333.4 192.5)"></rect><rect x="355" y="-60" width="30" height="26" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 641.7 370.5)"></rect>
-<g transform="matrix(0.866 0.5 0 1 -337.7 195.0)"><rect x="708" y="-26" width="34" height="10" fill="#fff"></rect><text x="725" y="-18" text-anchor="middle" font-family="Sora" font-weight="800" font-size="7" fill="#c0392b">${n.etiqueta}</text></g>
+<g class="pila"><rect x="705" y="355" width="36" height="30" fill="${n.pT}" transform="matrix(0.866 0.5 -0.866 0.5 0 -60)"></rect><rect x="705" y="-60" width="36" height="26" fill="${n.pL}" transform="matrix(0.866 0.5 0 1 -333.4 192.5)"></rect><rect x="355" y="-60" width="30" height="26" fill="${n.pR}" transform="matrix(-0.866 0.5 0 1 641.7 370.5)"></rect>
+<g transform="matrix(0.866 0.5 0 1 -337.7 195.0)"><rect x="708" y="-26" width="34" height="10" fill="#fff"></rect><text x="725" y="-18" text-anchor="middle" font-family="Sora" font-weight="800" font-size="7" fill="#c0392b">${n.etiqueta}</text></g></g>
 </g>
 
 <g display="${v.clin}">
@@ -802,6 +820,25 @@ function ofiEscena(D){
 <rect x="14" y="366" width="40" height="40" fill="#e8e2d6" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="14" y="-34" width="40" height="34" fill="#cfc6b5" transform="matrix(0.866 0.5 0 1 -351.6 203.0)"></rect><rect x="366" y="-34" width="40" height="34" fill="#bdb3a1" transform="matrix(-0.866 0.5 0 1 46.8 27.0)"></rect>
 <g transform="translate(-304.8 176.0)"><g class="leaf"><path d="M0 0 C-30 -20 -28 -60 -6 -70 C-2 -40 4 -20 0 0Z" fill="#2f8f5b"></path><path d="M0 0 C26 -14 34 -52 14 -66 C6 -38 2 -18 0 0Z" fill="#3aa86b"></path><path d="M0 0 C-8 -30 0 -70 4 -86 C14 -60 10 -26 0 0Z" fill="#27794c"></path></g></g>
 
+<g display="${v.envios}"><g class="motoW"><g transform="translate(446 552) scale(1.55)">
+<ellipse cx="0" cy="2" rx="40" ry="10" fill="rgba(0,0,0,.18)"></ellipse>
+<g transform="matrix(-0.866 0.5 0 1 0 0)">
+<circle cx="-24" cy="-11" r="11" fill="#1d2230"></circle><circle cx="-24" cy="-11" r="4.5" fill="#aab3c5"></circle>
+<circle cx="26" cy="-11" r="11" fill="#1d2230"></circle><circle cx="26" cy="-11" r="4.5" fill="#aab3c5"></circle>
+<path d="M-34 -20 L-8 -25 L8 -31 L20 -27 L30 -15 L-28 -12 Z" fill="#E5484D"></path>
+<path d="M-12 -27 L6 -27 L4 -22 L-12 -22 Z" fill="#2a2f3d"></path>
+<line x1="26" y1="-11" x2="17" y2="-40" stroke="#3a4256" stroke-width="3" stroke-linecap="round"></line>
+<line x1="13" y1="-42" x2="22" y2="-40" stroke="#2a2f3d" stroke-width="3" stroke-linecap="round"></line>
+<circle cx="24" cy="-30" r="3.5" fill="#FFE27A" class="faro"></circle>
+<rect x="-42" y="-24" width="26" height="3" fill="#3a4256"></rect>
+<g class="carga"><rect x="-42" y="-50" width="26" height="26" rx="2" fill="#F5A623"></rect><rect x="-42" y="-50" width="26" height="6" rx="2" fill="#D98A12"></rect><text x="29" y="-32" transform="scale(-1 1)" text-anchor="middle" font-family="Sora" font-weight="800" font-size="6.5" fill="#fff" id="motoTx">ENVÍO</text></g>
+<path d="M-6 -28 L6 -25 L6 -14" stroke="#24304a" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="-12" y="-52" width="13" height="25" rx="5" fill="#2F6FD1"></rect>
+<line x1="-3" y1="-46" x2="14" y2="-41" stroke="#2F6FD1" stroke-width="4.5" stroke-linecap="round"></line>
+<circle cx="-5" cy="-60" r="8.5" fill="#E5484D"></circle><path d="M-1 -63 h7 v5 h-7z" fill="#1d2230"></path>
+</g>
+<g transform="translate(-6 -92) scale(.8)" class="motoB"><rect x="-38" y="-13" width="76" height="22" rx="11" fill="#F5A623"></rect><text x="0" y="3" text-anchor="middle" font-family="Sora" font-weight="800" font-size="11" fill="#fff" id="motoNum">🛵 en camino</text></g>
+</g></g></g>
 <g transform="translate(-56.3 182.5)"><g class="wk wkF"><use href="#pp-walk" color="${n.c1}"></use></g></g>
 <g opacity="${t.stars}">
 <ellipse cx="-40" cy="190" rx="190" ry="110" fill="url(#lamp)"></ellipse>
@@ -868,11 +905,24 @@ function paintOficina(){
     const nn = ofiN(D); $('ofiSc').querySelectorAll('[data-k]').forEach(el => { const v = nn[el.dataset.k]; if (v != null && el.textContent !== String(v)) el.textContent = String(v); });
     if ($('ofiTk').dataset.f !== feed) { $('ofiTk').innerHTML = tk; $('ofiTk').style.display = tk ? '' : 'none'; $('ofiTk').dataset.f = feed; }
   }
+  // coordinar la escena con lo que pasa: atiende (sentada, escribiendo) si hay chats activos; camina si entra un pago o cambia un pedido
+  const sc = $('ofiSc');
+  if (sc) sc.classList.toggle('at', (D.chats || []).some(c => c.escribe || c.hace < 3));
+  const firma = { p: (D.pagos || []).map(p => p.numero).join(','), d: (D.despacho || []).map(p => p.numero + ':' + p.estado).join(',') };
+  const sale = (D.despacho || []).find(p => /camino|enviad/i.test(p.estado || '') && ofiPrev && !ofiPrev.d.split(',').includes(p.numero + ':' + p.estado));
+  if (sale && (sale.tipo === 'delivery' || sale.tipo === 'envio')) setTimeout(() => ofiMoto(sale), 3000);
+  if (ofiPrev && (firma.p !== ofiPrev.p || firma.d !== ofiPrev.d)) {
+    const nuevoPago = (D.pagos || []).some(p => !ofiPrev.p.split(',').includes(String(p.numero)));
+    const cambioDesp = firma.d !== ofiPrev.d && (D.despacho || []).length > 0;
+    if (nuevoPago || cambioDesp) ofiCaminar();
+  }
+  ofiPrev = firma;
   $('tOfi').querySelectorAll('[data-on]').forEach(b => b.onclick = async () => {
     if (b.dataset.oa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
     b.disabled = true;
     const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.on, p_accion: b.dataset.oa });
     if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }
+    ofiCaminar();
     try { fetch(CFG.N8N_URL + '/webhook/avisos360-ya', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
     loadOficina(true);
   });

@@ -161,12 +161,15 @@
 .ofi-sc.moto .motoW{animation:o-moto 11s linear 1 forwards}
 .ofi-sc .carga{opacity:0}
 .ofi-sc.moto .carga{animation:o-carga 11s linear 1 forwards}
-.ofi-sc.moto .pila{animation:o-pila 11s linear 1 forwards}
 .ofi-sc.moto .motoB{animation:o-carga 11s linear 1 forwards}
 .ofi.noche .faro{filter:drop-shadow(0 0 6px #FFE27A)}
 @keyframes o-moto{0%{opacity:0;transform:translate(390px,-225px)}4%{opacity:1}28%{transform:translate(0,0)}62%{transform:translate(0,0)}96%{opacity:1}100%{opacity:0;transform:translate(-380px,220px)}}
 @keyframes o-carga{0%,44%{opacity:0}48%,100%{opacity:1}}
 @keyframes o-pila{0%,42%{opacity:1}46%,100%{opacity:0}}
+.ofi-sc .parcel{animation:none;opacity:0}
+.ofi-sc.at .r1{animation:o-bob .9s ease-in-out infinite}
+.ofi-sc.wk2 .r2{animation:o-bob .45s ease-in-out infinite}
+.ofi-sc.wk3 .r3{animation:o-bob .45s ease-in-out infinite}
 /* burbujas del monitor y puntos de "escribiendo": solo cuando hay chats activos (clase .at) */
 .ofi-sc:not(.at) .b1,.ofi-sc:not(.at) .b2,.ofi-sc:not(.at) .b3,.ofi-sc:not(.at) .b4{animation-play-state:paused;opacity:.25}
 .ofi-sc:not(.at) .d1,.ofi-sc:not(.at) .d2,.ofi-sc:not(.at) .d3{animation:none;opacity:.35}
@@ -474,8 +477,89 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.datas
 
 // ---------- Oficina en vivo ----------
 let ofiTimer = null, OFI = null, ofiKey = '', ofiPrev = null;
-function ofiMoto(p){ const sc = $('ofiSc'); if (!sc || sc.classList.contains('moto')) return; const t = sc.querySelector('#motoTx'), nb = sc.querySelector('#motoNum'); if (t) t.textContent = p.tipo === 'envio' ? 'ENVÍO' : 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + (p.num || '') + ' en camino'; sc.classList.add('moto'); setTimeout(() => sc.classList.remove('moto'), 11500); }
-function ofiCaminar(){ const sc = $('ofiSc'); if (!sc || sc.classList.contains('mv')) return; sc.classList.add('mv'); setTimeout(() => sc.classList.remove('mv'), 16500); }
+let ofiQ = [], ofiBusy = false, ofiHold = false;
+function ofiEv(t, p){ if (ofiQ.length > 8) ofiQ.shift(); ofiQ.push([t, p]); if (!ofiBusy) ofiNext(); }
+function ofiNext(){ const e = ofiQ.shift(); if (!e) { ofiBusy = false; return; } ofiBusy = true; let ms = 0; try { ms = ofiRun(e[0], e[1]); } catch (x) { console.warn(x); } setTimeout(ofiNext, (ms || 0) + 500); }
+function ofiToast(k, txt, color, ms, delay){
+  const sc = $('ofiSc'), g = sc && sc.querySelector('#oT' + k); if (!g) return;
+  setTimeout(() => { g.querySelector('text').textContent = txt; const w = Math.max(110, Math.round(txt.length * 7.6) + 30); const r = g.querySelector('rect'); r.setAttribute('x', -w / 2); r.setAttribute('width', w); r.setAttribute('fill', color);
+    g.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)', offset: .08 }, { opacity: 1, transform: 'translateY(0)', offset: .9 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: ms, fill: 'forwards' }); }, delay || 0);
+}
+function ofiMover(el, pts, ms, delay, keep){ if (!el) return; el.animate(pts.map((q, i) => ({ transform: `translate(${q[0]}px,${q[1]}px)`, opacity: q[2] == null ? 1 : q[2], offset: q[3] == null ? i / (pts.length - 1) : q[3] })), { duration: ms, delay: delay || 0, fill: keep ? 'forwards' : 'none', easing: 'linear' }); }
+function ofiSetHold(on){ ofiHold = on; const h = $('ofiSc') && $('ofiSc').querySelector('#oHold'); if (h) { h.getAnimations().forEach(a => a.cancel()); h.setAttribute('opacity', on ? 1 : 0); } }
+function ofiClase(c, ms){ const sc = $('ofiSc'); if (!sc) return; sc.classList.add(c); setTimeout(() => sc.classList.remove(c), ms); }
+function ofiRun(t, p){
+  const sc = $('ofiSc'); if (!sc) return 0;
+  const rest = OFI && OFI.tipo === 'restaurante', N = OFI_N[(OFI && OFI.tipo) || 'tienda'] || OFI_N.tienda, num = p.num || '';
+  const q = (id) => sc.querySelector(id);
+  if (t === 'pago_rep') {
+    ofiToast(1, '💳 Llegó la captura ' + num, '#F08A3C', 4500); ofiToast(2, '⏳ Pago por verificar ' + num, N.c2, 4500, 600); return 4500;
+  }
+  if (t === 'pago_ok') {
+    ofiToast(1, '✅ Pago confirmado ' + num, '#22C08A', 5200);
+    ofiClase('mv', 16500);
+    // la recepcionista le entrega el comprobante a la caja (cuando llega al mostrador)
+    ofiMover(q('#oRec'), [[168, 250, 0], [168, 250, 1, .1], [258, 205, 1, .85], [262, 205, 0]], 1500, 9700);
+    ofiToast(2, '🧾 ' + num + (rest ? ' pasa a la cocina' : ' pasa a alistarse'), N.c2, 4000, 10600);
+    return 16500;
+  }
+  if (t === 'prep') {
+    ofiToast(2, (rest ? '👨‍🍳 Preparando ' : '🛠️ Alistando ') + num, N.c2, 6000);
+    // el de la caja va al estante, toma el producto y lo pone en la cinta
+    const r2 = q('.r2'), est = r2 && r2.parentNode, cb = q('#oCajBox');
+    if (est) est.setAttribute('opacity', 0);
+    ofiMover(q('#oCaj'), [[325, 250, 0, 0], [325, 250, 1, .03], [400, 262, 1, .18], [400, 262, 1, .32], [330, 330, 1, .45], [215, 372, 1, .62], [215, 372, 1, .7], [330, 330, 1, .83], [325, 250, 1, .96], [325, 250, 0, 1]], 8400, 0);
+    setTimeout(() => cb && cb.setAttribute('opacity', 1), 2300);
+    setTimeout(() => cb && cb.setAttribute('opacity', 0), 5600);
+    setTimeout(() => est && est.setAttribute('opacity', 1), 8350);
+    ofiToast(2, '📥 ' + num + ' a la cinta', N.c2, 3000, 5000);
+    // la caja viaja por la cinta hasta el despachador
+    ofiMover(q('#oBox'), [[168, 338, 0], [168, 338, 1, .06], [300, 410, 1, .7], [312, 392, 1, .95], [312, 392, 0]], 4200, 5600);
+    setTimeout(() => ofiSetHold(true), 9700);
+    setTimeout(() => ofiClase('wk3', 2500), 9700);
+    ofiToast(3, '📦 ' + num + ' listo para salir', N.c3, 4000, 9800);
+    return 12500;
+  }
+  if (t === 'sale') {
+    ofiSetHold(true);
+    const tx = q('#motoTx'), nb = q('#motoNum'); if (tx) tx.textContent = p.tipo === 'envio' ? 'ENVÍO' : 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + num + ' en camino';
+    ofiClase('moto', 11500);
+    // el despachador le entrega la caja al motorizado
+    setTimeout(() => { const h = q('#oHold'); if (h) h.setAttribute('opacity', 0); ofiHold = false; }, 3600);
+    ofiMover(q('#oBox'), [[312, 392], [400, 430, 1, .6], [440, 455, 1, .9], [440, 455, 0]], 1700, 3500);
+    ofiToast(3, '🛵 ' + num + ' sale con el motorizado', N.c3, 4500, 3000);
+    return 11500;
+  }
+  if (t === 'listo') { ofiSetHold(true); ofiToast(3, '🛍️ ' + num + ' listo para retirar', N.c3, 5000); return 5000; }
+  if (t === 'retira') {
+    ofiSetHold(true);
+    const c = q('#oCli'), cb = q('#oCliBox');
+    ofiMover(c, [[640, 640, 0], [600, 616, 1, .05], [420, 505, 1, .35], [420, 505, 1, .62], [600, 616, 1, .95], [640, 640, 0]], 10000, 0);
+    setTimeout(() => { ofiSetHold(false); if (cb) cb.setAttribute('opacity', 1); }, 4300);
+    setTimeout(() => { if (cb) cb.setAttribute('opacity', 0); }, 10000);
+    ofiToast(3, '🤝 ' + num + ' entregado al cliente', '#22C08A', 4500, 4300);
+    return 10500;
+  }
+  return 0;
+}
+// etapas de un pedido (para no saltarse animaciones si el dueño toca varios botones seguidos)
+const OFI_ETAPA = (e) => /pago por verificar/.test(e) ? 0 : /confirmado/.test(e) ? 1 : /preparaci/.test(e) ? 2 : /camino|listo/.test(e) ? 3 : -1;
+function ofiEventos(D){
+  const ahora = {};
+  (D.pagos || []).forEach(p => ahora[p.numero] = { num: p.num, estado: 'pago por verificar', tipo: p.tipo });
+  (D.despacho || []).forEach(p => ahora[p.numero] = { num: p.num, estado: p.estado || '', tipo: p.tipo });
+  const antes = ofiPrev;
+  ofiPrev = ahora;
+  if (!antes) { ofiSetHold(!ofiBusy && Object.values(ahora).some(p => /preparaci|listo/.test(p.estado))); return; }
+  for (const k of Object.keys(ahora).sort((a, b) => a - b)) {
+    const p = ahora[k], a = antes[k], e1 = a ? OFI_ETAPA(a.estado) : -1, e2 = OFI_ETAPA(p.estado);
+    if (e2 === 0 && !a) ofiEv('pago_rep', p);
+    if (e2 >= 1 && e1 < 1) ofiEv('pago_ok', p);
+    if (e2 >= 2 && e1 < 2) ofiEv('prep', p);
+    if (e2 === 3 && e1 < 3) ofiEv(/listo/.test(p.estado) ? 'listo' : (p.tipo === 'delivery' || p.tipo === 'envio') ? 'sale' : 'listo', p);
+  }
+  for (const k of Object.keys(antes)) if (!ahora[k] && /listo/.test(antes[k].estado)) ofiEv('retira', antes[k]);
+}
 const OFI_N = {
   tienda: { escritorio: 'RECEPCIÓN', mostrador: 'CAJA', pos: '$', c1: '#22C08A', c2: '#F08A3C', c3: '#3D8BFF', pin2: '$', pin3: 'M-9 -4 L0 -9 L9 -4 L0 1 Z M-9 -4 V6 L0 11 V1 M9 -4 V6 L0 11',
     pT: '#e8c793', pL: '#d1a86f', pR: '#bb935c', etiqueta: 'ENVÍOS', floor: 'floorT', wallA: '#F4EFE7', wallB: '#E8E1D5', neon: '#E8833A',
@@ -656,6 +740,41 @@ function ofiEscena(D){
 <g id="ic-repuesto" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="0" cy="0" r="3.5"></circle><path d="M0 -9 V-6 M0 6 V9 M-9 0 H-6 M6 0 H9 M-6.4 -6.4 L-4.2 -4.2 M4.2 4.2 L6.4 6.4 M-6.4 6.4 L-4.2 4.2 M4.2 -4.2 L6.4 -6.4"></path></g>
 <g id="ic-libro" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-9 -8 H-2 Q0 -8 0 -6 V9 Q0 7 -2 7 H-9 Z M9 -8 H2 Q0 -8 0 -6 V9 Q0 7 2 7 H9 Z"></path></g>
 <g id="ic-regalo" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M-8 -3 H8 V9 H-8 Z M-9 -7 H9 V-3 H-9 Z M0 -7 V9 M0 -7 Q-6 -12 -6 -8 Q-5 -7 0 -7 Q5 -7 6 -8 Q6 -12 0 -7"></path></g>
+<g id="pp-wcap">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<g><rect x="-12" y="-34" width="10" height="32" rx="4" fill="#3B4258"></rect><rect x="-15" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect><animateTransform attributeName="transform" type="rotate" values="-16 -7 -32;16 -7 -32;-16 -7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="2" y="-34" width="10" height="32" rx="4" fill="#3B4258"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#ffffff"></rect><animateTransform attributeName="transform" type="rotate" values="16 7 -32;-16 7 -32;16 7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-20" y="-77" width="40" height="47" rx="13" fill="currentColor"></rect>
+<path d="M-7 -77 L0 -68 L7 -77 Z" fill="#ffffff" opacity=".85"></path>
+<g><rect x="-29" y="-75" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="-24" cy="-44" r="5" fill="#C98E68"></circle><animateTransform attributeName="transform" type="rotate" values="14 -24 -73;-14 -24 -73;14 -24 -73" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="19" y="-75" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="24" cy="-44" r="5" fill="#C98E68"></circle><animateTransform attributeName="transform" type="rotate" values="-14 24 -73;14 24 -73;-14 24 -73" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-5" y="-84" width="10" height="9" fill="#B97E5A"></rect>
+<circle cx="0" cy="-100" r="19" fill="#C98E68"></circle>
+<path d="M-19 -102 C-19 -122 19 -122 19 -102 Z" fill="currentColor"></path>
+<path d="M2 -103 L28 -103 Q30 -99 26 -98 L2 -98 Z" fill="currentColor"></path>
+<rect x="-19" y="-105" width="38" height="4" fill="#ffffff" opacity=".35"></rect>
+<ellipse cx="-7" cy="-96" rx="2.3" ry="2.9" fill="#24160f"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.88;.93;1" dur="4.6s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-96" rx="2.3" ry="2.9" fill="#24160f"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.88;.93;1" dur="4.6s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-6 -88 Q0 -83 6 -88" stroke="#6b3a28" stroke-width="2" fill="none" stroke-linecap="round"></path>
+</g>
+<g id="pp-wapron">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<g><rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="-16 -7 -32;16 -7 -32;-16 -7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="16 7 -32;-16 7 -32;16 7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="#2E3446"></rect>
+<path d="M-13 -66 h26 v34 a6 6 0 0 1 -6 6 h-14 a6 6 0 0 1 -6 -6z" fill="currentColor"></path>
+<path d="M-13 -66 L-9 -76 M13 -66 L9 -76" stroke="currentColor" stroke-width="3"></path>
+<g><rect x="-28" y="-74" width="10" height="30" rx="5" fill="#2E3446"></rect><circle cx="-23" cy="-43" r="5" fill="#8D5A3C"></circle><animateTransform attributeName="transform" type="rotate" values="14 -23 -72;-14 -23 -72;14 -23 -72" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="30" rx="5" fill="#2E3446"></rect><circle cx="23" cy="-43" r="5" fill="#8D5A3C"></circle><animateTransform attributeName="transform" type="rotate" values="-14 23 -72;14 23 -72;-14 23 -72" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#7B4C32"></rect>
+<circle cx="0" cy="-99" r="19" fill="#8D5A3C"></circle>
+<circle cx="0" cy="-123" r="9" fill="#1d1410"></circle>
+<path d="M-20 -99 C-21 -124 21 -124 20 -99 C12 -110 -10 -112 -20 -99Z" fill="#1d1410"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#120c09"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.86;.91;1" dur="4.4s" repeatCount="indefinite"></animate></ellipse>
+<ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#120c09"><animate attributeName="ry" values="2.9;2.9;.4;2.9" keyTimes="0;.86;.91;1" dur="4.4s" repeatCount="indefinite"></animate></ellipse>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#4a2a1c" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<circle cx="-12" cy="-90" r="3" fill="#E07A6A" opacity=".45"></circle><circle cx="12" cy="-90" r="3" fill="#E07A6A" opacity=".45"></circle>
+</g>
 <g id="pp-walk">
 <ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
 <g><rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="-16 -7 -32;16 -7 -32;-16 -7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
@@ -849,6 +968,18 @@ function ofiEscena(D){
 <g transform="translate(-56.3 40.5)"><g class="pin p1"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c1}"></path><circle cx="-8" cy="0" r="3" fill="#fff" class="d1"></circle><circle cx="0" cy="0" r="3" fill="#fff" class="d2"></circle><circle cx="8" cy="0" r="3" fill="#fff" class="d3"></circle></g></g>
 <g transform="translate(281.4 90.5)"><g class="pin p2"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c2}"></path><text x="0" y="6" text-anchor="middle" font-family="Sora" font-weight="800" font-size="17" fill="#fff">${n.pin2}</text></g></g>
 <g transform="translate(331.7 268.5)"><g class="pin p3"><path d="M-22 -18 h44 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-14 l-8 9 l-8 -9 h-14 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8z" fill="${n.c3}"></path><path d="${n.pin3}" stroke="#fff" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></g></g>
+
+<g id="oEv" display="${v.envios}">
+<g id="oBox" opacity="0"><g transform="scale(1.45)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
+<g id="oHold" opacity="0" style="transform:translate(312px,392px)"><g transform="scale(1.45)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
+<g id="oRec" opacity="0"><rect x="-7" y="-9" width="14" height="18" rx="2" fill="#fff" stroke="#c9d0dc"></rect><path d="M-4 -4 H4 M-4 0 H4 M-4 4 H2" stroke="#9aa3b5" stroke-width="1.5"></path></g>
+<g id="oCaj" opacity="0"><use href="#pp-wcap" color="#F08A3C" display="${v.tienda}"></use><use href="#pp-wapron" color="#E5484D" display="${v.rest}"></use><g id="oCajBox" opacity="0" transform="translate(0 -50)"><g transform="scale(1.45)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g></g>
+<g id="oCli" opacity="0"><use href="#pp-walk" color="#8E6BD9"></use><g id="oCliBox" opacity="0" transform="translate(0 -52)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
+</g>
+<g id="oChats" opacity="0" transform="translate(30 92)"><rect x="-34" y="-12" width="68" height="24" rx="12" fill="#1d2230" stroke="#22C08A" stroke-width="2"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12" fill="#fff">💬 0</text></g>
+<g transform="translate(-56.3 -6)"><g id="oT1" class="otst" opacity="0"><rect x="-80" y="-14" width="160" height="28" rx="14" fill="#22C08A"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12.5" fill="#fff"></text></g></g>
+<g transform="translate(281.4 44)"><g id="oT2" class="otst" opacity="0"><rect x="-80" y="-14" width="160" height="28" rx="14" fill="#22C08A"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12.5" fill="#fff"></text></g></g>
+<g transform="translate(445 318)"><g id="oT3" class="otst" opacity="0"><rect x="-80" y="-14" width="160" height="28" rx="14" fill="#22C08A"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12.5" fill="#fff"></text></g></g>
 </svg>`;
 }
 async function loadOficina(silencioso){
@@ -908,21 +1039,14 @@ function paintOficina(){
   // coordinar la escena con lo que pasa: atiende (sentada, escribiendo) si hay chats activos; camina si entra un pago o cambia un pedido
   const sc = $('ofiSc');
   if (sc) sc.classList.toggle('at', (D.chats || []).some(c => c.escribe || c.hace < 3));
-  const firma = { p: (D.pagos || []).map(p => p.numero).join(','), d: (D.despacho || []).map(p => p.numero + ':' + p.estado).join(',') };
-  const sale = (D.despacho || []).find(p => /camino|enviad/i.test(p.estado || '') && ofiPrev && !ofiPrev.d.split(',').includes(p.numero + ':' + p.estado));
-  if (sale && (sale.tipo === 'delivery' || sale.tipo === 'envio')) setTimeout(() => ofiMoto(sale), 3000);
-  if (ofiPrev && (firma.p !== ofiPrev.p || firma.d !== ofiPrev.d)) {
-    const nuevoPago = (D.pagos || []).some(p => !ofiPrev.p.split(',').includes(String(p.numero)));
-    const cambioDesp = firma.d !== ofiPrev.d && (D.despacho || []).length > 0;
-    if (nuevoPago || cambioDesp) ofiCaminar();
-  }
-  ofiPrev = firma;
+  ofiEventos(D);
+  const nch = (D.chats || []).filter(c => c.escribe || c.hace < 3).length, chg = sc && sc.querySelector('#oChats');
+  if (chg) { chg.setAttribute('opacity', nch >= 2 ? 1 : 0); chg.querySelector('text').textContent = '💬 ' + nch + ' a la vez'; chg.querySelector('rect').setAttribute('width', 100); chg.querySelector('rect').setAttribute('x', -50); }
   $('tOfi').querySelectorAll('[data-on]').forEach(b => b.onclick = async () => {
     if (b.dataset.oa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
     b.disabled = true;
     const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.on, p_accion: b.dataset.oa });
     if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }
-    ofiCaminar();
     try { fetch(CFG.N8N_URL + '/webhook/avisos360-ya', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
     loadOficina(true);
   });

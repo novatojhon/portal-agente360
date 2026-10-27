@@ -275,6 +275,28 @@
   .promo .kw{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;letter-spacing:.3px}
   .promo .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
   .promo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  /* ---------- Catálogo ---------- */
+  .cbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  .cbar input[type=search]{flex:1;min-width:180px;margin:0}
+  .prod{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:start}
+  .prod.off{opacity:.55}
+  .prod img,.prod .ph{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid var(--line);background:#f6f8f7;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .prod .pz{font-weight:700;color:var(--brand);white-space:nowrap}
+  .prod .meta{font-size:12.5px;color:var(--muted);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .prod .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  @media(max-width:560px){.prod{grid-template-columns:48px 1fr}.prod img,.prod .ph{width:48px;height:48px}.prod .acts{grid-column:1/-1;justify-content:flex-start}}
+  .vrs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .vr{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:99px;padding:2px 4px 2px 10px;font-size:12.5px;background:#fff}
+  .vr i{color:var(--muted);font-style:normal;padding-right:6px}
+  .vr b{min-width:16px;text-align:center}
+  .vr.ag{border-color:#f1b8b8;background:#fff5f5;color:var(--bad)}
+  .vr.off{opacity:.5}
+  .vr .sb{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#f6f8f7;cursor:pointer;font:inherit;font-size:14px;line-height:1;padding:0;color:var(--ink)}
+  .vr .sb:disabled{opacity:.4}
+  .tg.r{background:#fde8e8;color:var(--bad)}
+  .vedit{margin-top:8px}
+  .vrow{display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:6px;align-items:center}
+  .vrow input{margin:0}
   .cday{font-weight:700;margin:16px 0 4px;font-size:14px}
   .cita{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:6px}
   .cita .h{font-weight:700;font-size:15px} .cita small{display:block;color:var(--muted);font-size:12.5px}
@@ -359,6 +381,7 @@
     <button class="tab" data-t="wa">📱 Mi WhatsApp</button>
     <button class="tab" data-t="conv">💬 Conversaciones</button>
     <button class="tab" data-t="agenda" id="tabAgenda">📅 Agenda</button>
+    <button class="tab" data-t="cat" id="tabCat">🛍️ Catálogo</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="met">📈 Métricas</button>
     <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos <span class="bdg hidden" id="pedBdg"></span></button>
@@ -394,6 +417,7 @@
 
   <!-- PROMOCIONES Y MÉTRICAS -->
   <section id="tAgenda" class="hidden"></section>
+  <section id="tCat" class="hidden"></section>
   <section id="tPromo" class="hidden"></section>
   <section id="tMet" class="hidden"></section>
   <section id="tCal" class="hidden"></section>
@@ -457,10 +481,11 @@ async function start(){
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
   show($('tabPed'), vende);
+  { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','promo','cal','wa','conv','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','promo','cal','wa','conv','cat','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -474,6 +499,7 @@ function openTab(t){
   $('vApp').classList.toggle('xwide', t === 'ofi');
   show($('tOfi'), t === 'ofi'); clearInterval(ofiTimer); if (t === 'ofi') { loadOficina(); ofiTimer = setInterval(() => { if (!document.hidden && !$('tOfi').classList.contains('hidden')) loadOficina(true); }, 8000); }
   if (t === 'conv') openInbox();
+  show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
   if (t === 'cal') loadCalidad();
@@ -1243,6 +1269,131 @@ function paintPromos(){
   $('tPromo').querySelectorAll('[data-pe]').forEach(b => b.onclick = () => { promoEdit = Object.assign({}, PROMOS.find(x => x.id === b.dataset.pe)); paintPromos(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   $('tPromo').querySelectorAll('[data-pt]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pt); await sb.from('promotions').update({ activa: !x.activa }).eq('id', x.id); loadPromos(); });
   $('tPromo').querySelectorAll('[data-pd]').forEach(b => b.onclick = async () => { const x = PROMOS.find(y => y.id === b.dataset.pd); if (!confirm('¿Borrar la promoción ' + x.palabra_clave + '?')) return; await sb.from('promotions').delete().eq('id', x.id); loadPromos(); });
+}
+
+// ---------- Catálogo: productos, precios, fotos, opciones y existencias (al instante, sin revisión) ----------
+let CAT = [], catEdit = null, catQ = '', catVer = 'todos';
+const catInfo = () => { const c = catOf((tenant && tenant.categoria) || ''); const fn = (tenant && tenant.funciones) || [];
+  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas') }; };
+const catPrecio = (k) => k.precio != null ? usd(k.precio) : ((k.datos_extra || {}).precio_texto || 'Sin precio');
+const catAgotado = (k) => k.vars.length ? k.vars.filter(v => v.activo).every(v => v.stock === 0) : k.stock === 0;
+async function loadCatalogo(){
+  const [a, b] = await Promise.all([
+    sb.from('knowledge_base').select('id,nombre,descripcion,precio,categoria,imagen_url,datos_extra,activo,stock,created_at').eq('tenant_id', tenant.id).order('nombre'),
+    sb.from('producto_variantes').select('id,producto_id,nombre,stock,activo,orden').eq('tenant_id', tenant.id).order('orden')
+  ]);
+  if (a.error) { $('tCat').innerHTML = `<div class="card"><p class="sub">No se pudo cargar el catálogo: ${esc(a.error.message)}</p></div>`; return; }
+  const V = b.error ? [] : (b.data || []);
+  CAT = (a.data || []).map(k => Object.assign(k, { vars: V.filter(v => v.producto_id === k.id) }));
+  paintCatalogo();
+}
+function catStockHtml(k, I){
+  if (!I.vende) return '';
+  const btn = (vid, d) => `<button type="button" class="sb" data-sv="${k.id}|${vid || ''}|${d}" title="${d > 0 ? 'Sumar 1' : 'Restar 1'}">${d > 0 ? '+' : '−'}</button>`;
+  if (k.vars.length) return `<div class="vrs">${k.vars.map(v => `<span class="vr ${v.stock === 0 ? 'ag' : ''} ${v.activo ? '' : 'off'}">${esc(v.nombre)}
+      ${v.stock == null ? '<i>sin control</i>' : `${btn(v.id, -1)}<b>${v.stock}</b>${btn(v.id, 1)}`}</span>`).join('')}</div>`;
+  if (k.stock != null) return `<div class="vrs"><span class="vr ${k.stock === 0 ? 'ag' : ''}">Existencia ${btn(null, -1)}<b>${k.stock}</b>${btn(null, 1)}</span></div>`;
+  return '';
+}
+function paintCatalogo(){
+  const I = catInfo(), e = catEdit, fotosOk = tiene('fotos');
+  const titulo = I.menu ? '🍽️ Mi menú' : I.it === 'Servicio' ? '🧾 Mis servicios' : '🛍️ Mis productos';
+  const cats = [...new Set(CAT.map(k => (k.categoria || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const q = catQ.toLowerCase().trim();
+  const lista = CAT.filter(k => (catVer === 'todos' ? true : catVer === 'agotados' ? (k.activo && catAgotado(k)) : !k.activo)
+    && (!q || (k.nombre + ' ' + (k.categoria || '') + ' ' + (k.descripcion || '') + ' ' + k.vars.map(v => v.nombre).join(' ')).toLowerCase().includes(q)));
+  const nAct = CAT.filter(k => k.activo).length, nAg = CAT.filter(k => k.activo && catAgotado(k)).length, nOff = CAT.length - nAct;
+  // agrupar por sección
+  const grupos = {}; for (const k of lista) { const g = (k.categoria || '').trim() || 'Sin sección'; (grupos[g] = grupos[g] || []).push(k); }
+  const orden = Object.keys(grupos).sort((a, b) => a === 'Sin sección' ? 1 : b === 'Sin sección' ? -1 : a.localeCompare(b));
+  let form = '';
+  if (e) {
+    const modo = e._modo || (e.vars && e.vars.length ? 'opc' : e.stock != null ? 'total' : 'no');
+    form = `<div class="grp" id="catForm"><h3>${e.id ? 'Editar ' + esc(I.it.toLowerCase()) : 'Nuevo ' + esc(I.it.toLowerCase())}</h3>
+      <div class="row"><div><label>Nombre</label><input id="kN" value="${esc(e.nombre || '')}" placeholder="${I.menu ? 'Ej.: Pizza margarita' : 'Ej.: Curren 8329'}" maxlength="120"></div>
+        <div><label>${I.tasas ? 'Tasa' : 'Precio ($)'}</label><input id="kP" value="${esc(e._precio != null ? e._precio : '')}" placeholder="Ej.: 25 · o «desde 10»" inputmode="decimal"></div></div>
+      <div class="row"><div><label>Sección o marca <span class="opt">(opcional)</span></label><input id="kC" list="kCl" value="${esc(e.categoria || '')}" placeholder="${I.menu ? 'Ej.: Pizzas' : 'Ej.: Naviforce'}"><datalist id="kCl">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+        ${I.citas ? `<div><label>Duración (minutos)</label><input id="kM" type="number" min="5" step="5" value="${esc(e._dur || '')}" placeholder="30"></div>` : '<div></div>'}</div>
+      <label>Detalle <span class="opt">(opcional: lo que tu asistente le cuenta al cliente)</span></label>
+      <textarea id="kD" rows="2" placeholder="Ej.: Acero inoxidable, 42 mm, resistente al agua. Incluye caja y garantía.">${esc(e.descripcion || '')}</textarea>
+      ${fotosOk ? `<label>Fotos <span class="opt">(hasta 3: tu asistente las envía cuando el cliente pide verlo)</span></label>
+        <div class="fotos">${(e._imgs || []).map((u, j) => `<div class="th"><img src="${esc(u)}" alt="" loading="lazy"><button type="button" data-kf="${j}" title="Quitar foto">✕</button></div>`).join('')}
+        ${(e._imgs || []).length < 3 ? `<label class="addf" id="kFBox">📷<span>Agregar</span><input type="file" id="kF" accept="image/*"></label>` : ''}</div>`
+        : `<p class="hint">🔒 Las fotos están disponibles en el Plan ${esc(planMinCon('fotos') || 'superior')}.</p>`}
+      ${I.vende ? `<label>Existencias</label>
+        <div class="chips" id="kModo">${[['no','No llevo control'],['total','Cantidad total'],['opc','Por opción (color, talla, modelo…)']].map(([v, t]) => `<button type="button" class="chip ${modo === v ? 'on' : ''}" data-km="${v}">${t}</button>`).join('')}</div>
+        ${modo === 'total' ? `<div style="max-width:200px;margin-top:8px"><input id="kS" type="number" min="0" step="1" value="${esc(e.stock != null ? e.stock : '')}" placeholder="Ej.: 10"></div>` : ''}
+        ${modo === 'opc' ? `<div class="vedit">${(e._vars || []).map((v, i) => `<div class="vrow"><input data-vn="${i}" value="${esc(v.nombre || '')}" placeholder="Ej.: Negro / Talla M"><input data-vs="${i}" type="number" min="0" step="1" value="${esc(v.stock != null ? v.stock : '')}" placeholder="Cantidad"><button type="button" class="btn ghost sm" data-vx="${i}" title="Quitar">✕</button></div>`).join('')}
+          <button type="button" class="btn add" id="kVAdd">+ Agregar opción</button>
+          <p class="hint" style="margin:6px 0 0">Deja la cantidad vacía si no llevas control de esa opción. Con 0 tu asistente dice que está agotada y no la vende.</p></div>` : ''}
+        <p class="hint" style="margin:6px 0 0">Las existencias bajan solas cuando confirmas el pago de un pedido y vuelven si lo anulas.</p>` : ''}
+      <label class="sw" style="margin-top:12px"><input type="checkbox" id="kA" ${e.activo !== false ? 'checked' : ''}> Visible para tu asistente (desmárcalo para ocultarlo sin borrarlo)</label>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="kSave" type="button">Guardar</button><button class="btn ghost" id="kCancel" type="button">Cancelar</button>
+        ${e.id ? '<button class="btn ghost" id="kDel" type="button" style="color:var(--bad);margin-left:auto">Borrar</button>' : ''}</div>
+      <div id="kMsg" class="note bad hidden"></div></div>`;
+  }
+  $('tCat').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>${titulo}</h2><p class="sub" style="margin:0">Lo que cambies aquí lo usa tu asistente <b>desde el próximo mensaje</b>: precios, fotos${I.vende ? ', colores y existencias' : ''}. No necesita revisión.</p></div>
+      ${e ? '' : `<button class="btn" id="kNew" type="button">+ Agregar ${esc(I.it.toLowerCase())}</button>`}</div>
+    ${form}
+    ${e ? '' : `<div class="cbar"><input id="kQ" type="search" placeholder="Buscar…" value="${esc(catQ)}">
+      <div class="chips">${[['todos', 'Todos (' + nAct + ')'], ['agotados', 'Agotados (' + nAg + ')'], ['ocultos', 'Ocultos (' + nOff + ')']].filter(([v], i) => i === 0 || (v === 'agotados' ? I.vende : nOff)).map(([v, t]) => `<button type="button" class="chip ${catVer === v ? 'on' : ''}" data-kv="${v}">${t}</button>`).join('')}</div></div>`}
+    ${e ? '' : (lista.length ? orden.map(g => `<div class="cday">${esc(g)} <span class="hint">· ${grupos[g].length}</span></div>` + grupos[g].map(k => {
+        const img = Array.isArray(k.imagen_url) && k.imagen_url.find(Boolean);
+        return `<div class="prod ${k.activo ? '' : 'off'}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<div class="ph">${I.menu ? '🍽️' : '📦'}</div>`}
+          <div><b>${esc(k.nombre)}</b> <span class="pz">${esc(catPrecio(k))}</span>${!k.activo ? ' <span class="tg">Oculto</span>' : catAgotado(k) && I.vende ? ' <span class="tg r">Agotado</span>' : ''}
+            ${k.descripcion ? `<div class="meta">${esc(k.descripcion)}</div>` : ''}${catStockHtml(k, I)}</div>
+          <div class="acts"><button class="btn ghost sm" data-ke="${k.id}" type="button">Editar</button>
+            <button class="btn ghost sm" data-kt="${k.id}" type="button">${k.activo ? 'Ocultar' : 'Mostrar'}</button></div></div>`; }).join('')).join('')
+      : `<p class="hint" style="margin-top:14px">${CAT.length ? 'No hay resultados con ese filtro.' : 'Aún no tienes nada en tu catálogo. Agrega el primero con el botón de arriba.'}</p>`)}
+    </div>`;
+  if ($('kNew')) $('kNew').onclick = () => { catEdit = { activo: true, _imgs: [], _vars: [] }; paintCatalogo(); $('kN').focus(); };
+  if ($('kQ')) $('kQ').oninput = (ev) => { catQ = ev.target.value; const pos = ev.target.selectionStart; paintCatalogo(); const n = $('kQ'); n.focus(); n.setSelectionRange(pos, pos); };
+  $('tCat').querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { catVer = b.dataset.kv; paintCatalogo(); });
+  $('tCat').querySelectorAll('[data-ke]').forEach(b => b.onclick = () => {
+    const k = CAT.find(x => x.id === b.dataset.ke); const dx = k.datos_extra || {};
+    catEdit = Object.assign({}, k, { _precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), _dur: dx.duracion_min || '',
+      _imgs: Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [], _vars: k.vars.map(v => ({ id: v.id, nombre: v.nombre, stock: v.stock, activo: v.activo })) });
+    paintCatalogo(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('tCat').querySelectorAll('[data-kt]').forEach(b => b.onclick = async () => { const k = CAT.find(x => x.id === b.dataset.kt);
+    b.disabled = true; const { error } = await sb.from('knowledge_base').update({ activo: !k.activo }).eq('id', k.id);
+    if (!error) k.activo = !k.activo; paintCatalogo(); });
+  $('tCat').querySelectorAll('[data-sv]').forEach(b => b.onclick = async () => {
+    const [pid, vid, d] = b.dataset.sv.split('|'); b.disabled = true;
+    const { data } = await sb.rpc('mi_stock', { p_producto: pid, p_variante: vid || null, p_delta: +d, p_fijar: null });
+    if (data && data.ok) { const k = CAT.find(x => x.id === pid); if (vid) { const v = k.vars.find(x => x.id === vid); if (v) v.stock = data.stock; } else k.stock = data.stock; }
+    paintCatalogo(); });
+  if (!e) return;
+  const keep = () => {
+    e.nombre = $('kN').value; e._precio = $('kP').value; e.categoria = $('kC').value; e.descripcion = $('kD').value; e.activo = $('kA').checked;
+    if ($('kM')) e._dur = $('kM').value; if ($('kS')) e.stock = $('kS').value === '' ? null : +$('kS').value;
+    document.querySelectorAll('[data-vn]').forEach(i => { e._vars[+i.dataset.vn].nombre = i.value; });
+    document.querySelectorAll('[data-vs]').forEach(i => { e._vars[+i.dataset.vs].stock = i.value === '' ? null : +i.value; });
+  };
+  const re = () => { const y = window.scrollY; paintCatalogo(); window.scrollTo(0, y); };
+  $('kCancel').onclick = () => { catEdit = null; paintCatalogo(); };
+  document.querySelectorAll('[data-km]').forEach(b => b.onclick = () => { keep(); e._modo = b.dataset.km; if (e._modo === 'opc' && !e._vars.length) e._vars.push({ nombre: '', stock: null }); re(); });
+  if ($('kVAdd')) $('kVAdd').onclick = () => { keep(); e._vars.push({ nombre: '', stock: null }); re(); const all = document.querySelectorAll('[data-vn]'); if (all.length) all[all.length - 1].focus(); };
+  document.querySelectorAll('[data-vx]').forEach(b => b.onclick = () => { keep(); e._vars.splice(+b.dataset.vx, 1); re(); });
+  document.querySelectorAll('[data-kf]').forEach(b => b.onclick = () => { keep(); e._imgs.splice(+b.dataset.kf, 1); re(); });
+  if ($('kF')) $('kF').onchange = async (ev) => { const f = ev.target.files[0]; if (!f) return; keep(); $('kFBox').classList.add('busy'); $('kFBox').querySelector('span').textContent = 'Subiendo…';
+    try { const url = await subirFoto(f); e._imgs = [...e._imgs, url].slice(0, 3); re(); } catch (err) { re(); msg($('kMsg'), 'No se pudo subir la foto: ' + err.message, 'bad'); } };
+  if ($('kDel')) $('kDel').onclick = async () => { if (!confirm('¿Borrar "' + (e.nombre || '') + '" del catálogo? Si solo quieres que no aparezca por un tiempo, usa «Ocultar».')) return;
+    const { data, error } = await sb.rpc('mi_producto_borrar', { p_id: e.id }); if (error || !(data && data.ok)) { msg($('kMsg'), 'No se pudo borrar.', 'bad'); return; }
+    catEdit = null; loadCatalogo(); };
+  $('kSave').onclick = async () => {
+    keep(); const I2 = catInfo(), modo = e._modo || (e._vars.length ? 'opc' : e.stock != null ? 'total' : 'no');
+    if (!(e.nombre || '').trim()) { msg($('kMsg'), 'Escribe el nombre.', 'bad'); return; }
+    if (modo === 'opc' && !e._vars.some(v => (v.nombre || '').trim())) { msg($('kMsg'), 'Escribe al menos una opción (por ejemplo, un color o una talla).', 'bad'); return; }
+    const p = { id: e.id || null, tenant_id: tenant.id, nombre: e.nombre.trim(), precio: (e._precio || '').trim(), categoria: (e.categoria || '').trim(),
+      descripcion: (e.descripcion || '').trim(), duracion_min: e._dur ? String(e._dur) : '', imagenes: e._imgs, activo: e.activo !== false,
+      stock: I2.vende && modo === 'total' && e.stock != null ? String(e.stock) : '' };
+    if (I2.vende) p.variantes = modo === 'opc' ? e._vars.filter(v => (v.nombre || '').trim()).map(v => ({ id: v.id || null, nombre: v.nombre.trim(), stock: v.stock == null ? '' : String(v.stock), activo: v.activo !== false })) : [];
+    $('kSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_producto_guardar', { p });
+    $('kSave').disabled = false;
+    if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
+    catEdit = null; await loadCatalogo(); };
 }
 
 // ---------- Agenda: profesionales (doctores, barberos…) y próximas citas ----------
@@ -2083,7 +2234,7 @@ function rCatalogo(){
       ${fotosOk ? `<span class="mini" style="margin-top:8px">Fotos <span class="opt">(hasta 3)</span></span><div class="fotos">${(x.imagenes || []).map((u, j) => `<div class="th"><img src="${esc(u)}" alt="" loading="lazy"><button type="button" data-act="delFoto" data-i="${i}" data-j="${j}" title="Quitar foto">✕</button></div>`).join('')}
         ${(x.imagenes || []).length < 3 ? `<label class="addf">📷<span>Agregar</span><input type="file" accept="image/*" data-foto="${i}"></label>` : ''}</div>` : ''}</div>`).join('')}
     <button type="button" class="btn add" data-act="addItem">+ Agregar ${esc(it.toLowerCase())}</button>
-    <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Podrás cambiar esta lista más adelante.</p>
+    <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Cuando tu asistente esté activo, podrás cambiar esta lista al instante en la pestaña 🛍️ Catálogo.</p>
     ${fotosOk ? '<p class="hint">📷 Si un cliente pide ver un producto, tu asistente le envía sus fotos por WhatsApp (las fotos se activan cuando aprobemos tu formulario).</p>' : `<p class="hint">🔒 Las fotos de productos están disponibles en el Plan ${esc(planMinCon('fotos') || 'superior')}.</p>`}</div>`;
 }
 // Paso: profesionales (solo si agenda citas)

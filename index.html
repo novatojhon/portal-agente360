@@ -441,11 +441,15 @@ async function start(){
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { show($('vLogin'), true); return; }
   show($('vLogin'), false); show($('hdr'), true); show($('vApp'), true);
-  const { data, error } = await sb.from('tenants').select('*').limit(1).maybeSingle();
+  // en modo administrador se abre SIEMPRE el negocio que se está configurando (no el primero que aparezca)
+  let am = null; try { am = (await sb.rpc('admin_modo_actual')).data; } catch {}
+  let q = sb.from('tenants').select('*');
+  q = (am && am.tenant_id) ? q.eq('id', am.tenant_id) : q.limit(1);
+  const { data, error } = await q.maybeSingle();
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
   tenant = data;
   $('hdrName').firstChild.textContent = data.nombre_negocio;
-  try { const { data: am } = await sb.rpc('admin_modo_actual'); if (am && am.tenant_id) { $('admNeg').textContent = am.negocio; show($('admBar'), true); } } catch {}
+  if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
   show($('tabPed'), vende);
   // Agenda solo para negocios que agendan citas

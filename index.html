@@ -185,6 +185,8 @@
   .ofi-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
   .ofi-top .live{width:10px;height:10px;border-radius:50%;background:#22C08A;animation:o-pulse 1.8s infinite;flex:none}
   @keyframes o-pulse{0%{box-shadow:0 0 0 0 rgba(34,192,138,.55)}70%{box-shadow:0 0 0 10px rgba(34,192,138,0)}100%{box-shadow:0 0 0 0 rgba(34,192,138,0)}}
+  .ofi-son{margin-left:auto;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#EEF2FF;border-radius:99px;padding:5px 12px;font:600 13px inherit;cursor:pointer}
+  .ofi-son.off{opacity:.75}
   .ofi-top b{font-size:15px}.ofi-top small{color:#A8B3D6;font-size:13px}
   .ofi-g{display:grid;grid-template-columns:270px minmax(0,1fr) 270px;gap:14px;align-items:start}
   .ofi-col{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -484,7 +486,42 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.datas
 
 // ---------- Oficina en vivo ----------
 let ofiTimer = null, OFI = null, ofiKey = '', ofiPrev = null;
-let ofiQ = [], ofiBusy = false, ofiHold = false, ofiCliIn = false;
+// ---------- Sonidos de la oficina (se generan en el navegador, no usan el servidor) ----------
+let ofiAC = null, ofiSonOn = true;
+try { ofiSonOn = localStorage.getItem('ofiSonido') !== '0'; } catch {}
+function ofiAudio(){ if (!ofiAC) { try { ofiAC = new (window.AudioContext || window.webkitAudioContext)(); } catch { ofiAC = null; } } if (ofiAC && ofiAC.state === 'suspended') ofiAC.resume().catch(() => {}); return ofiAC; }
+document.addEventListener('pointerdown', () => { if (ofiSonOn) { ofiAudio(); ofiSonBtn(); } }, { passive: true });
+function ofiTono(f, t0, dur, tipo, vol, f2){
+  const ac = ofiAC; if (!ac) return; const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + t0;
+  o.type = tipo || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.12, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function ofiMotor(t0, dur, f1, f2, vol){
+  const ac = ofiAC; if (!ac) return; const t = ac.currentTime + t0;
+  const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(f1, t); o.frequency.linearRampToValueAtTime(f2, t + dur * .4); o.frequency.linearRampToValueAtTime(f1, t + dur);
+  lfo.frequency.value = 18; lg.gain.value = 6; lfo.connect(lg).connect(o.frequency);
+  fl.type = 'lowpass'; fl.frequency.value = 600;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.06, t + 0.4); g.gain.setValueAtTime(vol || 0.06, t + dur - 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(fl).connect(g).connect(ac.destination); o.start(t); lfo.start(t); o.stop(t + dur + 0.1); lfo.stop(t + dur + 0.1);
+}
+function ofiSon(k, delay){
+  if (!ofiSonOn || document.hidden) return; const ac = ofiAudio(); if (!ac || ac.state !== 'running') return;
+  const d = (delay || 0) / 1000;
+  if (k === 'chat') { ofiTono(880, d, .12, 'sine', .08); ofiTono(1320, d + .09, .16, 'sine', .07); }
+  else if (k === 'pago') { ofiTono(1568, d, .5, 'square', .05); ofiTono(2093, d + .08, .7, 'triangle', .09); ofiTono(2637, d + .16, .6, 'sine', .05); }
+  else if (k === 'ok') { [523, 659, 784, 1047].forEach((f, i) => ofiTono(f, d + i * .09, .3, 'triangle', .09)); }
+  else if (k === 'papel') { ofiTono(400, d, .08, 'triangle', .05, 900); }
+  else if (k === 'cinta') { ofiMotor(d, 3.8, 55, 70, .035); }
+  else if (k === 'caja') { ofiTono(180, d, .18, 'sine', .14, 90); }
+  else if (k === 'moto') { ofiMotor(d, 7.5, 70, 140, .05); ofiTono(1200, d + 3.2, .12, 'square', .03); ofiTono(1200, d + 3.4, .12, 'square', .03); }
+  else if (k === 'camion') { ofiMotor(d, 8.5, 45, 80, .06); ofiTono(311, d + 3, .35, 'square', .05); ofiTono(392, d + 3, .35, 'square', .04); ofiTono(311, d + 3.5, .45, 'square', .05); ofiTono(392, d + 3.5, .45, 'square', .04); }
+  else if (k === 'puerta') { ofiTono(1319, d, .6, 'sine', .08); ofiTono(1047, d + .25, .8, 'sine', .08); }
+}
+function ofiSonBtn(){ const b = $('ofiSon'); if (!b) return; const listo = ofiAC && ofiAC.state === 'running';
+  b.textContent = !ofiSonOn ? '🔇 Sonido apagado' : listo ? '🔊 Sonido' : '🔈 Toca para activar el sonido'; b.classList.toggle('off', !ofiSonOn || !listo); }
+let ofiQ = [], ofiBusy = false, ofiHold = false, ofiCliIn = false, ofiChatFirma = null;
 function ofiCliente(on, sinAnim){
   const sc = $('ofiSc'), c = sc && sc.querySelector('#oCli'); if (!c || on === ofiCliIn) return;
   c.getAnimations().forEach(a => a.cancel()); ofiCliIn = on;
@@ -507,10 +544,10 @@ function ofiRun(t, p){
   const rest = OFI && OFI.tipo === 'restaurante', N = OFI_N[(OFI && OFI.tipo) || 'tienda'] || OFI_N.tienda, num = p.num || '';
   const q = (id) => sc.querySelector(id);
   if (t === 'pago_rep') {
-    ofiToast(1, '💳 Llegó la captura ' + num, '#F08A3C', 4500); ofiToast(2, '⏳ Pago por verificar ' + num, N.c2, 4500, 600); return 4500;
+    ofiSon('pago'); ofiToast(1, '💳 Llegó la captura ' + num, '#F08A3C', 4500); ofiToast(2, '⏳ Pago por verificar ' + num, N.c2, 4500, 600); return 4500;
   }
   if (t === 'pago_ok') {
-    ofiToast(1, '✅ Pago confirmado ' + num, '#22C08A', 5200);
+    ofiSon('ok'); ofiToast(1, '✅ Pago confirmado ' + num, '#22C08A', 5200); ofiSon('papel', 10300);
     ofiClase('mv', 16500);
     // la recepcionista le entrega el comprobante a la caja (cuando llega al mostrador)
     ofiMover(q('#oRec'), [[168, 250, 0], [168, 250, 1, .1], [258, 205, 1, .85], [262, 205, 0]], 1500, 9700);
@@ -526,7 +563,7 @@ function ofiRun(t, p){
     setTimeout(() => cb && cb.setAttribute('opacity', 1), 2300);
     setTimeout(() => cb && cb.setAttribute('opacity', 0), 5600);
     setTimeout(() => est && est.setAttribute('opacity', 1), 8350);
-    ofiToast(2, '📥 ' + num + ' a la cinta', N.c2, 3000, 5000);
+    ofiToast(2, '📥 ' + num + ' a la cinta', N.c2, 3000, 5000); ofiSon('caja', 5500); ofiSon('cinta', 5600); ofiSon('caja', 9700);
     // la caja viaja por la cinta hasta el despachador
     ofiMover(q('#oBox'), [[168, 338, 0], [168, 338, 1, .06], [300, 410, 1, .7], [312, 392, 1, .95], [312, 392, 0]], 4200, 5600);
     setTimeout(() => ofiSetHold(true), 9700);
@@ -536,7 +573,7 @@ function ofiRun(t, p){
   }
   if (t === 'sale') {
     ofiSetHold(true);
-    const camion = p.tipo === 'envio';
+    const camion = p.tipo === 'envio'; ofiSon(camion ? 'camion' : 'moto'); ofiSon('caja', 5300);
     if (camion) { const nb = q('#truckNum'); if (nb) nb.textContent = '🚚 ' + num + ' en camino'; ofiClase('camion', 12500); }
     else { const tx = q('#motoTx'), nb = q('#motoNum'); if (tx) tx.textContent = 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + num + ' en camino'; ofiClase('moto', 11500); }
     // el despachador le entrega la caja al motorizado o la sube al camión
@@ -548,7 +585,7 @@ function ofiRun(t, p){
   if (t === 'listo') {
     ofiSetHold(true); ofiToast(3, '🛍️ ' + num + ' listo para retirar', N.c3, 5000);
     // llega el cliente y espera frente al despacho hasta que se marque Entregado
-    setTimeout(() => ofiCliente(true), 1500);
+    setTimeout(() => ofiCliente(true), 1500); ofiSon('puerta', 1500);
     return 6000;
   }
   if (t === 'retira') {
@@ -557,7 +594,7 @@ function ofiRun(t, p){
     if (!yaEsta) ofiCliente(true);
     const t0 = yaEsta ? 300 : 3800;
     setTimeout(() => { ofiSetHold(false); if (cb) cb.setAttribute('opacity', 1); }, t0 + 600);
-    ofiToast(3, '🤝 ' + num + ' entregado al cliente', '#22C08A', 4500, t0 + 600);
+    ofiToast(3, '🤝 ' + num + ' entregado al cliente', '#22C08A', 4500, t0 + 600); ofiSon('ok', t0 + 600); ofiSon('puerta', t0 + 4500);
     setTimeout(() => { if (!c) return; c.getAnimations().forEach(a => a.cancel()); ofiCliIn = false;
       ofiMover(c, [[420, 505, 1], [600, 616, 1, .9], [640, 640, 0]], 3800, 0, true);
       setTimeout(() => { if (cb) cb.setAttribute('opacity', 0); }, 3900); }, t0 + 1800);
@@ -1057,7 +1094,7 @@ function paintOficina(){
   const dorCard = D.noche && (dor.chats || dor.pedidos || dor.citas)
     ? `<div class="oc" style="background:linear-gradient(135deg,#2A2F6B,#1B1F45);border-color:rgba(245,196,81,.35)"><h3 style="color:#F5C451">🌙 Mientras dormías</h3><div style="font-size:13px;line-height:1.5">Desde las ${esc(dor.desde)} tu equipo atendió <b>${dor.chats} chat${dor.chats === 1 ? '' : 's'}</b>${D.tipo === 'clinica' ? ` y agendó <b>${dor.citas} cita${dor.citas === 1 ? '' : 's'}</b>` : dor.pedidos ? ` y tomó <b>${dor.pedidos} pedido${dor.pedidos === 1 ? '' : 's'}</b> por <b>${esc(dor.total)}</b>` : ''}.</div></div>` : '';
   const feed = (D.feed || []).map(f => `<span><em>${esc(f.h)}</em>${esc(f.txt)}</span>`).join('');
-  const top = `<span class="live"></span><b>Tu equipo virtual está trabajando</b><small>${esc(D.negocio)} · ${D.abierto ? 'abierto' : 'cerrado'} · ${esc(D.hora)} · ${D.chats_hora} chat${D.chats_hora === 1 ? '' : 's'} en la última hora</small>`;
+  const top = `<span class="live"></span><b>Tu equipo virtual está trabajando</b><small>${esc(D.negocio)} · ${D.abierto ? 'abierto' : 'cerrado'} · ${esc(D.hora)} · ${D.chats_hora} chat${D.chats_hora === 1 ? '' : 's'} en la última hora</small><button class="ofi-son" id="ofiSon" type="button"></button>`;
   const left = `<div class="oc"><h3><i style="background:${N.c1}"></i>${N.z1}<span>${(D.chats || []).length} reciente${(D.chats || []).length === 1 ? '' : 's'}</span></h3>${chats}</div>${calCard}${dorCard}`;
   const right = tieneZonas ? `<div class="oc"><h3><i style="background:${N.c2}"></i>${N.z2}${(D.pagos || []).length ? `<span class="bdg2">${D.pagos.length} por verificar</span>` : ''}</h3>${z2}</div>
         <div class="oc"><h3><i style="background:${N.c3}"></i>${N.z3}<span>${D.tipo === 'clinica' ? (D.citas_hoy || []).length : (D.despacho || []).length} en curso</span></h3>${z3}</div>`
@@ -1078,6 +1115,10 @@ function paintOficina(){
   const sc = $('ofiSc');
   if (sc) sc.classList.toggle('at', (D.chats || []).some(c => c.escribe || c.hace < 3));
   ofiEventos(D);
+  if ($('ofiSon')) { ofiSonBtn(); $('ofiSon').onclick = () => { ofiSonOn = !ofiSonOn; try { localStorage.setItem('ofiSonido', ofiSonOn ? '1' : '0'); } catch {} if (ofiSonOn) { ofiAudio(); setTimeout(() => { ofiSonBtn(); ofiSon('chat'); }, 120); } ofiSonBtn(); }; }
+  const firmaChat = (D.chats || []).slice(0, 1).map(c => c.nombre + '|' + c.texto).join();
+  if (ofiChatFirma !== null && firmaChat && firmaChat !== ofiChatFirma) ofiSon('chat');
+  ofiChatFirma = firmaChat;
   const nch = (D.chats || []).filter(c => c.escribe || c.hace < 3).length, chg = sc && sc.querySelector('#oChats');
   if (chg) { chg.setAttribute('opacity', nch >= 2 ? 1 : 0); chg.querySelector('text').textContent = '💬 ' + nch + ' a la vez'; chg.querySelector('rect').setAttribute('width', 100); chg.querySelector('rect').setAttribute('x', -50); }
   $('tOfi').querySelectorAll('[data-on]').forEach(b => b.onclick = async () => {

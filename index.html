@@ -1205,6 +1205,14 @@ async function loadPedidos(silencioso){
   if (silencioso && dlvAbierto) return;
   paintPedidos();
 }
+function montoCard(){
+  if (!tenant || tenant.validar_monto === undefined) return '';
+  const on = tenant.validar_monto !== false;
+  return `<div class="card"><h2>🧾 Capturas de pago</h2>
+    <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="vMonto" ${on ? 'checked' : ''} style="width:20px;height:20px;margin-top:2px;flex:none">
+    <span><b>Revisar el monto de las capturas</b><br><span class="hint">Tu asistente siempre revisa que la imagen sea un pago (pago móvil, transferencia, Zelle…). ${on ? 'Además compara el monto con el total del pedido.' : '<b style="color:var(--warn)">Modo prueba: NO mira el monto</b>, acepta cualquier captura de pago aunque el monto no coincida.'}</span></span></label>
+    <div id="vMsg" class="note hidden"></div></div>`;
+}
 function tasaCard(){
   if (!DLV) return '';
   const t = DLV.tasa ? String(Number(DLV.tasa).toFixed(2)).replace('.', ',') : '';
@@ -1282,7 +1290,7 @@ function paintPedidos(){
       ${p.cancel_solicitada ? '<div class="note warn" style="margin:8px 0 0">El cliente pidió cancelar este pedido.</div>' : ''}
       ${b ? `<div class="acts">${b}</div>` : ''}</div>`;
   };
-  $('tPed').innerHTML = tasaCard() + dlvCard() + `
+  $('tPed').innerHTML = tasaCard() + montoCard() + dlvCard() + `
     <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>🛵 Pedidos</h2><p class="sub" style="margin:0">Se actualiza solo cada 20 segundos. Cada botón le avisa al cliente por WhatsApp.</p></div>
       <button class="btn ghost" id="pRef">Actualizar</button></div>
@@ -1291,6 +1299,13 @@ function paintPedidos(){
     ${fin.length ? `<div class="card"><h2>Terminados (últimos 2 días)</h2>${fin.map(card).join('')}</div>` : ''}`;
   $('pRef').onclick = () => loadPedidos();
   dlvBind();
+  if ($('vMonto')) $('vMonto').onchange = async (e) => {
+    const v = e.target.checked; e.target.disabled = true;
+    const { data, error } = await sb.rpc('mi_validar_monto', { p_activo: v });
+    e.target.disabled = false;
+    if (error || !data || !data.ok) { e.target.checked = !v; msg($('vMsg'), 'No se pudo guardar: ' + (error ? error.message : ''), 'bad'); return; }
+    tenant.validar_monto = v; paintPedidos();
+  };
   if ($('tSave')) $('tSave').onclick = async () => {
     const { data, error } = await sb.rpc('mi_tasa', { p_tasa: $('tTasa').value });
     if (error || !data || !data.ok) { msg($('tMsg'), 'No se pudo guardar: ' + (error ? error.message : (data && data.mensaje) || ''), 'bad'); return; }

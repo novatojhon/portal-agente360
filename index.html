@@ -157,6 +157,9 @@
 .ofi-sc.mv .sit{animation:o-sit 16s linear 1 forwards}
 .ofi-sc.mv .wkB{animation:o-route 16s linear 1 forwards,o-wkB 16s linear 1 forwards}
 .ofi-sc.mv .wkF{animation:o-route 16s linear 1 forwards,o-wkF 16s linear 1 forwards}
+.ofi-sc .truckW{opacity:0}
+.ofi-sc.camion .truckW{animation:o-moto 12s linear 1 forwards}
+.ofi-sc.camion .truckW .motoB{animation:o-carga 12s linear 1 forwards}
 .ofi-sc .motoW{opacity:0}
 .ofi-sc.moto .motoW{animation:o-moto 11s linear 1 forwards}
 .ofi-sc .carga{opacity:0}
@@ -481,7 +484,14 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.datas
 
 // ---------- Oficina en vivo ----------
 let ofiTimer = null, OFI = null, ofiKey = '', ofiPrev = null;
-let ofiQ = [], ofiBusy = false, ofiHold = false;
+let ofiQ = [], ofiBusy = false, ofiHold = false, ofiCliIn = false;
+function ofiCliente(on, sinAnim){
+  const sc = $('ofiSc'), c = sc && sc.querySelector('#oCli'); if (!c || on === ofiCliIn) return;
+  c.getAnimations().forEach(a => a.cancel()); ofiCliIn = on;
+  if (!on) { c.setAttribute('opacity', 0); return; }
+  if (sinAnim) { ofiMover(c, [[420, 505, 1], [420, 505, 1]], 10, 0, true); return; }
+  ofiMover(c, [[640, 640, 0], [600, 616, 1, .1], [420, 505, 1]], 3500, 0, true);
+}
 function ofiEv(t, p){ if (ofiQ.length > 8) ofiQ.shift(); ofiQ.push([t, p]); if (!ofiBusy) ofiNext(); }
 function ofiNext(){ const e = ofiQ.shift(); if (!e) { ofiBusy = false; return; } ofiBusy = true; let ms = 0; try { ms = ofiRun(e[0], e[1]); } catch (x) { console.warn(x); } setTimeout(ofiNext, (ms || 0) + 500); }
 function ofiToast(k, txt, color, ms, delay){
@@ -526,23 +536,32 @@ function ofiRun(t, p){
   }
   if (t === 'sale') {
     ofiSetHold(true);
-    const tx = q('#motoTx'), nb = q('#motoNum'); if (tx) tx.textContent = p.tipo === 'envio' ? 'ENVÍO' : 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + num + ' en camino';
-    ofiClase('moto', 11500);
-    // el despachador le entrega la caja al motorizado
+    const camion = p.tipo === 'envio';
+    if (camion) { const nb = q('#truckNum'); if (nb) nb.textContent = '🚚 ' + num + ' en camino'; ofiClase('camion', 12500); }
+    else { const tx = q('#motoTx'), nb = q('#motoNum'); if (tx) tx.textContent = 'DELIVERY'; if (nb) nb.textContent = '🛵 ' + num + ' en camino'; ofiClase('moto', 11500); }
+    // el despachador le entrega la caja al motorizado o la sube al camión
     setTimeout(() => { const h = q('#oHold'); if (h) h.setAttribute('opacity', 0); ofiHold = false; }, 3600);
-    ofiMover(q('#oBox'), [[312, 392], [400, 430, 1, .6], [440, 455, 1, .9], [440, 455, 0]], 1700, 3500);
-    ofiToast(3, '🛵 ' + num + ' sale con el motorizado', N.c3, 4500, 3000);
-    return 11500;
+    ofiMover(q('#oBox'), camion ? [[312, 392], [380, 410, 1, .5], [470, 440, 1, .9], [478, 446, 0]] : [[312, 392], [400, 430, 1, .6], [440, 455, 1, .9], [440, 455, 0]], camion ? 2000 : 1700, 3500);
+    ofiToast(3, camion ? '🚚 ' + num + ' sale en el camión de envíos' : '🛵 ' + num + ' sale con el motorizado', N.c3, 4500, 3000);
+    return camion ? 12500 : 11500;
   }
-  if (t === 'listo') { ofiSetHold(true); ofiToast(3, '🛍️ ' + num + ' listo para retirar', N.c3, 5000); return 5000; }
+  if (t === 'listo') {
+    ofiSetHold(true); ofiToast(3, '🛍️ ' + num + ' listo para retirar', N.c3, 5000);
+    // llega el cliente y espera frente al despacho hasta que se marque Entregado
+    setTimeout(() => ofiCliente(true), 1500);
+    return 6000;
+  }
   if (t === 'retira') {
     ofiSetHold(true);
-    const c = q('#oCli'), cb = q('#oCliBox');
-    ofiMover(c, [[640, 640, 0], [600, 616, 1, .05], [420, 505, 1, .35], [420, 505, 1, .62], [600, 616, 1, .95], [640, 640, 0]], 10000, 0);
-    setTimeout(() => { ofiSetHold(false); if (cb) cb.setAttribute('opacity', 1); }, 4300);
-    setTimeout(() => { if (cb) cb.setAttribute('opacity', 0); }, 10000);
-    ofiToast(3, '🤝 ' + num + ' entregado al cliente', '#22C08A', 4500, 4300);
-    return 10500;
+    const c = q('#oCli'), cb = q('#oCliBox'), yaEsta = ofiCliIn;
+    if (!yaEsta) ofiCliente(true);
+    const t0 = yaEsta ? 300 : 3800;
+    setTimeout(() => { ofiSetHold(false); if (cb) cb.setAttribute('opacity', 1); }, t0 + 600);
+    ofiToast(3, '🤝 ' + num + ' entregado al cliente', '#22C08A', 4500, t0 + 600);
+    setTimeout(() => { if (!c) return; c.getAnimations().forEach(a => a.cancel()); ofiCliIn = false;
+      ofiMover(c, [[420, 505, 1], [600, 616, 1, .9], [640, 640, 0]], 3800, 0, true);
+      setTimeout(() => { if (cb) cb.setAttribute('opacity', 0); }, 3900); }, t0 + 1800);
+    return t0 + 6200;
   }
   return 0;
 }
@@ -554,7 +573,7 @@ function ofiEventos(D){
   (D.despacho || []).forEach(p => ahora[p.numero] = { num: p.num, estado: p.estado || '', tipo: p.tipo });
   const antes = ofiPrev;
   ofiPrev = ahora;
-  if (!antes) { ofiSetHold(!ofiBusy && Object.values(ahora).some(p => /preparaci|listo/.test(p.estado))); return; }
+  if (!antes) { ofiSetHold(!ofiBusy && Object.values(ahora).some(p => /preparaci|listo/.test(p.estado))); ofiCliIn = false; if (Object.values(ahora).some(p => /listo/.test(p.estado))) ofiCliente(true, true); return; }
   for (const k of Object.keys(ahora).sort((a, b) => a - b)) {
     const p = ahora[k], a = antes[k], e1 = a ? OFI_ETAPA(a.estado) : -1, e2 = OFI_ETAPA(p.estado);
     if (e2 === 0 && !a) ofiEv('pago_rep', p);
@@ -796,6 +815,20 @@ function ofiEscena(D){
 <path d="M-20 -101 A20 20 0 0 1 20 -101" stroke="#2a2f3d" stroke-width="3" fill="none"></path>
 <rect x="-24" y="-106" width="7" height="12" rx="3" fill="#2a2f3d"></rect>
 </g>
+<g id="pp-wcli">
+<ellipse cx="0" cy="0" rx="22" ry="7" fill="rgba(0,0,0,.2)"></ellipse>
+<g><rect x="-12" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="-15" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="-16 -7 -32;16 -7 -32;-16 -7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="2" y="-34" width="10" height="32" rx="4" fill="#2B3247"></rect><rect x="1" y="-6" width="14" height="6" rx="3" fill="#1a1f2e"></rect><animateTransform attributeName="transform" type="rotate" values="16 7 -32;-16 7 -32;16 7 -32" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<rect x="-19" y="-76" width="38" height="46" rx="13" fill="currentColor"></rect>
+<path d="M-7 -76 L0 -67 L7 -76 Z" fill="#ffffff" opacity=".85"></path>
+<g><rect x="-28" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="-23" cy="-43" r="5" fill="#A8714F"></circle><animateTransform attributeName="transform" type="rotate" values="14 -23 -72;-14 -23 -72;14 -23 -72" dur="0.6s" repeatCount="indefinite"></animateTransform></g>
+<g><rect x="18" y="-74" width="10" height="30" rx="5" fill="currentColor"></rect><circle cx="23" cy="-43" r="5" fill="#A8714F"></circle></g>
+<rect x="-5" y="-83" width="10" height="9" fill="#94603F"></rect>
+<circle cx="0" cy="-99" r="19" fill="#A8714F"></circle>
+<path d="M-19 -103 C-17 -124 17 -124 19 -103 C12 -112 -12 -112 -19 -103Z" fill="#1d1410"></path>
+<ellipse cx="-7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"></ellipse><ellipse cx="7" cy="-97" rx="2.3" ry="2.9" fill="#2a1d18"></ellipse>
+<path d="M-5 -88 Q0 -84 5 -88" stroke="#8a4b3a" stroke-width="2" fill="none" stroke-linecap="round"></path>
+</g>
 </defs>
 
 <rect x="0" y="0" width="760" height="420" fill="url(#${t.floorId})" transform="matrix(0.866 0.5 -0.866 0.5 0 0)"></rect>
@@ -943,6 +976,7 @@ function ofiEscena(D){
 <rect x="14" y="366" width="40" height="40" fill="#e8e2d6" transform="matrix(0.866 0.5 -0.866 0.5 0 -34)"></rect><rect x="14" y="-34" width="40" height="34" fill="#cfc6b5" transform="matrix(0.866 0.5 0 1 -351.6 203.0)"></rect><rect x="366" y="-34" width="40" height="34" fill="#bdb3a1" transform="matrix(-0.866 0.5 0 1 46.8 27.0)"></rect>
 <g transform="translate(-304.8 176.0)"><g class="leaf"><path d="M0 0 C-30 -20 -28 -60 -6 -70 C-2 -40 4 -20 0 0Z" fill="#2f8f5b"></path><path d="M0 0 C26 -14 34 -52 14 -66 C6 -38 2 -18 0 0Z" fill="#3aa86b"></path><path d="M0 0 C-8 -30 0 -70 4 -86 C14 -60 10 -26 0 0Z" fill="#27794c"></path></g></g>
 
+<g display="${v.envios}"><g class="truckW"><g transform="translate(470 528) scale(1.25)"><ellipse cx="0" cy="8" rx="78" ry="26" fill="rgba(0,0,0,.2)"></ellipse><ellipse cx="48.5" cy="-15.0" rx="10" ry="11" fill="#1d2230"></ellipse><ellipse cx="48.5" cy="-15.0" rx="4.5" ry="5" fill="#aab3c5"></ellipse><ellipse cx="-6.9" cy="17.0" rx="10" ry="11" fill="#1d2230"></ellipse><ellipse cx="-6.9" cy="17.0" rx="4.5" ry="5" fill="#aab3c5"></ellipse><path d="M26.0 -101.0 L64.1 -79.0 L5.2 -45.0 L-32.9 -67.0Z" fill="#F4F6FA"></path><path d="M64.1 -24.0 L5.2 10.0 L5.2 -45.0 L64.1 -79.0Z" fill="#E3E8F0"></path><path d="M-32.9 -12.0 L5.2 10.0 L5.2 -45.0 L-32.9 -67.0Z" fill="#CDD4E0"></path><path d="M-32.9 -47.0 L5.2 -25.0 L-19.1 -11.0 L-57.2 -33.0Z" fill="#2F6FD1"></path><path d="M5.2 10.0 L-19.1 24.0 L-19.1 -11.0 L5.2 -25.0Z" fill="#2A62BA"></path><path d="M-57.2 2.0 L-19.1 24.0 L-19.1 -11.0 L-57.2 -33.0Z" fill="#2457A6"></path><path d="M0.0 -18.0 L-13.9 -10.0 L-13.9 2.0 L0.0 -6.0Z" fill="#BFE3FF"></path><path d="M-52.0 -26.0 L-24.2 -10.0 L-24.2 2.0 L-52.0 -14.0Z" fill="#BFE3FF"></path><circle cx="-51.1" cy="-1.5" r="3" fill="#FFE27A" class="faro"></circle><circle cx="-25.1" cy="13.5" r="3" fill="#FFE27A" class="faro"></circle><path d="M62.4 -44.0 L6.9 -12.0 L6.9 -2.0 L62.4 -34.0Z" fill="#F08A3C"></path><g transform="matrix(0.866 -0.5 0 1 34.6 -38.0)"><text x="0" y="0" text-anchor="middle" font-family="Sora" font-weight="800" font-size="7.2" fill="#1F2A44">ENVÍO NACIONAL</text></g><g transform="translate(6 -100) scale(.8)" class="motoB"><rect x="-46" y="-13" width="92" height="22" rx="11" fill="#2F6FD1"></rect><text x="0" y="3" text-anchor="middle" font-family="Sora" font-weight="800" font-size="11" fill="#fff" id="truckNum">🚚 en camino</text></g></g></g></g>
 <g display="${v.envios}"><g class="motoW"><g transform="translate(446 552) scale(1.55)">
 <ellipse cx="0" cy="2" rx="40" ry="10" fill="rgba(0,0,0,.18)"></ellipse>
 <g transform="matrix(-0.866 0.5 0 1 0 0)">
@@ -978,7 +1012,7 @@ function ofiEscena(D){
 <g id="oHold" opacity="0" style="transform:translate(312px,392px)"><g transform="scale(1.45)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
 <g id="oRec" opacity="0"><rect x="-7" y="-9" width="14" height="18" rx="2" fill="#fff" stroke="#c9d0dc"></rect><path d="M-4 -4 H4 M-4 0 H4 M-4 4 H2" stroke="#9aa3b5" stroke-width="1.5"></path></g>
 <g id="oCaj" opacity="0"><use href="#pp-wcap" color="#F08A3C" display="${v.tienda}"></use><use href="#pp-wapron" color="#E5484D" display="${v.rest}"></use><g id="oCajBox" opacity="0" transform="translate(0 -50)"><g transform="scale(1.45)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g></g>
-<g id="oCli" opacity="0"><use href="#pp-walk" color="#8E6BD9"></use><g id="oCliBox" opacity="0" transform="translate(0 -52)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
+<g id="oCli" opacity="0"><use href="#pp-wcli" color="#8E6BD9"></use><g id="oCliBox" opacity="0" transform="translate(0 -52)"><path d="M0 -10 L13 -3 L0 4 L-13 -3Z" fill="${n.pT}"></path><path d="M-13 -3 L0 4 L0 18 L-13 11Z" fill="${n.pL}"></path><path d="M13 -3 L0 4 L0 18 L13 11Z" fill="${n.pR}"></path><path d="M-6.5 -6.5 L6.5 0.5" stroke="#fff" stroke-opacity=".5" stroke-width="2"></path></g></g>
 </g>
 <g id="oChats" opacity="0" transform="translate(30 92)"><rect x="-34" y="-12" width="68" height="24" rx="12" fill="#1d2230" stroke="#22C08A" stroke-width="2"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12" fill="#fff">💬 0</text></g>
 <g transform="translate(-56.3 -6)"><g id="oT1" class="otst" opacity="0"><rect x="-80" y="-14" width="160" height="28" rx="14" fill="#22C08A"></rect><text x="0" y="5" text-anchor="middle" font-family="Sora" font-weight="800" font-size="12.5" fill="#fff"></text></g></g>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boletos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root{--bg:#eef1f0;--card:#fff;--ink:#14201b;--muted:#5d6b64;--line:#dfe5e2;--brand:#0f7b5f;--soft:#e3f3ed;--bad:#b4372f;--warn:#9a6a00}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Plus Jakarta Sans",system-ui,sans-serif}
+  main{max-width:860px;margin:0 auto;padding:16px 16px 140px}
+  .card{background:var(--card);border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  h1{font-size:20px;margin:0 0 4px} .sub{color:var(--muted);margin:0}
+  .zona{margin-top:18px} .zona h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;gap:8px}
+  .stage{text-align:center;font-size:12px;letter-spacing:.2em;color:var(--muted);border-bottom:3px solid var(--line);padding-bottom:6px;margin:6px 0 14px}
+  .fila{display:flex;align-items:center;gap:4px;margin:4px 0;overflow-x:auto}
+  .fila b{width:22px;flex:none;color:var(--muted);font-size:12px;text-align:center}
+  .seat{flex:none;width:30px;height:30px;border-radius:8px 8px 4px 4px;border:1.5px solid #b9cfc5;background:#fff;font:600 11px/1 inherit;color:var(--ink);cursor:pointer;padding:0}
+  .seat:hover{border-color:var(--brand)}
+  .seat.oc{background:#e4e7e6;border-color:#e4e7e6;color:#a6aeab;cursor:not-allowed}
+  .seat.sel{background:var(--brand);border-color:var(--brand);color:#fff}
+  .ley{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px} .ley i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px;border:1.5px solid #b9cfc5}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
+  .bar .in{max-width:860px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .bar .tot{flex:1;min-width:180px} .bar .tot small{display:block;color:var(--muted)}
+  input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;min-width:0}
+  .btn{border:0;background:var(--brand);color:#fff;font:inherit;font-weight:700;padding:11px 18px;border-radius:10px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:default}
+  .msg{padding:10px 12px;border-radius:10px;margin-top:10px} .msg.bad{background:#fbe5e3;color:var(--bad)}
+  .tk{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;border:2px dashed var(--line);border-radius:14px;padding:14px;margin-top:12px;break-inside:avoid}
+  .tk .qr img,.tk .qr svg{width:120px;height:120px;display:block}
+  .tk .as{font-size:22px;font-weight:700} .tk .cod{font:600 14px/1.2 ui-monospace,monospace;letter-spacing:.08em}
+  .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:2px 9px;background:var(--soft);color:var(--brand)} .tag.r{background:#fbe5e3;color:var(--bad)}
+  .center{text-align:center;color:var(--muted);margin-top:60px}
+  @media print{body{background:#fff}.noprint{display:none}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<main id="out"><p class="center">Cargando…</p></main>
+<script>
+const CFG = window.PORTAL_CONFIG || {};
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const out = document.getElementById('out');
+const q = new URLSearchParams(location.search);
+const sb = CFG.SUPABASE_URL ? supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+const num = (n) => Number(n || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ---------- Modo 1: elegir asientos (?m=token) ----------
+async function mapa(tok){
+  const { data: d } = await sb.rpc('boleteria_mapa_publico', { p_token: tok });
+  if (!d || !d.ok) { out.innerHTML = `<p class="center">${d && d.vencido ? 'Este enlace ya se usó o venció.' : 'Enlace no válido.'}<br>Pide uno nuevo por WhatsApp.</p>`; return; }
+  document.title = 'Elige tus asientos · ' + d.evento;
+  const sel = new Map();
+  const precioDe = {};
+  d.zonas.forEach(z => precioDe[z.codigo] = Number(z.precio));
+  const pinta = () => {
+    out.innerHTML = `<div class="card"><h1>🎟️ ${esc(d.evento)}</h1><p class="sub">${esc(d.fecha)} · ${esc(d.hora)}${d.lugar ? ' · ' + esc(d.lugar) : ''}</p>
+      <div class="ley"><span><i></i>Libre</span><span><i style="background:var(--brand);border-color:var(--brand)"></i>Tu selección</span><span><i style="background:#e4e7e6;border-color:#e4e7e6"></i>Ocupado</span><span>Máximo ${d.max} por compra</span></div></div>
+      <div class="card"><div class="stage">ESCENARIO</div>${d.zonas.map(z => { const oc = new Set(z.ocupados || []);
+        return `<div class="zona"><h3><span>${esc(z.nombre)}</span><span>${esc(d.simbolo)}${num(z.precio)}</span></h3>${z.filas.map(f => `<div class="fila"><b>${esc(f)}</b>${Array.from({ length: z.por_fila }, (_, i) => { const a = z.codigo + '-' + f + (i + 1), o = oc.has(a);
+            return `<button class="seat ${o ? 'oc' : ''} ${sel.has(a) ? 'sel' : ''}" data-a="${a}" data-z="${z.codigo}" ${o ? 'disabled' : ''} title="${a}">${i + 1}</button>`; }).join('')}</div>`).join('')}</div>`; }).join('')}</div>
+      <div class="bar noprint"><div class="in"><div class="tot"><b>${sel.size} asiento${sel.size === 1 ? '' : 's'}</b> · ${esc(d.simbolo)}${num([...sel.values()].reduce((s, p) => s + p, 0))}
+          ${d.tasa ? `<small>= Bs ${num([...sel.values()].reduce((s, p) => s + p, 0) * d.tasa)} (tasa ${num(d.tasa)})</small>` : ''}<small>${esc([...sel.keys()].join(', ') || 'Toca los asientos que quieres')}</small></div>
+        <input id="nom" placeholder="Tu nombre completo" value="${esc(nombre)}" maxlength="80"><button class="btn" id="ok" ${sel.size ? '' : 'disabled'}>Apartar</button></div>
+        <div id="m" class="msg bad" style="display:none;max-width:860px;margin:8px auto 0"></div></div>`;
+    out.querySelectorAll('.seat:not(.oc)').forEach(b => b.onclick = () => { nombre = document.getElementById('nom').value;
+      const a = b.dataset.a; if (sel.has(a)) sel.delete(a); else { if (sel.size >= d.max) return; sel.set(a, precioDe[b.dataset.z]); } pinta(); });
+    document.getElementById('ok').onclick = async () => { nombre = document.getElementById('nom').value.trim(); const m = document.getElementById('m');
+      if (nombre.length < 3) { m.textContent = 'Escribe tu nombre completo.'; m.style.display = 'block'; return; }
+      document.getElementById('ok').disabled = true;
+      const { data: r, error } = await sb.rpc('boleteria_apartar_publico', { p_token: tok, p_asientos: [...sel.keys()], p_nombre: nombre });
+      if (error || !r || !r.ok) { m.textContent = (r && r.mensaje) || 'No se pudo apartar. Intenta de nuevo.'; m.style.display = 'block'; document.getElementById('ok').disabled = false;
+        if (r && /ocupado/.test(r.mensaje || '')) setTimeout(() => location.reload(), 2500); return; }
+      out.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:48px">🎉</div><h1>¡Asientos apartados!</h1>
+        <p class="sub">Compra <b>${esc(r.numero)}</b> · ${esc((r.asientos || []).join(', '))}<br>Total <b>${esc(r.total)}</b>${r.total_bs ? ' = ' + esc(r.total_bs) : ''}</p>
+        <p>Te enviamos los datos de pago por <b>WhatsApp</b>. Vuelve al chat y envía la captura cuando pagues.</p></div>`; };
+  };
+  let nombre = d.nombre && !/^sim/i.test(d.nombre) ? d.nombre : '';
+  pinta();
+}
+
+// ---------- Modo 2: mis boletos con QR (?c=id&k=token) ----------
+async function boletos(id, k){
+  const { data: d } = await sb.rpc('boletos_publico', { p_id: id, p_token: k });
+  if (!d || !d.ok) { out.innerHTML = '<p class="center">No encontramos estos boletos.</p>'; return; }
+  document.title = 'Boletos · ' + d.evento;
+  const qr = (t) => { try { const g = qrcode(0, 'M'); g.addData(t); g.make(); return g.createSvgTag(4, 0); } catch (e) { return ''; } };
+  const est = { pagada: ['', 'Pagada'], por_verificar: ['r', 'Pago en verificación'], apartada: ['r', 'Apartada, falta el pago'], liberada: ['r', 'Liberada'], cancelada: ['r', 'Anulada'] }[d.estado] || ['', d.estado];
+  out.innerHTML = `<div class="card"><p class="sub">${esc(d.negocio)}</p><h1>🎟️ ${esc(d.evento)}</h1>
+      <p class="sub">📅 ${esc(d.fecha)} · 🕒 ${esc(d.hora)}${d.lugar ? '<br>📍 ' + esc(d.lugar) : ''}${d.direccion ? ' — ' + esc(d.direccion) : ''}</p>
+      <p style="margin:10px 0 0">👤 <b>${esc(d.nombre || '')}</b> · Compra ${esc(d.numero)} · ${esc(d.total)} <span class="tag ${est[0]}">${est[1]}</span></p>
+      ${d.mapa_url ? `<p class="noprint" style="margin:8px 0 0"><a href="${esc(d.mapa_url)}" target="_blank" rel="noopener">🗺️ Cómo llegar</a></p>` : ''}</div>
+    <div class="card">${(d.boletos || []).map(b => `<div class="tk"><div class="qr">${b.codigo ? qr(b.codigo) : '<div style="width:120px;height:120px;display:grid;place-items:center;background:#f3f4f3;border-radius:10px;color:#a6aeab;font-size:12px;text-align:center">QR al confirmar el pago</div>'}</div>
+        <div><div class="as">💺 ${esc(b.asiento)}</div><div class="sub">${esc(b.zona || '')}</div>
+          ${b.codigo ? `<div class="cod">${esc(b.codigo.replace(/(\d{4})(?=\d)/g, '$1 '))}</div>` : ''}
+          ${b.estado === 'usado' ? '<span class="tag r">Ya usado</span>' : ''}</div></div>`).join('')}
+      <p class="sub" style="margin-top:12px">Presenta el QR o el código en la entrada. Cada boleto vale para una persona y una sola entrada.</p>
+      <button class="btn noprint" style="margin-top:12px" onclick="window.print()">⬇️ Guardar en PDF</button></div>`;
+}
+
+if (!sb) out.innerHTML = '<p class="center">Configuración no disponible.</p>';
+else if (q.get('m')) mapa(q.get('m'));
+else if (q.get('c') && q.get('k')) boletos(q.get('c'), q.get('k'));
+else out.innerHTML = '<p class="center">Enlace no válido.</p>';
+</script>
+</body>
+</html>

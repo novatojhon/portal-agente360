@@ -396,6 +396,7 @@
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="memb" id="tabMemb">🎫 Membresías <span class="bdg hidden" id="membBdg"></span></button>
     <button class="tab hidden" data-t="cot" id="tabCot">🧾 Cotizaciones <span class="bdg hidden" id="cotBdg"></span></button>
     <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos <span class="bdg hidden" id="pedBdg"></span></button>
     <button class="tab" data-t="cal">⭐ Calidad</button>
@@ -437,6 +438,7 @@
   <section id="tCal" class="hidden"></section>
   <section id="tPed" class="hidden"></section>
   <section id="tCot" class="hidden"></section>
+  <section id="tMemb" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -495,12 +497,12 @@ async function start(){
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
-  show($('tabPed'), vende); show($('tabCot'), vende);
+  show($('tabPed'), vende); show($('tabCot'), vende); show($('tabMemb'), fnc.includes('membresias'));
   { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -516,6 +518,7 @@ function openTab(t){
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
+  show($('tMemb'), t === 'memb'); if (t === 'memb') { membEdit = null; loadMembresias(); }
   show($('tCot'), t === 'cot'); if (t === 'cot') { cotEdit = null; loadCotizaciones(); }
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
@@ -1291,7 +1294,8 @@ function paintPromos(){
 // ---------- Catálogo: productos, precios, fotos, opciones y existencias (al instante, sin revisión) ----------
 let CAT = [], catEdit = null, catQ = '', catVer = 'todos';
 const catInfo = () => { const c = catOf((tenant && tenant.categoria) || ''); const fn = (tenant && tenant.funciones) || [];
-  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas') }; };
+  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias') }; };
+const perTxt = (d) => ({ 7: '1 semana', 15: '15 días', 30: '1 mes', 60: '2 meses', 90: '3 meses', 180: '6 meses', 365: '1 año' })[+d] || (d + ' días');
 const catPrecio = (k) => k.precio != null ? usd(k.precio) : ((k.datos_extra || {}).precio_texto || 'Sin precio');
 const catAgotado = (k) => k.vars.length ? k.vars.filter(v => v.activo).every(v => v.stock === 0) : k.stock === 0;
 async function loadCatalogo(){
@@ -1330,7 +1334,10 @@ function paintCatalogo(){
       <div class="row"><div><label>Nombre</label><input id="kN" value="${esc(e.nombre || '')}" placeholder="${I.menu ? 'Ej.: Pizza margarita' : 'Ej.: Curren 8329'}" maxlength="120"></div>
         <div><label>${I.tasas ? 'Tasa' : 'Precio ($)'}</label><input id="kP" value="${esc(e._precio != null ? e._precio : '')}" placeholder="Ej.: 25 · o «desde 10»" inputmode="decimal"></div></div>
       <div class="row"><div><label>Sección o marca <span class="opt">(opcional)</span></label><input id="kC" list="kCl" value="${esc(e.categoria || '')}" placeholder="${I.menu ? 'Ej.: Pizzas' : 'Ej.: Naviforce'}"><datalist id="kCl">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
-        ${I.citas ? `<div><label>Duración (minutos)</label><input id="kM" type="number" min="5" step="5" value="${esc(e._dur || '')}" placeholder="30"></div>` : '<div></div>'}</div>
+        ${I.citas ? `<div><label>Duración (minutos)</label><input id="kM" type="number" min="5" step="5" value="${esc(e._dur || '')}" placeholder="30"></div>` : ''}
+        ${I.planes ? `<div><label>¿Es un plan? Duración</label><select id="kPer">${[['', 'No, es un producto o servicio suelto'], ['7', '1 semana'], ['15', '15 días'], ['30', '1 mes'], ['60', '2 meses'], ['90', '3 meses'], ['180', '6 meses'], ['365', '1 año']].concat(e._per && !['7','15','30','60','90','180','365'].includes(String(e._per)) ? [[String(e._per), e._per + ' días']] : []).map(([v, t]) => `<option value="${v}" ${String(e._per || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>` : ''}
+        ${!I.citas && !I.planes ? '<div></div>' : ''}</div>
+      ${I.planes ? '<p class="hint" style="margin:4px 0 0">🎫 Si es un plan (mensualidad, curso, plan de internet…), al confirmar el pago se activa la membresía del cliente y tu asistente le avisa antes de que venza para que renueve.</p>' : ''}
       <label>Detalle <span class="opt">(opcional: lo que tu asistente le cuenta al cliente)</span></label>
       <textarea id="kD" rows="2" placeholder="Ej.: Acero inoxidable, 42 mm, resistente al agua. Incluye caja y garantía.">${esc(e.descripcion || '')}</textarea>
       ${fotosOk ? `<label>Fotos <span class="opt">(hasta 3: tu asistente las envía cuando el cliente pide verlo)</span></label>
@@ -1358,7 +1365,7 @@ function paintCatalogo(){
     ${e ? '' : (lista.length ? orden.map(g => `<div class="cday">${esc(g)} <span class="hint">· ${grupos[g].length}</span></div>` + grupos[g].map(k => {
         const img = Array.isArray(k.imagen_url) && k.imagen_url.find(Boolean);
         return `<div class="prod ${k.activo ? '' : 'off'}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<div class="ph">${I.menu ? '🍽️' : '📦'}</div>`}
-          <div><b>${esc(k.nombre)}</b> <span class="pz">${esc(catPrecio(k))}</span>${!k.activo ? ' <span class="tg">Oculto</span>' : catAgotado(k) && I.vende ? ' <span class="tg r">Agotado</span>' : ''}
+          <div><b>${esc(k.nombre)}</b> <span class="pz">${esc(catPrecio(k))}</span>${(k.datos_extra || {}).periodo_dias ? ' <span class="tg b">🎫 ' + esc(perTxt((k.datos_extra || {}).periodo_dias)) + '</span>' : ''}${!k.activo ? ' <span class="tg">Oculto</span>' : catAgotado(k) && I.vende ? ' <span class="tg r">Agotado</span>' : ''}
             ${k.descripcion ? `<div class="meta">${esc(k.descripcion)}</div>` : ''}${catStockHtml(k, I)}</div>
           <div class="acts"><button class="btn ghost sm" data-ke="${k.id}" type="button">Editar</button>
             <button class="btn ghost sm" data-kt="${k.id}" type="button">${k.activo ? 'Ocultar' : 'Mostrar'}</button></div></div>`; }).join('')).join('')
@@ -1369,7 +1376,7 @@ function paintCatalogo(){
   $('tCat').querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { catVer = b.dataset.kv; paintCatalogo(); });
   $('tCat').querySelectorAll('[data-ke]').forEach(b => b.onclick = () => {
     const k = CAT.find(x => x.id === b.dataset.ke); const dx = k.datos_extra || {};
-    catEdit = Object.assign({}, k, { _precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), _dur: dx.duracion_min || '',
+    catEdit = Object.assign({}, k, { _precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), _dur: dx.duracion_min || '', _per: dx.periodo_dias || '',
       _imgs: Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [], _vars: k.vars.map(v => ({ id: v.id, nombre: v.nombre, stock: v.stock, activo: v.activo })) });
     paintCatalogo(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   $('tCat').querySelectorAll('[data-kt]').forEach(b => b.onclick = async () => { const k = CAT.find(x => x.id === b.dataset.kt);
@@ -1383,7 +1390,7 @@ function paintCatalogo(){
   if (!e) return;
   const keep = () => {
     e.nombre = $('kN').value; e._precio = $('kP').value; e.categoria = $('kC').value; e.descripcion = $('kD').value; e.activo = $('kA').checked;
-    if ($('kM')) e._dur = $('kM').value; if ($('kS')) e.stock = $('kS').value === '' ? null : +$('kS').value;
+    if ($('kM')) e._dur = $('kM').value; if ($('kPer')) e._per = $('kPer').value; if ($('kS')) e.stock = $('kS').value === '' ? null : +$('kS').value;
     document.querySelectorAll('[data-vn]').forEach(i => { e._vars[+i.dataset.vn].nombre = i.value; });
     document.querySelectorAll('[data-vs]').forEach(i => { e._vars[+i.dataset.vs].stock = i.value === '' ? null : +i.value; });
   };
@@ -1403,7 +1410,7 @@ function paintCatalogo(){
     if (!(e.nombre || '').trim()) { msg($('kMsg'), 'Escribe el nombre.', 'bad'); return; }
     if (modo === 'opc' && !e._vars.some(v => (v.nombre || '').trim())) { msg($('kMsg'), 'Escribe al menos una opción (por ejemplo, un color o una talla).', 'bad'); return; }
     const p = { id: e.id || null, tenant_id: tenant.id, nombre: e.nombre.trim(), precio: (e._precio || '').trim(), categoria: (e.categoria || '').trim(),
-      descripcion: (e.descripcion || '').trim(), duracion_min: e._dur ? String(e._dur) : '', imagenes: e._imgs, activo: e.activo !== false,
+      descripcion: (e.descripcion || '').trim(), duracion_min: e._dur ? String(e._dur) : '', periodo_dias: e._per ? String(e._per) : '', imagenes: e._imgs, activo: e.activo !== false,
       stock: I2.vende && modo === 'total' && e.stock != null ? String(e.stock) : '' };
     if (I2.vende) p.variantes = modo === 'opc' ? e._vars.filter(v => (v.nombre || '').trim()).map(v => ({ id: v.id || null, nombre: v.nombre.trim(), stock: v.stock == null ? '' : String(v.stock), activo: v.activo !== false })) : [];
     $('kSave').disabled = true;
@@ -1411,6 +1418,85 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Membresías (planes por tiempo: gimnasio, cursos, internet…) ----------
+let MEMB = null, membEdit = null, membF = 'activas', membQ = '';
+async function loadMembresias(){
+  if (!tiene('membresias')) { $('tMemb').innerHTML = bloqueo('membresias', 'Membresías'); return; }
+  const { data, error } = await sb.rpc('mis_membresias', { p_tenant: tenant.id });
+  if (error) { $('tMemb').innerHTML = '<div class="card"><p class="sub">Las membresías aún no están instaladas (falta el SQL 84).</p></div>'; return; }
+  MEMB = data; paintMembresias();
+}
+function paintMembresias(){
+  const L = MEMB.lista || [], P = MEMB.planes || [], C = MEMB.config || {}, hoy = MEMB.hoy;
+  const fd = (d) => d ? new Date(d + 'T12:00').toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+  const sumar = (d, n) => { const x = new Date(d + 'T12:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  const act = L.filter(m => m.estado === 'activa'), pv = act.filter(m => m.dias <= 7), venc = L.filter(m => m.estado === 'vencida');
+  $('membBdg').textContent = pv.length; show($('membBdg'), pv.length > 0);
+  const F = { activas: m => m.estado === 'activa', por_vencer: m => m.estado === 'activa' && m.dias <= 7, vencidas: m => m.estado === 'vencida', todas: () => true }[membF];
+  const q = membQ.trim().toLowerCase();
+  const vis = L.filter(F).filter(m => !q || (m.nombre_cliente || '').toLowerCase().includes(q) || (m.telefono || '').includes(q.replace(/\D/g, '') || '§') || (m.plan || '').toLowerCase().includes(q));
+  const e = membEdit;
+  const form = !e ? '' : `<div class="grp" id="mbForm"><h3>${e.id ? 'Editar membresía' : 'Registrar membresía'}</h3>
+      <p class="hint" style="margin:0 0 6px">Úsalo para clientes que pagaron en el local o que ya eran miembros antes de usar el asistente.</p>
+      <div class="row"><div><label>Nombre del cliente</label><input id="mbN" value="${esc(e.nombre_cliente || '')}" maxlength="80" placeholder="Ej.: Luis Pérez"></div>
+        <div><label>Teléfono (WhatsApp)</label><input id="mbT" value="${esc(e.telefono ? '+' + e.telefono : '')}" inputmode="tel" placeholder="Ej.: 0414 1234567"></div></div>
+      <div class="row"><div><label>Plan</label><select id="mbP">${P.map(p => `<option value="${p.id}" ${e.producto_id === p.id ? 'selected' : ''}>${esc(p.nombre)} · ${esc(perTxt(p.dias))}${p.precio != null ? ' · $' + esc(p.precio) : ''}</option>`).join('')}</select></div>
+        <div class="row" style="margin:0"><div><label>Desde</label><input id="mbI" type="date" value="${esc(e.inicio || hoy)}"></div><div><label>Vence</label><input id="mbV" type="date" value="${esc(e.vence || '')}"></div></div></div>
+      <label>Notas <span class="opt">(opcional)</span></label><input id="mbO" value="${esc(e.notas || '')}" maxlength="200">
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="mbSave" type="button">Guardar</button><button class="btn ghost" id="mbCancel" type="button">Cancelar</button></div>
+      <div id="mbMsg" class="note bad hidden"></div></div>`;
+  const fila = (m) => { const tg = m.estado === 'cancelada' ? ['r', 'Cancelada'] : m.estado === 'vencida' ? ['r', `Venció hace ${-m.dias} d`] : m.dias === 0 ? ['', 'Vence hoy'] : m.dias <= 7 ? ['', `Vence en ${m.dias} d`] : ['b', `${m.dias} días`];
+    return `<div class="promo"><div><b>${esc(m.nombre_cliente || 'Cliente')}</b> <span class="tg ${tg[0]}">${tg[1]}</span>
+        <div class="meta">🎫 ${esc(m.plan)} · ${fd(m.inicio)} → <b>${fd(m.vence)}</b> · 📱 +${esc(m.telefono || '')}${m.renovaciones ? ' · 🔄 ' + m.renovaciones + ' renovación' + (m.renovaciones === 1 ? '' : 'es') : ''}${m.notas ? '<br>📝 ' + esc(m.notas) : ''}</div></div>
+      <div class="acts">${m.estado !== 'cancelada' ? `<button class="btn ghost sm" data-mb="renovar|${m.id}" type="button" title="Cobrado en el local: suma un periodo">🔄 Renovar</button>` : ''}
+        <button class="btn ghost sm" data-mb="editar|${m.id}" type="button">Editar</button>
+        ${m.estado !== 'cancelada' ? `<button class="btn ghost sm" data-mb="cancelar|${m.id}" type="button" style="color:var(--bad)">Cancelar</button>` : `<button class="btn ghost sm" data-mb="reactivar|${m.id}" type="button">Reactivar</button>`}</div></div>`; };
+  $('tMemb').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2 style="margin:0">🎫 Membresías</h2><p class="sub" style="margin:4px 0 0">Se activan solas cuando confirmas el pago de un plan. Tu asistente avisa al cliente antes de que venza para que renueve.</p></div>
+      ${e ? '' : `<button class="btn" id="mbNew" type="button" ${P.length ? '' : 'disabled'}>+ Registrar</button>`}</div>
+    ${P.length ? '' : '<div class="note warn">Primero marca tus planes en la pestaña Catálogo/Servicios: edita el plan y en <b>"¿Es un plan? Duración"</b> elige 1 mes, 3 meses, etc.</div>'}
+    <div class="stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
+      <div class="grp" style="margin:0;text-align:center"><b style="font-size:22px">${act.length}</b><div class="hint">Activas</div></div>
+      <div class="grp" style="margin:0;text-align:center"><b style="font-size:22px;color:var(--warn)">${pv.length}</b><div class="hint">Vencen en 7 días</div></div>
+      <div class="grp" style="margin:0;text-align:center"><b style="font-size:22px;color:var(--bad)">${venc.length}</b><div class="hint">Vencidas</div></div></div>
+    ${form}
+    ${e ? '' : `<div class="cbar"><input id="mbQ" type="search" placeholder="Buscar nombre, teléfono o plan…" value="${esc(membQ)}">
+      <div class="chips">${[['activas', 'Activas'], ['por_vencer', 'Por vencer'], ['vencidas', 'Vencidas'], ['todas', 'Todas']].map(([k, t]) => `<button type="button" class="chip ${membF === k ? 'on' : ''}" data-mf="${k}">${t}</button>`).join('')}</div></div>
+      ${vis.length ? vis.map(fila).join('') : '<p class="hint" style="margin-top:12px">No hay membresías con ese filtro.</p>'}`}</div>
+    <div class="card"><h2>🔔 Aviso de renovación</h2>
+      <label class="sw"><input type="checkbox" id="rvOn" ${C.activo !== false ? 'checked' : ''}> Mi asistente avisa a los clientes para renovar</label>
+      <div class="row"><div><label>Avisar con cuántos días de anticipación</label><input id="rvD" type="number" min="1" max="15" value="${esc(C.dias_antes || 3)}"></div><div></div></div>
+      <label class="sw" style="margin-top:8px"><input type="checkbox" id="rvH" ${C.avisar_dia !== false ? 'checked' : ''}> Avisar también el día que vence</label>
+      <label class="sw" style="margin-top:8px"><input type="checkbox" id="rvP" ${C.avisar_despues !== false ? 'checked' : ''}> Si no renovó, recordarle a los 2 días</label>
+      <label>Mensaje extra <span class="opt">(opcional: una promo para que renueven)</span></label><input id="rvT" value="${esc(C.texto || '')}" maxlength="300" placeholder="Ej.: Si renuevas esta semana te regalamos una clase de spinning 🎁">
+      <p class="hint" style="margin:6px 0 0">Los avisos salen entre 9 am y 7 pm. El cliente responde <b>RENOVAR</b> y tu asistente le toma el pago del mismo plan.</p>
+      <div style="margin-top:12px"><button class="btn" id="rvSave" type="button">Guardar</button> <span class="saved" id="rvSaved"></span></div></div>`;
+  const plan = () => P.find(p => p.id === ($('mbP') || {}).value);
+  if ($('mbNew')) $('mbNew').onclick = () => { membEdit = { inicio: hoy }; paintMembresias(); const p0 = P[0]; if (p0) $('mbV').value = sumar(hoy, p0.dias); $('mbN').focus(); };
+  if ($('mbQ')) $('mbQ').oninput = (ev) => { membQ = ev.target.value; const pos = ev.target.selectionStart; paintMembresias(); const n = $('mbQ'); n.focus(); n.setSelectionRange(pos, pos); };
+  $('tMemb').querySelectorAll('[data-mf]').forEach(b => b.onclick = () => { membF = b.dataset.mf; paintMembresias(); });
+  if ($('mbP')) { const auto = () => { const p = plan(); if (p && $('mbI').value) $('mbV').value = sumar($('mbI').value, p.dias); }; $('mbP').onchange = auto; $('mbI').onchange = auto; }
+  if ($('mbCancel')) $('mbCancel').onclick = () => { membEdit = null; paintMembresias(); };
+  if ($('mbSave')) $('mbSave').onclick = async () => {
+    $('mbSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_membresia_guardar', { p: { id: e.id || null, tenant_id: tenant.id, nombre: $('mbN').value, telefono: $('mbT').value,
+      producto_id: $('mbP').value, inicio: $('mbI').value, vence: $('mbV').value, notas: $('mbO').value } });
+    $('mbSave').disabled = false;
+    if (error || !(data && data.ok)) { msg($('mbMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
+    membEdit = null; loadMembresias(); };
+  $('tMemb').querySelectorAll('[data-mb]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.mb.split('|'); const m = L.find(x => x.id === id);
+    if (a === 'editar') { membEdit = Object.assign({}, m); paintMembresias(); return; }
+    if (a === 'renovar' && !confirm(`¿Renovar el plan de ${m.nombre_cliente || 'este cliente'}? Se suma ${perTxt(m.periodo_dias)} (úsalo cuando pagó en el local).`)) return;
+    if (a === 'cancelar' && !confirm('¿Cancelar esta membresía? Ya no recibirá avisos de renovación.')) return;
+    b.disabled = true; const { data } = await sb.rpc('mi_membresia_accion', { p_id: id, p_accion: a, p_dias: null });
+    if (data && !data.ok) alert(data.error); loadMembresias(); });
+  $('rvSave').onclick = async () => { $('rvSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_config_renovacion', { p: { tenant_id: tenant.id, activo: $('rvOn').checked, dias_antes: $('rvD').value, avisar_dia: $('rvH').checked, avisar_despues: $('rvP').checked, texto: $('rvT').value } });
+    $('rvSave').disabled = false;
+    if (error || !(data && data.ok)) { alert('No se pudo guardar: ' + (error ? error.message : (data && data.error) || '')); return; }
+    MEMB.config = data.config; $('rvSaved').textContent = '✓ Guardado'; setTimeout(() => { if ($('rvSaved')) $('rvSaved').textContent = ''; }, 2500); };
 }
 
 // ---------- Cotizaciones (el bot las arma; aquí completas precios, envías y configuras) ----------

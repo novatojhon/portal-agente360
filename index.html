@@ -284,6 +284,8 @@
   .encn input[type=time],.encn select{width:auto;margin:0}
   .encn span{font-size:13px;color:var(--muted)}
   .encp{margin:0 0 2px;font-weight:600}
+  .mbar{height:6px;border-radius:99px;background:#eef1f0;margin-top:10px;overflow:hidden}
+  .mbar i{display:block;height:100%;background:var(--brand)}
   /* ---------- Catálogo ---------- */
   .cbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
   .cbar input[type=search]{flex:1;min-width:180px;margin:0}
@@ -392,6 +394,7 @@
     <button class="tab" data-t="agenda" id="tabAgenda">📅 Agenda</button>
     <button class="tab" data-t="cat" id="tabCat">🛍️ Catálogo</button>
     <button class="tab" data-t="promo">🎁 Promociones</button>
+    <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
     <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos <span class="bdg hidden" id="pedBdg"></span></button>
     <button class="tab" data-t="cal">⭐ Calidad</button>
@@ -428,6 +431,7 @@
   <section id="tAgenda" class="hidden"></section>
   <section id="tCat" class="hidden"></section>
   <section id="tPromo" class="hidden"></section>
+  <section id="tMas" class="hidden"></section>
   <section id="tMet" class="hidden"></section>
   <section id="tCal" class="hidden"></section>
   <section id="tPed" class="hidden"></section>
@@ -494,7 +498,7 @@ async function start(){
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','promo','cal','wa','conv','cat','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -509,6 +513,7 @@ function openTab(t){
   show($('tOfi'), t === 'ofi'); clearInterval(ofiTimer); if (t === 'ofi') { loadOficina(); ofiTimer = setInterval(() => { if (!document.hidden && !$('tOfi').classList.contains('hidden')) loadOficina(true); }, 8000); }
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
+  show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
   if (t === 'cal') loadCalidad();
@@ -1403,6 +1408,76 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Mensajes masivos (con protección contra bloqueos) ----------
+let MAS = [], masAud = null, masF = { segmento: 'todos', dias: 90, texto: '', nombre: '' }, masTimer = null;
+const spinJS = (t, n) => { let s = String(t || '').replace(/\{nombre\}/g, n || ''); let g = 0;
+  while (/\{[^{}]*\|[^{}]*\}/.test(s) && g++ < 50) s = s.replace(/\{([^{}]*\|[^{}]*)\}/, (m, x) => { const o = x.split('|'); return o[Math.floor(Math.random() * o.length)]; });
+  return s.replace(/\s+([,.!?])/g, '$1').replace(/([¡¿])\s+/g, '$1').replace(/ {2,}/g, ' ').trim(); };
+async function loadMasivos(){
+  if (!tiene('masivos')) { $('tMas').innerHTML = bloqueo('masivos', 'Mensajes masivos'); return; }
+  const { data } = await sb.from('campanas').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(20);
+  MAS = data || []; paintMasivos(); masAudiencia();
+}
+async function masAudiencia(){
+  const { data } = await sb.rpc('mi_masivo_audiencia', { p: { tenant_id: tenant.id, segmento: masF.segmento, dias: masF.dias } });
+  masAud = data && data.ok ? data : null;
+  if ($('mAud')) $('mAud').innerHTML = masAudTxt();
+}
+function masAudTxt(){
+  if (!masAud) return 'Calculando…';
+  const n = masAud.total, lim = masAud.limite_diario || 100, dias = Math.ceil(n / lim), horas = Math.ceil(n / 30);
+  return n ? `👥 Le llegará a <b>${n.toLocaleString('es')}</b> cliente${n === 1 ? '' : 's'}. ⏱️ Tarda aprox. <b>${n <= lim ? horas + ' h' : dias + ' días'}</b> (1 mensaje cada 2 minutos, de 9 am a 7 pm, máx. ${lim} por día).${masAud.bajas ? ` <span class="hint">· ${masAud.bajas} se dieron de baja y no lo reciben.</span>` : ''}`
+           : 'Nadie cumple ese filtro todavía. Prueba con más días o con «Todos».';
+}
+function paintMasivos(){
+  const enCurso = MAS.find(c => c.estado === 'enviando' || c.estado === 'pausada');
+  const est = { enviando: ['b', '📤 Enviando'], pausada: ['', '⏸️ Pausado'], terminada: ['', '✅ Terminado'], cancelada: ['r', '✖️ Cancelado'] };
+  const seg = { todos: 'Todos', compraron: 'Ya compraron', no_compraron: 'Preguntaron y no compraron' };
+  $('tMas').innerHTML = `<div class="card"><h2>📣 Mensajes masivos</h2>
+      <p class="sub">Envía una promoción o novedad a tus clientes por WhatsApp. Para cuidar tu número de bloqueos, se envía <b>despacio</b>, solo a quien <b>ya te escribió</b>, con textos variados y siempre con la opción de darse de baja.</p>
+      ${enCurso && enCurso.estado === 'enviando' ? '<div class="note warn">Ya tienes un envío en curso (abajo). Cuando termine podrás crear otro.</div>' : `
+      <label>Nombre del envío <span class="opt">(opcional, solo lo ves tú)</span></label><input id="mN" value="${esc(masF.nombre)}" placeholder="Ej.: Promo fin de mes" maxlength="80">
+      <label>Mensaje</label><textarea id="mT" rows="5" maxlength="1000" placeholder="{Hola|Buenas|Qué tal} {nombre} 👋 Llegaron relojes nuevos ⌚ Esta semana tienen 10% de descuento. ¿Quieres que te muestre los modelos?">${esc(masF.texto)}</textarea>
+      <p class="hint" style="margin:4px 0 0">💡 <b>{nombre}</b> pone el nombre del cliente. <b>{Hola|Buenas|Qué tal}</b> elige una opción distinta para cada cliente (así no todos los mensajes son iguales y WhatsApp no lo ve como spam). Al final se agrega solo: <i>"Si no quieres recibir más mensajes, responde BAJA"</i>.</p>
+      <div id="mPrev"></div>
+      <label>¿A quién?</label>
+      <div class="chips" id="mSeg">${Object.entries(seg).map(([k, t]) => `<button type="button" class="chip ${masF.segmento === k ? 'on' : ''}" data-ms="${k}">${t}</button>`).join('')}</div>
+      <label>Que te hayan escrito en los últimos</label>
+      <div class="chips" id="mDias">${[30, 90, 180, 365].map(d => `<button type="button" class="chip ${masF.dias === d ? 'on' : ''}" data-md="${d}">${d} días</button>`).join('')}</div>
+      <div class="note" id="mAud" style="margin-top:12px">${masAudTxt()}</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn ghost" id="mVer" type="button">👀 Ver 3 ejemplos</button><button class="btn" id="mGo" type="button">📣 Enviar</button></div>
+      <div id="mMsg" class="note bad hidden"></div>`}</div>
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 style="margin:0">Envíos</h2><button class="btn ghost sm" id="mRef" type="button">↻ Actualizar</button></div>
+      ${MAS.length ? MAS.map(c => { const pct = c.total ? Math.round(100 * c.enviados / c.total) : 0, e = est[c.estado] || ['', c.estado];
+        return `<div class="promo"><div><b>${esc(c.nombre)}</b> <span class="tg ${e[0]}">${e[1]}</span>
+            <div class="bubble" style="margin-top:8px;white-space:pre-wrap">${esc(c.texto)}</div>
+            <div class="mbar"><i style="width:${pct}%"></i></div>
+            <div class="meta">${c.enviados} de ${c.total} enviados · 💬 ${c.respuestas} respondieron · 🚫 ${c.bajas} bajas · ${esc(seg[c.segmento] || c.segmento)} · ${new Date(c.created_at).toLocaleDateString('es-VE')}</div></div>
+          <div class="acts">${c.estado === 'enviando' ? `<button class="btn ghost sm" data-ma="pausar|${c.id}" type="button">⏸️ Pausar</button>` : ''}
+            ${c.estado === 'pausada' ? `<button class="btn ghost sm" data-ma="reanudar|${c.id}" type="button">▶️ Reanudar</button>` : ''}
+            ${['enviando', 'pausada'].includes(c.estado) ? `<button class="btn ghost sm" data-ma="cancelar|${c.id}" type="button" style="color:var(--bad)">Cancelar</button>` : ''}</div></div>`; }).join('')
+        : '<p class="hint" style="margin:8px 0 0">Todavía no has enviado mensajes masivos.</p>'}</div>`;
+  const keep = () => { if ($('mN')) { masF.nombre = $('mN').value; masF.texto = $('mT').value; } };
+  $('tMas').querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { keep(); masF.segmento = b.dataset.ms; masAud = null; paintMasivos(); masAudiencia(); });
+  $('tMas').querySelectorAll('[data-md]').forEach(b => b.onclick = () => { keep(); masF.dias = +b.dataset.md; masAud = null; paintMasivos(); masAudiencia(); });
+  $('mRef').onclick = () => { keep(); loadMasivos(); };
+  if ($('mVer')) $('mVer').onclick = () => { keep(); const t = masF.texto.trim(); if (!t) { msg($('mMsg'), 'Escribe el mensaje primero.', 'bad'); return; }
+    $('mPrev').innerHTML = ['María', 'José', ''].map(n => `<div class="bubble" style="margin-top:8px;white-space:pre-wrap">${esc(spinJS(t, n))}\n\n<i>Si no quieres recibir más mensajes, responde BAJA.</i></div>`).join(''); };
+  if ($('mGo')) $('mGo').onclick = async () => { keep(); const t = masF.texto.trim();
+    if (t.length < 10) { msg($('mMsg'), 'Escribe el mensaje (mínimo 10 letras).', 'bad'); return; }
+    if (!masAud || !masAud.total) { msg($('mMsg'), 'No hay clientes con ese filtro.', 'bad'); return; }
+    if (!confirm(`¿Enviar este mensaje a ${masAud.total} cliente(s)? Se enviará poco a poco y podrás pausarlo.`)) return;
+    $('mGo').disabled = true;
+    const { data, error } = await sb.rpc('mi_masivo_crear', { p: { tenant_id: tenant.id, nombre: masF.nombre, texto: t, segmento: masF.segmento, dias: masF.dias } });
+    $('mGo').disabled = false;
+    if (error || !(data && data.ok)) { msg($('mMsg'), (data && data.error) || ('No se pudo crear: ' + (error ? error.message : '')), 'bad'); return; }
+    masF = { segmento: 'todos', dias: 90, texto: '', nombre: '' }; loadMasivos(); };
+  $('tMas').querySelectorAll('[data-ma]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.ma.split('|');
+    if (a === 'cancelar' && !confirm('¿Cancelar este envío? Los que faltan ya no recibirán el mensaje.')) return;
+    b.disabled = true; const { data } = await sb.rpc('mi_masivo_accion', { p_id: id, p_accion: a });
+    if (data && !data.ok) alert(data.error); loadMasivos(); });
 }
 
 // ---------- Agenda: profesionales (doctores, barberos…) y próximas citas ----------

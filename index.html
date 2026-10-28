@@ -397,6 +397,7 @@
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="sop" id="tabSop">🛠️ Soporte <span class="bdg hidden" id="sopBdg"></span></button>
     <button class="tab hidden" data-t="resv" id="tabResv">🏨 Reservas <span class="bdg hidden" id="resvBdg"></span></button>
     <button class="tab hidden" data-t="memb" id="tabMemb">🎫 Membresías <span class="bdg hidden" id="membBdg"></span></button>
     <button class="tab hidden" data-t="cot" id="tabCot">🧾 Cotizaciones <span class="bdg hidden" id="cotBdg"></span></button>
@@ -442,6 +443,7 @@
   <section id="tCot" class="hidden"></section>
   <section id="tMemb" class="hidden"></section>
   <section id="tResv" class="hidden"></section>
+  <section id="tSop" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -500,12 +502,12 @@ async function start(){
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
-  show($('tabPed'), vende); show($('tabCot'), vende); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas'));
+  show($('tabPed'), vende); show($('tabCot'), vende); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
   { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -521,6 +523,7 @@ function openTab(t){
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
+  show($('tSop'), t === 'sop'); if (t === 'sop') { sopNuevo = false; loadSoporte(); }
   show($('tResv'), t === 'resv'); if (t === 'resv') { resvEdit = null; loadReservas(); }
   show($('tMemb'), t === 'memb'); if (t === 'memb') { membEdit = null; loadMembresias(); }
   show($('tCot'), t === 'cot'); if (t === 'cot') { cotEdit = null; loadCotizaciones(); }
@@ -1425,6 +1428,85 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Soporte técnico: tickets, técnicos y cobertura ----------
+let SOP = null, sopF = 'abiertos', sopNuevo = false, sopTecs = null;
+async function loadSoporte(){
+  if (!tiene('soporte')) { $('tSop').innerHTML = bloqueo('soporte', 'Soporte técnico'); return; }
+  const { data, error } = await sb.rpc('mis_tickets', { p_tenant: tenant.id });
+  if (error) { $('tSop').innerHTML = '<div class="card"><p class="sub">El soporte técnico aún no está instalado (falta el SQL 86).</p></div>'; return; }
+  SOP = data; sopTecs = JSON.parse(JSON.stringify((SOP.config || {}).tecnicos || [])); paintSoporte();
+}
+function paintSoporte(){
+  const L = SOP.lista || [], C = SOP.config || {}, T = sopTecs;
+  const abiertos = L.filter(k => ['abierto', 'asignado', 'en_camino'].includes(k.estado));
+  $('sopBdg').textContent = L.filter(k => k.estado === 'abierto').length; show($('sopBdg'), +$('sopBdg').textContent > 0);
+  const est = { abierto: ['r', '🆕 Nuevo'], asignado: ['h', '👷 Asignado'], en_camino: ['h', '🚐 En camino'], resuelto: ['b', '✅ Resuelto'], cancelado: ['', '✖️ Cancelado'] };
+  const F = { abiertos: k => ['abierto', 'asignado', 'en_camino'].includes(k.estado), resueltos: k => ['resuelto', 'cancelado'].includes(k.estado), todos: () => true }[sopF];
+  const hace = (d) => { const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' días'; };
+  const fila = (k) => { const e = est[k.estado] || ['', k.estado];
+    return `<div class="promo"><div><b>${esc(k.codigo)}</b> · ${esc(k.nombre_cliente || 'Cliente')} <span class="tg ${e[0]}">${e[1]}</span>${k.reabierto ? ' <span class="tg r">🔁 reabierto</span>' : ''}
+        <div class="meta">⚠️ <b>${esc(k.categoria || '')}</b>: ${esc(k.descripcion || '').replace(/\n/g, '<br>')}
+          ${k.direccion ? '<br>📍 ' + esc(k.direccion) + (k.zona ? ' (' + esc(k.zona) + ')' : '') : ''}${k.telefono ? '<br>📱 +' + esc(k.telefono) : ''}${k.tecnico ? ' · 👷 ' + esc(k.tecnico) : ''} · 🕒 hace ${hace(k.created_at)}
+          ${k.nota ? '<br>📝 ' + esc(k.nota) : ''}</div>
+        <details style="margin-top:4px"><summary class="hint" style="cursor:pointer">Historial</summary><div class="hint">${(k.historial || []).map(h => new Date(h.at).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }) + ' · ' + esc(h.que)).join('<br>')}</div></details></div>
+      <div class="acts">${['abierto', 'asignado', 'en_camino'].includes(k.estado) ? `
+          ${T.length ? `<select data-tk="${k.id}" style="max-width:150px"><option value="">👷 Asignar…</option>${T.map(t => `<option value="${esc(t.nombre)}" ${k.tecnico === t.nombre ? 'selected' : ''}>${esc(t.nombre)}</option>`).join('')}</select>` : `<button class="btn ghost sm" data-ts="asignar|${k.id}" type="button">👷 Asignar</button>`}
+          ${k.estado !== 'en_camino' ? `<button class="btn ghost sm" data-ts="en_camino|${k.id}" type="button">🚐 En camino</button>` : ''}
+          <button class="btn sm" data-ts="resuelto|${k.id}" type="button">✅ Resuelto</button>
+          <button class="btn ghost sm" data-ts="cancelado|${k.id}" type="button" style="color:var(--bad)">Cancelar</button>`
+        : `<button class="btn ghost sm" data-ts="abierto|${k.id}" type="button">🔁 Reabrir</button>`}</div></div>`; };
+  const vis = L.filter(F);
+  $('tSop').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2 style="margin:0">🛠️ Soporte técnico</h2><p class="sub" style="margin:4px 0 0">Tu asistente abre un ticket cuando un cliente reporta una falla. Cada cambio que hagas aquí (o por WhatsApp con <b>T12 en camino</b>, <b>T12 resuelto</b>) le llega al cliente.</p></div>
+      ${sopNuevo ? '' : '<button class="btn" id="tkNew" type="button">+ Nuevo ticket</button>'}</div>
+    ${sopNuevo ? `<div class="grp" id="tkForm"><h3>Nuevo ticket (cliente que llamó o vino al local)</h3>
+      <div class="row"><div><label>Nombre</label><input id="tkN" maxlength="80"></div><div><label>Teléfono (WhatsApp)</label><input id="tkT" inputmode="tel" placeholder="0414 1234567"></div></div>
+      <div class="row"><div><label>Tipo de falla</label><select id="tkC">${(C.categorias || []).map(c => `<option>${esc(c)}</option>`).join('')}</select></div><div><label>Zona</label><input id="tkZ" maxlength="80"></div></div>
+      <label>Qué falla</label><textarea id="tkD" rows="2" maxlength="1000"></textarea>
+      <label>Dirección</label><input id="tkA" maxlength="200">
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="tkSave" type="button">Abrir ticket</button><button class="btn ghost" id="tkCancel" type="button">Cancelar</button></div>
+      <div id="tkMsg" class="note bad hidden"></div></div>` : ''}
+    <div class="chips" style="margin-top:12px">${[['abiertos', 'Abiertos (' + abiertos.length + ')'], ['resueltos', 'Resueltos'], ['todos', 'Todos']].map(([k, t]) => `<button type="button" class="chip ${sopF === k ? 'on' : ''}" data-sf="${k}">${t}</button>`).join('')}</div>
+    ${vis.length ? vis.map(fila).join('') : '<p class="hint" style="margin-top:12px">' + (sopF === 'abiertos' ? 'No hay tickets abiertos. 🎉' : 'No hay tickets con ese filtro.') + '</p>'}</div>
+    <div class="card"><h2>⚙️ Ajustes de soporte</h2>
+      <label class="sw"><input type="checkbox" id="scOn" ${C.activo !== false ? 'checked' : ''}> Mi asistente abre tickets de soporte</label>
+      <label>👷 Técnicos <span class="opt">(pueden responder T12 en camino / T12 resuelto desde su WhatsApp)</span></label>
+      <div id="scTecs">${T.map((t, i) => `<div class="row" style="align-items:end;margin-top:6px"><div><input data-ti="${i}" data-tf="nombre" value="${esc(t.nombre || '')}" placeholder="Nombre"></div>
+          <div style="display:flex;gap:6px;align-items:center"><input data-ti="${i}" data-tf="telefono" value="${esc(t.telefono ? '+' + String(t.telefono).replace(/^\+/, '') : '')}" placeholder="0414 1234567" inputmode="tel">
+          <label class="sw" style="margin:0;white-space:nowrap" title="Recibe un WhatsApp con cada ticket nuevo"><input type="checkbox" data-ti="${i}" data-tf="avisos" ${t.avisos ? 'checked' : ''}> Avisos</label>
+          <button class="btn ghost sm" data-tdel="${i}" type="button" style="color:var(--bad)">✕</button></div></div>`).join('') || '<p class="hint" style="margin:4px 0">Sin técnicos: los tickets solo te llegan a ti.</p>'}</div>
+      <button class="btn ghost sm" id="scAddT" type="button" style="margin-top:8px">+ Agregar técnico</button>
+      <label>📍 Zonas de cobertura <span class="opt">(una por línea; tu asistente responde si llegan o no)</span></label>
+      <textarea id="scZ" rows="4" placeholder="Altamira&#10;Los Palos Grandes&#10;Chacao">${esc((C.zonas || []).join('\n'))}</textarea>
+      <label>Mensaje cuando NO hay cobertura <span class="opt">(opcional)</span></label><input id="scNo" value="${esc(C.sin_cobertura || '')}" maxlength="300" placeholder="Ej.: Todavía no llegamos a tu zona, pero estamos creciendo. ¿Te avisamos cuando lleguemos?">
+      <label>Tipos de falla <span class="opt">(uno por línea)</span></label><textarea id="scC" rows="4">${esc((C.categorias || []).join('\n'))}</textarea>
+      <div style="margin-top:12px"><button class="btn" id="scSave" type="button">Guardar</button> <span class="saved" id="scSaved"></span></div></div>`;
+  const leerTecs = () => { $('tSop').querySelectorAll('[data-ti]').forEach(i => { const t = T[+i.dataset.ti]; if (!t) return; t[i.dataset.tf] = i.type === 'checkbox' ? i.checked : i.value.trim(); }); };
+  $('tSop').querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { sopF = b.dataset.sf; leerTecs(); paintSoporte(); });
+  if ($('tkNew')) $('tkNew').onclick = () => { leerTecs(); sopNuevo = true; paintSoporte(); $('tkN').focus(); };
+  if ($('tkCancel')) $('tkCancel').onclick = () => { sopNuevo = false; leerTecs(); paintSoporte(); };
+  if ($('tkSave')) $('tkSave').onclick = async () => { $('tkSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_ticket_crear', { p: { tenant_id: tenant.id, nombre: $('tkN').value, telefono: $('tkT').value, categoria: $('tkC').value, zona: $('tkZ').value, descripcion: $('tkD').value, direccion: $('tkA').value } });
+    $('tkSave').disabled = false;
+    if (error || !(data && data.ok)) { msg($('tkMsg'), (data && data.error) || ('No se pudo abrir: ' + (error ? error.message : '')), 'bad'); return; }
+    sopNuevo = false; loadSoporte(); };
+  const accion = async (p) => { const { data, error } = await sb.rpc('mi_ticket_accion', { p }); if (error || !(data && data.ok)) alert((data && data.error) || (error ? error.message : 'Error')); loadSoporte(); };
+  $('tSop').querySelectorAll('[data-tk]').forEach(s => s.onchange = () => { if (s.value) accion({ id: s.dataset.tk, tecnico: s.value }); });
+  $('tSop').querySelectorAll('[data-ts]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.ts.split('|'); const k = L.find(x => x.id === id);
+    if (a === 'asignar') { const n = prompt('¿Qué técnico va? (nombre)'); if (n) accion({ id, tecnico: n }); return; }
+    if (a === 'resuelto') { const n = prompt(`¿Qué se hizo? (opcional, le llega al cliente)`, ''); if (n === null) return; accion({ id, estado: 'resuelto', nota: n }); return; }
+    if (a === 'cancelado') { if (!confirm(`¿Cancelar el ticket ${k.codigo}? Se le avisa al cliente.`)) return; }
+    b.disabled = true; accion({ id, estado: a }); });
+  $('scAddT').onclick = () => { leerTecs(); T.push({ nombre: '', telefono: '', avisos: true }); paintSoporte(); };
+  $('tSop').querySelectorAll('[data-tdel]').forEach(b => b.onclick = () => { leerTecs(); T.splice(+b.dataset.tdel, 1); paintSoporte(); });
+  $('scSave').onclick = async () => { leerTecs(); $('scSave').disabled = true;
+    const lines = (id) => $(id).value.split('\n').map(x => x.trim()).filter(Boolean);
+    const { data, error } = await sb.rpc('mi_config_soporte', { p: { tenant_id: tenant.id, activo: $('scOn').checked, zonas: lines('scZ'), sin_cobertura: $('scNo').value, categorias: lines('scC'), tecnicos: T.filter(t => (t.nombre || '').trim()) } });
+    $('scSave').disabled = false;
+    if (error || !(data && data.ok)) { alert('No se pudo guardar: ' + (error ? error.message : (data && data.error) || '')); return; }
+    SOP.config = data.config; sopTecs = JSON.parse(JSON.stringify(data.config.tecnicos || [])); paintSoporte(); $('scSaved').textContent = '✓ Guardado'; setTimeout(() => { if ($('scSaved')) $('scSaved').textContent = ''; }, 2500); };
 }
 
 // ---------- Reservas (hotel, posada, cabañas, salones…) ----------

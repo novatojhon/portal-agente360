@@ -275,6 +275,15 @@
   .promo .kw{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;letter-spacing:.3px}
   .promo .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
   .promo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .encw2{border:1px solid var(--line);border-radius:12px;padding:12px 14px;transition:opacity .2s}
+  .encw2.dim{opacity:.5}
+  .encr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px dashed var(--line)}
+  .encr:first-of-type{border-top:0}
+  .encn{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .encn input[type=number]{width:76px;margin:0}
+  .encn input[type=time],.encn select{width:auto;margin:0}
+  .encn span{font-size:13px;color:var(--muted)}
+  .encp{margin:0 0 2px;font-weight:600}
   /* ---------- Catálogo ---------- */
   .cbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
   .cbar input[type=search]{flex:1;min-width:180px;margin:0}
@@ -1707,19 +1716,32 @@ function paintCalidad(){
   const dist = M.distribucion || {}, maxD = Math.max(1, ...[1,2,3,4,5].map(k => dist[k] || 0));
   const felices = (dist[4] || 0) + (dist[5] || 0), tristes = (dist[1] || 0) + (dist[2] || 0);
   const sem = M.semanas || [];
-  const cuando = (k, o) => `<div><label>${k === 'citas' ? '📅 Después de una cita' : '🛵 Después de un pedido'}</label>
-      <select id="e_${k}_modo"><option value="dia_siguiente" ${o.modo === 'dia_siguiente' ? 'selected' : ''}>Al día siguiente, a una hora fija</option><option value="minutos" ${o.modo === 'minutos' ? 'selected' : ''}>Unos minutos después (ej. 60 o 90)</option><option value="horas" ${o.modo === 'horas' ? 'selected' : ''}>Unas horas después</option><option value="inmediato" ${o.modo === 'inmediato' ? 'selected' : ''}>Al instante (para pruebas)</option></select>
-      ${k === 'pedidos' ? `<label class="hint" style="margin-top:8px">¿Desde cuándo?</label><select id="e_pedidos_desde"><option value="pago" ${o.desde !== 'salida' ? 'selected' : ''}>Desde que se confirma el pago</option><option value="salida" ${o.desde === 'salida' ? 'selected' : ''}>Desde que sale el pedido 🛵</option></select>` : ''}
-      <div id="e_${k}_hw" style="margin-top:8px">${o.modo === 'inmediato' ? `<p class="hint" style="margin:0">⚡ Sale enseguida, a cualquier hora. Úsalo solo para probar.</p>` : o.modo === 'minutos' ? `<label class="hint">¿Cuántos minutos después?</label><input type="number" id="e_${k}_minutos" min="5" max="1440" step="5" value="${o.minutos || 90}">` : o.modo === 'horas'
-        ? `<label class="hint">¿Cuántas horas después?</label><input type="number" id="e_${k}_horas" min="1" max="72" value="${o.horas || (k === 'citas' ? 3 : 1)}">`
-        : `<label class="hint">¿A qué hora del día siguiente?</label><input type="time" id="e_${k}_hora" value="${esc(o.hora || '10:00')}">`}</div>
-      ${k === 'pedidos' && tenant && tenant.envio_nacional ? `<label class="hint" style="margin-top:10px">📦 Envíos nacionales: ¿cuántos días después de despacharlo?</label><input type="number" id="e_pedidos_envio_dias" min="1" max="30" value="${o.envio_dias || 3}"><p class="hint" style="margin:4px 0 0">Si lo marcas ✅ Entregado antes, la encuesta sale enseguida.</p>` : ''}</div>`;
+  const citasOn = (tenant.funciones || []).includes('citas') || !conPed;
+  const P = (k, d) => Object.assign({ activo: true }, d, (pe || {})[k] || {});
+  const pr = P('retiro', { horas: 1 }), pdl = P('delivery', { horas: 2 }), pen = P('envio', { dias: pe.envio_dias || 3 });
+  const fila = (k, ico, txt, o, campo, unidad, max) => `<div class="encr"><label class="sw"><input type="checkbox" id="e_${k}_on" ${o.activo !== false ? 'checked' : ''}> ${ico} ${txt}</label>
+      <div class="encn"><input type="number" id="e_${k}_n" min="1" max="${max}" value="${esc(o[campo])}"><span>${unidad}</span></div></div>`;
+  const cuando = () => `<div class="encw2 ${c.prueba ? 'dim' : ''}">
+      ${conPed ? `<h3 style="margin:4px 0 6px;font-size:15px">¿Cuándo le llega después de comprar?</h3>
+        ${tenant.retiro_en_local !== false ? fila('retiro', '🏪', 'Retiro en el local', pr, 'horas', 'horas después de entregado', 72) : ''}
+        ${fila('delivery', '🛵', 'Delivery', pdl, 'horas', 'horas después de entregado', 72)}
+        ${tenant.envio_nacional ? fila('envio', '📦', 'Envío nacional', pen, 'dias', 'días después de despachado', 30) : ''}
+        <p class="hint" style="margin:4px 0 0">Si no marcas ✅ Entregado, contamos desde que salió + 2 horas.${tenant.envio_nacional ? ' En envíos, si lo marcas Entregado antes, sale enseguida.' : ''}</p>` : ''}
+      ${citasOn ? `<h3 style="margin:${conPed ? '14px' : '4px'} 0 6px;font-size:15px">¿Cuándo le llega después de la cita?</h3>
+        <div class="encr"><label class="sw"><input type="checkbox" id="e_citas_on" ${ci.activo !== false ? 'checked' : ''}> 📅 Citas</label>
+          <div class="encn"><select id="e_citas_modo"><option value="dia_siguiente" ${ci.modo !== 'horas' ? 'selected' : ''}>Al día siguiente, a las</option><option value="horas" ${ci.modo === 'horas' ? 'selected' : ''}>Unas horas después de la cita</option></select>
+          ${ci.modo === 'horas' ? `<input type="number" id="e_citas_horas" min="1" max="72" value="${esc(ci.horas || 3)}"><span>horas</span>` : `<input type="time" id="e_citas_hora" value="${esc(ci.hora || '10:00')}">`}</div></div>` : ''}
+    </div>`;
   $('tCal').innerHTML = `
     <div class="card"><h2>⭐ Encuesta de satisfacción</h2>
       <p class="sub">Tu asistente le hace al cliente <b>3 preguntas</b> (del 1 al 5 ⭐), una por una, y al final le pide un comentario. Si alguna nota es 1 o 2, <b>te avisamos al WhatsApp del negocio</b> para que lo contactes.</p>
       <label class="sw" style="margin:6px 0 14px"><input type="checkbox" id="eAct" ${c.activo ? 'checked' : ''}> Activar la encuesta</label>
-      <div class="encw">${conPed ? '' : cuando('citas', ci)}${conPed ? cuando('pedidos', pe) : ''}</div>
-      <p class="hint" style="margin-top:8px">Solo se envía entre 8:00 am y 8:30 pm, y máximo una encuesta cada 3 días por cliente.</p>
+      <label class="sw encp"><input type="checkbox" id="eP" ${c.prueba ? 'checked' : ''}> <span>🧪 Modo prueba: enviarla <b>al instante</b> cuando ${conPed ? 'el pedido sale' : 'se agenda la cita'}${conPed && citasOn ? ' o se agenda la cita' : ''}, a cualquier hora</span></label>
+      <p class="hint" style="margin:2px 0 12px">Úsalo solo para probar. Apágalo cuando empieces a atender clientes reales y se usarán los tiempos de abajo.</p>
+      ${cuando()}
+      <label style="margin-top:12px">¿Cuántas encuestas por cliente?</label>
+      <select id="eFrec">${[['cada_compra','Una por cada ' + (conPed ? 'compra' : 'cita') + ' (recomendado)'],['3_dias','Máximo una cada 3 días'],['7_dias','Máximo una por semana']].map(([v, t]) => `<option value="${v}" ${(c.frecuencia || 'cada_compra') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <p class="hint" style="margin-top:8px">Solo se envía entre 8:00 am y 8:30 pm. Nunca dos a la vez: si el cliente compra otra vez mientras responde una, la siguiente espera su turno.</p>
       <label style="margin-top:12px">Las 3 preguntas <span class="hint">(déjalas vacías para usar las sugeridas)</span></label>
       ${[0,1,2].map(i => `<input id="eQ${i}" style="margin-top:6px" placeholder="${esc((M.preguntas || [])[i] || '')}" value="${esc(((c.preguntas || [])[i]) || '')}">`).join('')}
       <label style="margin-top:12px">Saludo de la encuesta <span class="hint">(opcional, déjalo vacío para usar el nuestro)</span></label>
@@ -1754,17 +1776,25 @@ function paintCalidad(){
         ${x.comentario ? `<div style="margin-top:4px">"${esc(x.comentario)}"</div>` : ''}</div>`).join('')
         : `<p class="hint" style="margin:0">${c.activo ? 'Todavía no hay respuestas. Las encuestas se envían solas después de cada ' + (conPed ? 'pedido entregado' : 'cita') + '.' : 'Activa la encuesta arriba para empezar a medir la calidad de tu servicio.'}</p>`}</div>`;
   $('cD').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { calDias = +b.dataset.d; loadCalidad(); });
-  const leer = () => { const o = { activo: $('eAct').checked, preguntas: [0,1,2].map(i => $('eQ' + i).value.trim()), texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(), citas: Object.assign({}, ci), pedidos: Object.assign({}, pe) };
-    ['citas', 'pedidos'].forEach(k => { if (!$('e_' + k + '_modo')) return; o[k].modo = $('e_' + k + '_modo').value;
-      if ($('e_' + k + '_horas')) o[k].horas = +$('e_' + k + '_horas').value || 1; if (k === 'pedidos' && $('e_pedidos_desde')) o[k].desde = $('e_pedidos_desde').value; if (k === 'pedidos' && $('e_pedidos_envio_dias')) { o[k].envio_dias = Math.max(1, Math.min(30, +$('e_pedidos_envio_dias').value || 3)); delete o[k].envio_minutos; } if ($('e_' + k + '_minutos')) o[k].minutos = +$('e_' + k + '_minutos').value || 60; if ($('e_' + k + '_hora')) o[k].hora = $('e_' + k + '_hora').value || '10:00'; });
+  const leer = () => {
+    const num = (id, d, mx) => $(id) ? Math.max(1, Math.min(mx, +$(id).value || d)) : d;
+    const on = (id, d) => $(id) ? $(id).checked : d;
+    const o = { activo: $('eAct').checked, prueba: $('eP').checked, frecuencia: $('eFrec') ? $('eFrec').value : 'cada_compra',
+      preguntas: [0,1,2].map(i => $('eQ' + i).value.trim()), texto: $('eTxt').value.trim(), resena_url: $('eUrl').value.trim(),
+      pedidos: { retiro: { activo: on('e_retiro_on', pr.activo !== false), horas: num('e_retiro_n', pr.horas || 1, 72) },
+                 delivery: { activo: on('e_delivery_on', pdl.activo !== false), horas: num('e_delivery_n', pdl.horas || 2, 72) },
+                 envio: { activo: on('e_envio_on', pen.activo !== false), dias: num('e_envio_n', pen.dias || 3, 30) } },
+      citas: { activo: on('e_citas_on', ci.activo !== false), modo: $('e_citas_modo') ? $('e_citas_modo').value : (ci.modo || 'dia_siguiente'),
+               horas: num('e_citas_horas', ci.horas || 3, 72), hora: $('e_citas_hora') ? ($('e_citas_hora').value || '10:00') : (ci.hora || '10:00') } };
     return o; };
-  ['citas', 'pedidos'].forEach(k => { const s = $('e_' + k + '_modo'); if (s) s.onchange = () => { const o = leer(); CAL.config = o; paintCalidad(); }; });
+  if ($('e_citas_modo')) $('e_citas_modo').onchange = () => { CAL.config = leer(); paintCalidad(); };
+  $('eP').onchange = () => { document.querySelector('.encw2').classList.toggle('dim', $('eP').checked); };
   $('eSave').onclick = async () => {
     const o = leer();
     if (o.resena_url && !/^https?:\/\//i.test(o.resena_url)) { msg($('eMsg'), 'El enlace de reseña debe empezar con https://', 'bad'); return; }
     const { data, error } = await sb.rpc('mi_config_encuesta', { p: o });
     if (error) { msg($('eMsg'), 'No se pudo guardar: ' + error.message, 'bad'); return; }
-    CAL.config = data.encuesta; paintCalidad(); msg($('eMsg'), o.activo ? '✅ Guardado. La encuesta está activa.' : '✅ Guardado. La encuesta está apagada.', 'ok');
+    CAL.config = data.encuesta; paintCalidad(); msg($('eMsg'), !o.activo ? '✅ Guardado. La encuesta está apagada.' : o.prueba ? '✅ Guardado. Encuesta activa en 🧪 modo prueba (sale al instante).' : '✅ Guardado. La encuesta está activa.', 'ok');
   };
 }
 
@@ -2459,7 +2489,8 @@ function paintSeg(){
   const h = (c.horas || []).map(Number).sort((a, b) => a - b), h1 = h[0] || 24, h2 = h[1] || 0;
   const opt = (arr, v) => arr.map(([x, t]) => `<option value="${x}" ${x === v ? 'selected' : ''}>${t}</option>`).join('');
   box.innerHTML = `<h2>🔁 Seguimiento automático</h2>
-    <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Solo en tu horario de atención, nunca a quien ya compró, agendó o dijo que no.</p>
+    <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Solo en tu horario de atención, nunca a quien dijo que no.</p>
+    <p class="hint" style="margin-top:-4px">📌 Cómo funciona: si el cliente <b>compró o agendó</b> en esa conversación, le llega la <b>encuesta</b> (pestaña ⭐ Calidad). Si <b>preguntó y no compró</b>, le llega el <b>seguimiento</b>, aunque te haya comprado otras veces.</p>
     <label class="sw"><input type="checkbox" id="sgA" ${c.activo ? 'checked' : ''}> Activado</label>
     <div class="row" style="margin-top:10px">
       <div><label>Primer seguimiento</label><select id="sg1">${opt([[4,'A las 4 horas'],[12,'A las 12 horas'],[24,'Al día siguiente (24 h)'],[48,'A los 2 días']], h1)}</select></div>

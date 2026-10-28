@@ -397,6 +397,7 @@
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="paq" id="tabPaq">✈️ Paquetes <span class="bdg hidden" id="paqBdg"></span></button>
     <button class="tab hidden" data-t="sop" id="tabSop">🛠️ Soporte <span class="bdg hidden" id="sopBdg"></span></button>
     <button class="tab hidden" data-t="resv" id="tabResv">🏨 Reservas <span class="bdg hidden" id="resvBdg"></span></button>
     <button class="tab hidden" data-t="memb" id="tabMemb">🎫 Membresías <span class="bdg hidden" id="membBdg"></span></button>
@@ -444,6 +445,7 @@
   <section id="tMemb" class="hidden"></section>
   <section id="tResv" class="hidden"></section>
   <section id="tSop" class="hidden"></section>
+  <section id="tPaq" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -502,12 +504,12 @@ async function start(){
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
-  show($('tabPed'), vende); show($('tabCot'), vende); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
+  show($('tabPed'), vende); show($('tabCot'), vende || fnc.includes('cotizaciones')); show($('tabPaq'), fnc.includes('paquetes')); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
   { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -523,6 +525,7 @@ function openTab(t){
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
+  show($('tPaq'), t === 'paq'); if (t === 'paq') { paqEdit = null; loadPaquetes(); }
   show($('tSop'), t === 'sop'); if (t === 'sop') { sopNuevo = false; loadSoporte(); }
   show($('tResv'), t === 'resv'); if (t === 'resv') { resvEdit = null; loadReservas(); }
   show($('tMemb'), t === 'memb'); if (t === 'memb') { membEdit = null; loadMembresias(); }
@@ -1301,7 +1304,7 @@ function paintPromos(){
 // ---------- Catálogo: productos, precios, fotos, opciones y existencias (al instante, sin revisión) ----------
 let CAT = [], catEdit = null, catQ = '', catVer = 'todos';
 const catInfo = () => { const c = catOf((tenant && tenant.categoria) || ''); const fn = (tenant && tenant.funciones) || [];
-  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias'), reservas: fn.includes('reservas') }; };
+  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias'), reservas: fn.includes('reservas'), paquetes: fn.includes('paquetes') }; };
 const perTxt = (d) => ({ 7: '1 semana', 15: '15 días', 30: '1 mes', 60: '2 meses', 90: '3 meses', 180: '6 meses', 365: '1 año' })[+d] || (d + ' días');
 const catPrecio = (k) => k.precio != null ? usd(k.precio) : ((k.datos_extra || {}).precio_texto || 'Sin precio');
 const catAgotado = (k) => k.vars.length ? k.vars.filter(v => v.activo).every(v => v.stock === 0) : k.stock === 0;
@@ -1347,6 +1350,7 @@ function paintCatalogo(){
       ${I.reservas ? `<div class="row"><div><label>¿Se reserva por fecha?</label><select id="kRp">${[['', 'No'], ['noche', 'Sí, por noche (habitación, cabaña…)'], ['dia', 'Sí, por día (salón, cancha…)']].map(([v, t]) => `<option value="${v}" ${String(e._rp || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div class="row" style="margin:0"><div><label>¿Cuántas iguales tienes?</label><input id="kRu" type="number" min="1" max="999" value="${esc(e._ru || '')}" placeholder="Ej.: 3"></div><div><label>Personas máx.</label><input id="kRc" type="number" min="1" max="9999" value="${esc(e._rc || '')}" placeholder="Ej.: 2"></div></div></div>
       <p class="hint" style="margin:4px 0 0">🏨 Tu asistente revisa la disponibilidad por fechas antes de ofrecerla y pide el anticipo (se configura en la pestaña Reservas).</p>` : ''}
+      ${I.paquetes ? `<label class="sw" style="margin-top:10px"><input type="checkbox" id="kPq" ${e._pq ? 'checked' : ''}> ✈️ Es un paquete de viaje <span class="opt">(sus fechas de salida y cupos se cargan en la pestaña ✈️ Paquetes)</span></label>` : ''}
       ${I.planes ? '<p class="hint" style="margin:4px 0 0">🎫 Si es un plan (mensualidad, curso, plan de internet…), al confirmar el pago se activa la membresía del cliente y tu asistente le avisa antes de que venza para que renueve.</p>' : ''}
       <label>Detalle <span class="opt">(opcional: lo que tu asistente le cuenta al cliente)</span></label>
       <textarea id="kD" rows="2" placeholder="Ej.: Acero inoxidable, 42 mm, resistente al agua. Incluye caja y garantía.">${esc(e.descripcion || '')}</textarea>
@@ -1375,7 +1379,7 @@ function paintCatalogo(){
     ${e ? '' : (lista.length ? orden.map(g => `<div class="cday">${esc(g)} <span class="hint">· ${grupos[g].length}</span></div>` + grupos[g].map(k => {
         const img = Array.isArray(k.imagen_url) && k.imagen_url.find(Boolean);
         return `<div class="prod ${k.activo ? '' : 'off'}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<div class="ph">${I.menu ? '🍽️' : '📦'}</div>`}
-          <div><b>${esc(k.nombre)}</b> <span class="pz">${esc(catPrecio(k))}</span>${(k.datos_extra || {}).periodo_dias ? ' <span class="tg b">🎫 ' + esc(perTxt((k.datos_extra || {}).periodo_dias)) + '</span>' : ''}${(k.datos_extra || {}).reserva_unidades ? ' <span class="tg h">🏨 ' + esc((k.datos_extra || {}).reserva_unidades) + ' · por ' + ((k.datos_extra || {}).reserva_por === 'dia' ? 'día' : 'noche') + '</span>' : ''}${!k.activo ? ' <span class="tg">Oculto</span>' : catAgotado(k) && I.vende ? ' <span class="tg r">Agotado</span>' : ''}
+          <div><b>${esc(k.nombre)}</b> <span class="pz">${esc(catPrecio(k))}</span>${(k.datos_extra || {}).periodo_dias ? ' <span class="tg b">🎫 ' + esc(perTxt((k.datos_extra || {}).periodo_dias)) + '</span>' : ''}${(k.datos_extra || {}).paquete ? ' <span class="tg h">✈️ Paquete</span>' : ''}${(k.datos_extra || {}).reserva_unidades ? ' <span class="tg h">🏨 ' + esc((k.datos_extra || {}).reserva_unidades) + ' · por ' + ((k.datos_extra || {}).reserva_por === 'dia' ? 'día' : 'noche') + '</span>' : ''}${!k.activo ? ' <span class="tg">Oculto</span>' : catAgotado(k) && I.vende ? ' <span class="tg r">Agotado</span>' : ''}
             ${k.descripcion ? `<div class="meta">${esc(k.descripcion)}</div>` : ''}${catStockHtml(k, I)}</div>
           <div class="acts"><button class="btn ghost sm" data-ke="${k.id}" type="button">Editar</button>
             <button class="btn ghost sm" data-kt="${k.id}" type="button">${k.activo ? 'Ocultar' : 'Mostrar'}</button></div></div>`; }).join('')).join('')
@@ -1386,7 +1390,7 @@ function paintCatalogo(){
   $('tCat').querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { catVer = b.dataset.kv; paintCatalogo(); });
   $('tCat').querySelectorAll('[data-ke]').forEach(b => b.onclick = () => {
     const k = CAT.find(x => x.id === b.dataset.ke); const dx = k.datos_extra || {};
-    catEdit = Object.assign({}, k, { _precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), _dur: dx.duracion_min || '', _per: dx.periodo_dias || '', _rp: dx.reserva_unidades ? (dx.reserva_por || 'noche') : '', _ru: dx.reserva_unidades || '', _rc: dx.capacidad || '',
+    catEdit = Object.assign({}, k, { _precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), _dur: dx.duracion_min || '', _per: dx.periodo_dias || '', _rp: dx.reserva_unidades ? (dx.reserva_por || 'noche') : '', _ru: dx.reserva_unidades || '', _pq: !!dx.paquete, _rc: dx.capacidad || '',
       _imgs: Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [], _vars: k.vars.map(v => ({ id: v.id, nombre: v.nombre, stock: v.stock, activo: v.activo })) });
     paintCatalogo(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   $('tCat').querySelectorAll('[data-kt]').forEach(b => b.onclick = async () => { const k = CAT.find(x => x.id === b.dataset.kt);
@@ -1400,7 +1404,7 @@ function paintCatalogo(){
   if (!e) return;
   const keep = () => {
     e.nombre = $('kN').value; e._precio = $('kP').value; e.categoria = $('kC').value; e.descripcion = $('kD').value; e.activo = $('kA').checked;
-    if ($('kM')) e._dur = $('kM').value; if ($('kPer')) e._per = $('kPer').value; if ($('kRp')) { e._rp = $('kRp').value; e._ru = $('kRu').value; e._rc = $('kRc').value; } if ($('kS')) e.stock = $('kS').value === '' ? null : +$('kS').value;
+    if ($('kM')) e._dur = $('kM').value; if ($('kPer')) e._per = $('kPer').value; if ($('kPq')) e._pq = $('kPq').checked; if ($('kRp')) { e._rp = $('kRp').value; e._ru = $('kRu').value; e._rc = $('kRc').value; } if ($('kS')) e.stock = $('kS').value === '' ? null : +$('kS').value;
     document.querySelectorAll('[data-vn]').forEach(i => { e._vars[+i.dataset.vn].nombre = i.value; });
     document.querySelectorAll('[data-vs]').forEach(i => { e._vars[+i.dataset.vs].stock = i.value === '' ? null : +i.value; });
   };
@@ -1420,7 +1424,7 @@ function paintCatalogo(){
     if (!(e.nombre || '').trim()) { msg($('kMsg'), 'Escribe el nombre.', 'bad'); return; }
     if (modo === 'opc' && !e._vars.some(v => (v.nombre || '').trim())) { msg($('kMsg'), 'Escribe al menos una opción (por ejemplo, un color o una talla).', 'bad'); return; }
     const p = { id: e.id || null, tenant_id: tenant.id, nombre: e.nombre.trim(), precio: (e._precio || '').trim(), categoria: (e.categoria || '').trim(),
-      descripcion: (e.descripcion || '').trim(), duracion_min: e._dur ? String(e._dur) : '', periodo_dias: e._per ? String(e._per) : '', reserva_por: e._rp || '', reserva_unidades: e._rp ? String(e._ru || 1) : '', capacidad: e._rp && e._rc ? String(e._rc) : '', imagenes: e._imgs, activo: e.activo !== false,
+      descripcion: (e.descripcion || '').trim(), duracion_min: e._dur ? String(e._dur) : '', periodo_dias: e._per ? String(e._per) : '', reserva_por: e._rp || '', reserva_unidades: e._rp ? String(e._ru || 1) : '', capacidad: e._rp && e._rc ? String(e._rc) : '', paquete: !!e._pq, imagenes: e._imgs, activo: e.activo !== false,
       stock: I2.vende && modo === 'total' && e.stock != null ? String(e.stock) : '' };
     if (I2.vende) p.variantes = modo === 'opc' ? e._vars.filter(v => (v.nombre || '').trim()).map(v => ({ id: v.id || null, nombre: v.nombre.trim(), stock: v.stock == null ? '' : String(v.stock), activo: v.activo !== false })) : [];
     $('kSave').disabled = true;
@@ -1428,6 +1432,67 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Paquetes de viaje: salidas, cupos y reservas ----------
+let PAQ = null, paqEdit = null;
+async function loadPaquetes(){
+  if (!tiene('paquetes')) { $('tPaq').innerHTML = bloqueo('paquetes', 'Paquetes de viaje'); return; }
+  const { data, error } = await sb.rpc('mis_paquetes', { p_tenant: tenant.id });
+  if (error) { $('tPaq').innerHTML = '<div class="card"><p class="sub">Los paquetes aún no están instalados (falta el SQL 87).</p></div>'; return; }
+  PAQ = data; paintPaquetes();
+}
+function paintPaquetes(){
+  const P = PAQ.paquetes || [], R = PAQ.reservas || [], C = PAQ.config || {}, hoy = PAQ.hoy;
+  const fd = (d) => new Date(d + 'T12:00').toLocaleDateString('es-VE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const porCobrar = R.filter(r => ['esperando_anticipo', 'anticipo_por_verificar'].includes(r.estado));
+  $('paqBdg').textContent = R.filter(r => r.estado === 'anticipo_por_verificar').length; show($('paqBdg'), +$('paqBdg').textContent > 0);
+  const est = { esperando_anticipo: ['', '⏳ Esperando anticipo'], anticipo_por_verificar: ['h', '💳 Verificar anticipo'], confirmada: ['b', '✅ Confirmada'], completada: ['', 'Viajó'], cancelada: ['r', '✖️ Anulada'], no_show: ['r', 'No se presentó'] };
+  const e = paqEdit;
+  const salForm = (pq) => `<div class="grp" id="slForm" style="margin-top:8px"><h3>${e.id ? 'Editar salida' : 'Nueva salida'} · ${esc(pq.nombre)}</h3>
+      <div class="row"><div><label>Salida</label><input id="slS" type="date" value="${esc(e.salida || '')}"></div><div><label>Regreso</label><input id="slR" type="date" value="${esc(e.regreso || '')}"></div></div>
+      <div class="row"><div><label>Cupos</label><input id="slC" type="number" min="1" value="${esc(e.cupos || 10)}"></div><div><label>Precio por persona ($) <span class="opt">(vacío = el del catálogo)</span></label><input id="slP" value="${esc(e.precio ?? '')}" inputmode="decimal" placeholder="${esc(pq.precio ?? '')}"></div></div>
+      <label>Notas <span class="opt">(opcional)</span></label><input id="slN" value="${esc(e.notas || '')}" maxlength="200" placeholder="Ej.: salida desde Maiquetía 6:00 am">
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn" id="slSave" type="button">Guardar</button><button class="btn ghost" id="slCancel" type="button">Cancelar</button>
+        ${e.id ? '<button class="btn ghost" id="slDel" type="button" style="color:var(--bad);margin-left:auto">Borrar salida</button>' : ''}</div>
+      <div id="slMsg" class="note bad hidden"></div></div>`;
+  const tarjeta = (pq) => `<div class="promo" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div><b>✈️ ${esc(pq.nombre)}</b> <span class="hint">desde $${esc(pq.precio ?? '—')} por persona</span></div>
+        ${e ? '' : `<button class="btn ghost sm" data-sn="${pq.id}" type="button">+ Salida</button>`}</div>
+      ${(pq.salidas || []).length ? `<div style="display:grid;gap:6px;margin-top:8px">${pq.salidas.map(s => { const libres = s.cupos - s.usados, pas = s.salida < hoy;
+          return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 10px;border-radius:10px;background:${pas || !s.activo ? '#f3f4f3' : libres <= 0 ? 'var(--bad-soft)' : libres <= 2 ? 'var(--warn-soft)' : 'var(--ok-soft)'}">
+            <span>🛫 <b>${fd(s.salida)}</b> → ${fd(s.regreso)}${s.precio != null ? ' · $' + esc(s.precio) : ''}${s.notas ? ' · <span class="hint">' + esc(s.notas) + '</span>' : ''}${!s.activo ? ' <span class="tg">Oculta</span>' : ''}</span>
+            <span><b>${libres <= 0 ? 'Lleno' : libres + ' libres'}</b> <span class="hint">de ${s.cupos}</span> ${e ? '' : `<button class="btn ghost sm" data-se="${pq.id}|${s.id}" type="button">Editar</button>`}</span></div>`; }).join('')}</div>`
+        : '<p class="hint" style="margin:6px 0 0">Sin salidas cargadas: el bot no puede vender este paquete hasta que agregues una.</p>'}
+      ${e && e.producto_id === pq.id ? salForm(pq) : ''}</div>`;
+  const fila = (r) => { const t = est[r.estado] || ['', r.estado];
+    return `<div class="promo"><div><b>${esc(r.codigo)}</b> · ${esc(r.nombre_cliente || 'Cliente')} <span class="tg ${t[0]}">${t[1]}</span>
+        <div class="meta">🧳 ${esc(r.alojamiento)} · ${r.cantidad} viajero${r.cantidad === 1 ? '' : 's'} · 🛫 ${fd(r.entrada)}<br>💵 Total $${Number(r.total).toFixed(2)}${Number(r.anticipo) > 0 ? ' · anticipo $' + Number(r.anticipo).toFixed(2) : ''}${r.telefono ? ' · 📱 +' + esc(r.telefono) : ''}${r.referencia_pago ? '<br>🧾 ' + esc(r.referencia_pago) : ''}${r.notas ? '<br>📝 ' + esc(r.notas) : ''}</div></div>
+      <div class="acts">${['esperando_anticipo', 'anticipo_por_verificar'].includes(r.estado) ? `<button class="btn sm" data-pr="confirmada|${r.id}" type="button">✅ Confirmar</button>` : ''}
+        ${['esperando_anticipo', 'anticipo_por_verificar', 'confirmada'].includes(r.estado) ? `<button class="btn ghost sm" data-pr="cancelada|${r.id}" type="button" style="color:var(--bad)">Anular</button>` : ''}</div></div>`; };
+  const prox = R.filter(r => ['esperando_anticipo', 'anticipo_por_verificar', 'confirmada'].includes(r.estado));
+  $('tPaq').innerHTML = `<div class="card"><h2>✈️ Paquetes y salidas</h2>
+      <p class="sub">Marca tus paquetes en el Catálogo ("Es un paquete de viaje") y aquí cárgales las fechas de salida y los cupos. Tu asistente vende solo lo que tiene cupo. Para viajes a la medida arma una <b>cotización</b> y te llega para ponerle precio.</p>
+      ${P.length ? P.map(tarjeta).join('') : '<div class="note warn">Todavía no tienes paquetes: en 🛍️ Catálogo edita un producto y marca <b>"✈️ Es un paquete de viaje"</b>.</div>'}</div>
+    <div class="card"><h2>🧳 Reservas de viaje ${porCobrar.length ? '<span class="tg h">' + porCobrar.length + ' por cobrar</span>' : ''}</h2>
+      ${prox.length ? prox.map(fila).join('') : '<p class="hint" style="margin:0">No hay reservas de viaje pendientes.</p>'}
+      <div class="row" style="margin-top:12px;align-items:end"><div><label>Anticipo (%)</label><input id="pqPct" type="number" min="0" max="100" value="${esc(C.anticipo_pct ?? 50)}"></div>
+        <div><label>Apartar cupos sin pago (horas)</label><input id="pqH" type="number" min="1" max="168" value="${esc(C.retener_horas || 24)}"></div></div>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="pqSave" type="button">Guardar anticipo</button> <span class="saved" id="pqSaved"></span></div></div>`;
+  $('tPaq').querySelectorAll('[data-sn]').forEach(b => b.onclick = () => { paqEdit = { producto_id: b.dataset.sn, cupos: 10 }; paintPaquetes(); });
+  $('tPaq').querySelectorAll('[data-se]').forEach(b => b.onclick = () => { const [pid, sid] = b.dataset.se.split('|'); const s = P.find(x => x.id === pid).salidas.find(x => x.id === sid); paqEdit = Object.assign({}, s, { producto_id: pid }); paintPaquetes(); });
+  if ($('slCancel')) $('slCancel').onclick = () => { paqEdit = null; paintPaquetes(); };
+  const guardar = async (borrar) => { const { data, error } = await sb.rpc('mi_salida_guardar', { p: { id: e.id || null, producto_id: e.producto_id, salida: $('slS').value, regreso: $('slR').value, cupos: $('slC').value, precio: $('slP').value, notas: $('slN').value, borrar: !!borrar } });
+    if (error || !(data && data.ok)) { msg($('slMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
+    if (data.mensaje) alert(data.mensaje); paqEdit = null; loadPaquetes(); };
+  if ($('slSave')) $('slSave').onclick = () => guardar(false);
+  if ($('slDel')) $('slDel').onclick = () => { if (confirm('¿Borrar esta salida?')) guardar(true); };
+  $('pqSave').onclick = async () => { const { data, error } = await sb.rpc('mi_config_reservas', { p: Object.assign({}, C, { tenant_id: tenant.id, anticipo_pct: $('pqPct').value, retener_horas: $('pqH').value }) });
+    if (error || !(data && data.ok)) { alert('No se pudo guardar: ' + (error ? error.message : (data && data.error) || '')); return; }
+    PAQ.config = data.config; $('pqSaved').textContent = '✓ Guardado'; setTimeout(() => { if ($('pqSaved')) $('pqSaved').textContent = ''; }, 2500); };
+  $('tPaq').querySelectorAll('[data-pr]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.pr.split('|'); const r = R.find(x => x.id === id);
+    if (!confirm(a === 'confirmada' ? `¿Confirmar la reserva ${r.codigo}? Al cliente le llega la confirmación.` : `¿Anular la reserva ${r.codigo}? Se liberan los cupos y se le avisa al cliente.`)) return;
+    b.disabled = true; const { data } = await sb.rpc('mi_reserva_accion', { p_id: id, p_accion: a }); if (data && !data.ok) alert(data.error); loadPaquetes(); });
 }
 
 // ---------- Soporte técnico: tickets, técnicos y cobertura ----------

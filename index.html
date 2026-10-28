@@ -396,6 +396,7 @@
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="cot" id="tabCot">🧾 Cotizaciones <span class="bdg hidden" id="cotBdg"></span></button>
     <button class="tab hidden" data-t="ped" id="tabPed">🛵 Pedidos <span class="bdg hidden" id="pedBdg"></span></button>
     <button class="tab" data-t="cal">⭐ Calidad</button>
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
@@ -435,6 +436,7 @@
   <section id="tMet" class="hidden"></section>
   <section id="tCal" class="hidden"></section>
   <section id="tPed" class="hidden"></section>
+  <section id="tCot" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -493,12 +495,12 @@ async function start(){
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
-  show($('tabPed'), vende);
+  show($('tabPed'), vende); show($('tabCot'), vende);
   { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -514,6 +516,7 @@ function openTab(t){
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
+  show($('tCot'), t === 'cot'); if (t === 'cot') { cotEdit = null; loadCotizaciones(); }
   show($('tPromo'), t === 'promo'); show($('tMet'), t === 'met'); show($('tAgenda'), t === 'agenda'); show($('tCal'), t === 'cal'); show($('tPed'), t === 'ped');
   clearInterval(pedTimer); if (t === 'ped') { loadPedidos(); pedTimer = setInterval(() => { if (!$('tPed').classList.contains('hidden')) loadPedidos(true); }, 20000); }
   if (t === 'cal') loadCalidad();
@@ -1408,6 +1411,95 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Cotizaciones (el bot las arma; aquí completas precios, envías y configuras) ----------
+let COT = null, cotEdit = null, cotFiltro = 'abiertas';
+async function loadCotizaciones(){
+  if (!tiene('cotizaciones')) { $('tCot').innerHTML = bloqueo('cotizaciones', 'Cotizaciones'); return; }
+  const { data, error } = await sb.rpc('mis_cotizaciones', { p_tenant: tenant.id, p_dias: 120 });
+  if (error) { $('tCot').innerHTML = '<div class="card"><p class="sub">Las cotizaciones aún no están instaladas (falta el SQL 83).</p></div>'; return; }
+  COT = data; paintCotizaciones();
+}
+function paintCotizaciones(){
+  const L = COT.lista || [], C = COT.config || {};
+  const pend = L.filter(c => c.estado === 'por_completar').length;
+  $('cotBdg').textContent = pend; show($('cotBdg'), pend > 0);
+  const est = { por_completar: ['', '✏️ Falta precio'], enviada: ['b', '📤 Enviada'], aceptada: ['b', '👍 Aceptada'], convertida: ['', '🛵 Pedido'],
+                vencida: ['r', '⌛ Vencida'], rechazada: ['r', '✖️ Rechazada'], anulada: ['r', '🗑️ Anulada'] };
+  const filtros = { abiertas: c => ['por_completar', 'enviada', 'aceptada'].includes(c.estado), todas: () => true };
+  const vis = L.filter(filtros[cotFiltro]);
+  const fecha = (d) => new Date(d).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' });
+  const card = (c) => {
+    const e = est[c.estado] || ['', c.estado], ed = cotEdit === c.id;
+    const items = (c.items || []).map((x, i) => ed
+      ? `<div class="row" style="display:grid;grid-template-columns:2fr 70px 100px;gap:6px;margin-top:6px">
+           <input data-ci="${i}" data-k="producto" value="${esc(x.producto + (x.variante ? ' (' + x.variante + ')' : ''))}" placeholder="Producto">
+           <input data-ci="${i}" data-k="cantidad" value="${esc(x.cantidad)}" inputmode="decimal" title="Cantidad">
+           <input data-ci="${i}" data-k="precio" value="${x.precio == null ? '' : esc(x.precio)}" inputmode="decimal" placeholder="Precio $" title="Precio unitario" style="${x.precio == null ? 'border-color:var(--warn)' : ''}"></div>`
+      : `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line)"><span>${Number(x.cantidad)} × ${esc(x.producto)}${x.variante ? ' <span class="hint">(' + esc(x.variante) + ')</span>' : ''}</span>
+           <span style="white-space:nowrap">${x.precio == null ? '<b style="color:var(--warn)">falta precio</b>' : '$' + Number(x.precio).toFixed(2) + ' c/u · <b>$' + Number(x.importe).toFixed(2) + '</b>'}</span></div>`).join('');
+    return `<div class="promo" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div><b>${esc(c.codigo)}</b> · ${esc(c.nombre_cliente || 'Cliente')} <span class="hint">+${esc(c.telefono_cliente || '')} · ${fecha(c.created_at)}</span></div>
+        <span class="tg ${e[0]}">${e[1]}${c.pedido ? ' ' + esc(c.pedido) : ''}</span></div>
+      <div style="margin-top:8px">${items}</div>
+      ${ed ? `<button class="btn ghost sm" id="cAdd" type="button" style="margin-top:8px">＋ Agregar producto</button>
+              <label>Nota para el cliente <span class="opt">(opcional)</span></label><input id="cNota" value="${esc(c.notas || '')}" maxlength="300" placeholder="Ej.: entrega en 3 días hábiles">` :
+        `<div class="meta" style="margin-top:6px">Subtotal $${Number(c.subtotal).toFixed(2)}${Number(c.impuesto) > 0 ? ' · ' + esc(c.impuesto_nombre) + ' $' + Number(c.impuesto).toFixed(2) : ''} · <b>Total $${Number(c.total).toFixed(2)}</b>${c.validez_hasta ? ' · válida hasta ' + new Date(c.validez_hasta + 'T12:00').toLocaleDateString('es-VE') : ''}${c.notas ? '<br>📝 ' + esc(c.notas) : ''}</div>`}
+      <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+        ${ed ? `<button class="btn sm" data-ca="enviar|${c.id}" type="button">💾 Guardar y enviar al cliente</button><button class="btn ghost sm" data-ca="guardar|${c.id}" type="button">Solo guardar</button><button class="btn ghost sm" data-ca="cerrar|${c.id}" type="button">Cancelar</button>`
+            : `${['por_completar', 'enviada', 'vencida'].includes(c.estado) ? `<button class="btn ${c.estado === 'por_completar' ? '' : 'ghost'} sm" data-ca="editar|${c.id}" type="button">✏️ ${c.estado === 'por_completar' ? 'Poner precios' : 'Editar'}</button>` : ''}
+               ${['enviada', 'vencida'].includes(c.estado) ? `<button class="btn ghost sm" data-ca="reenviar|${c.id}" type="button">📤 Reenviar</button>` : ''}
+               <a class="btn ghost sm" href="${esc(c.link)}" target="_blank" rel="noopener" style="text-decoration:none">📄 Ver documento</a>
+               ${['por_completar', 'enviada', 'vencida', 'aceptada'].includes(c.estado) ? `<button class="btn ghost sm" data-ca="anulada|${c.id}" type="button" style="color:var(--bad)">Anular</button>` : ''}`}
+      </div><div class="note bad hidden" id="cMsg${c.id.slice(0, 8)}"></div></div>`;
+  };
+  $('tCot').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">🧾 Cotizaciones</h2>
+        <div class="chips">${[['abiertas', 'Abiertas'], ['todas', 'Todas']].map(([k, t]) => `<button type="button" class="chip ${cotFiltro === k ? 'on' : ''}" data-cf="${k}">${t}</button>`).join('')}<button class="btn ghost sm" id="cRef" type="button">↻</button></div></div>
+      <p class="sub">Cuando un cliente pide una cotización, tu asistente la arma con los precios de tu catálogo y se la envía con un enlace para descargarla en PDF. Si pide algo que no está en tu catálogo, te llega un WhatsApp para poner el precio (responde por ejemplo <b>C12 25</b>) o lo haces aquí. Si el cliente responde <b>ACEPTO</b>, se convierte en pedido.</p>
+      ${COT.activa ? '' : '<div class="note warn">Las cotizaciones están apagadas: actívalas abajo en "Ajustes de cotización".</div>'}
+      ${vis.length ? vis.map(card).join('') : '<p class="hint" style="margin:8px 0 0">No hay cotizaciones ' + (cotFiltro === 'abiertas' ? 'abiertas' : '') + ' todavía.</p>'}</div>
+    <div class="card"><h2>⚙️ Ajustes de cotización</h2>
+      <label class="sw"><input type="checkbox" id="cOn" ${C.activo !== false ? 'checked' : ''}> Mi asistente hace cotizaciones</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div><label>Validez (días)</label><input id="cVal" type="number" min="1" max="90" value="${esc(C.validez_dias || 5)}"></div>
+        <div><label>Impuesto</label><input id="cImpN" value="${esc(C.impuesto_nombre || 'IVA')}" maxlength="20"></div>
+        <div><label>% del impuesto <span class="opt">(0 = sin impuesto)</span></label><input id="cImpP" type="number" min="0" max="50" step="0.01" value="${esc(C.impuesto_pct || 0)}"></div>
+      </div>
+      <label>Nota fija al pie <span class="opt">(opcional)</span></label><input id="cNotaF" value="${esc(C.nota || '')}" maxlength="300" placeholder="Ej.: Precios sujetos a disponibilidad. Garantía de 3 meses.">
+      <label>Logo (enlace de imagen) <span class="opt">(opcional)</span></label><input id="cLogo" value="${esc(C.logo_url || '')}" maxlength="400" placeholder="https://…/logo.png">
+      <div style="margin-top:12px"><button class="btn" id="cSave" type="button">Guardar ajustes</button> <span class="saved" id="cSaved"></span></div></div>`;
+  $('tCot').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { cotFiltro = b.dataset.cf; paintCotizaciones(); });
+  $('cRef').onclick = () => { cotEdit = null; loadCotizaciones(); };
+  const leer = (c) => { const its = JSON.parse(JSON.stringify(c.items || []));
+    $('tCot').querySelectorAll('[data-ci]').forEach(i => { const x = its[+i.dataset.ci] || (its[+i.dataset.ci] = { cantidad: 1 }); const v = i.value.trim();
+      if (i.dataset.k === 'producto') { if (v !== String((x.producto || '') + (x.variante ? ' (' + x.variante + ')' : ''))) { x.producto = v; x.variante = null; x.producto_id = null; x.variante_id = null; x.catalogo = false; } }
+      else x[i.dataset.k] = v === '' ? null : v.replace(',', '.'); });
+    return its; };
+  if ($('cAdd')) $('cAdd').onclick = () => { const c = L.find(x => x.id === cotEdit); c.items = leer(c); c.notas = $('cNota').value; c.items.push({ producto: '', cantidad: 1, precio: null }); paintCotizaciones(); };
+  $('tCot').querySelectorAll('[data-ca]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.ca.split('|'); const c = L.find(x => x.id === id);
+    const err = (t) => msg($('cMsg' + id.slice(0, 8)), t, 'bad');
+    if (a === 'editar') { cotEdit = id; paintCotizaciones(); return; }
+    if (a === 'cerrar') { cotEdit = null; loadCotizaciones(); return; }
+    if (a === 'enviar' || a === 'guardar') {
+      const items = leer(c).filter(x => (x.producto || '').trim());
+      if (a === 'enviar' && items.some(x => x.precio == null || x.precio === '')) { err('Pon el precio de todos los productos para poder enviarla.'); return; }
+      b.disabled = true;
+      const { data, error } = await sb.rpc('mi_cotizacion_guardar', { p: { id, items, notas: $('cNota').value, enviar: a === 'enviar' } });
+      b.disabled = false;
+      if (error || !(data && data.ok)) { err((data && data.mensaje) || ('No se pudo guardar: ' + (error ? error.message : ''))); return; }
+      cotEdit = null; loadCotizaciones(); return; }
+    if (a === 'reenviar' && !confirm('¿Enviar otra vez esta cotización al cliente por WhatsApp? (La validez se cuenta desde hoy.)')) return;
+    if (a === 'anulada' && !confirm('¿Anular la cotización ' + c.codigo + '? Al cliente no se le avisa.')) return;
+    b.disabled = true;
+    const { error } = await sb.rpc('mi_cotizacion_accion', { p_id: id, p_accion: a === 'reenviar' ? 'enviar' : a });
+    if (error) { b.disabled = false; err(error.message); return; }
+    loadCotizaciones(); });
+  $('cSave').onclick = async () => { $('cSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_config_cotizacion', { p: { tenant_id: tenant.id, activo: $('cOn').checked, validez_dias: $('cVal').value, impuesto_nombre: $('cImpN').value, impuesto_pct: $('cImpP').value, nota: $('cNotaF').value, logo_url: $('cLogo').value.trim() } });
+    $('cSave').disabled = false;
+    if (error || !(data && data.ok)) { alert('No se pudo guardar: ' + (error ? error.message : '')); return; }
+    COT.config = data.config; COT.activa = data.config.activo; $('cSaved').textContent = '✓ Guardado'; setTimeout(() => { if ($('cSaved')) $('cSaved').textContent = ''; }, 2500); };
 }
 
 // ---------- Mensajes masivos (con protección contra bloqueos) ----------

@@ -397,6 +397,7 @@
     <button class="tab" data-t="promo">🎁 Promociones</button>
     <button class="tab" data-t="mas">📣 Masivos</button>
     <button class="tab" data-t="met">📈 Métricas</button>
+    <button class="tab hidden" data-t="bol" id="tabBol">🎟️ Boletería <span class="bdg hidden" id="bolBdg"></span></button>
     <button class="tab hidden" data-t="paq" id="tabPaq">✈️ Paquetes <span class="bdg hidden" id="paqBdg"></span></button>
     <button class="tab hidden" data-t="sop" id="tabSop">🛠️ Soporte <span class="bdg hidden" id="sopBdg"></span></button>
     <button class="tab hidden" data-t="resv" id="tabResv">🏨 Reservas <span class="bdg hidden" id="resvBdg"></span></button>
@@ -446,6 +447,7 @@
   <section id="tResv" class="hidden"></section>
   <section id="tSop" class="hidden"></section>
   <section id="tPaq" class="hidden"></section>
+  <section id="tBol" class="hidden"></section>
 
   <!-- CONVERSACIONES -->
   <section id="tConv" class="hidden"></section>
@@ -504,12 +506,12 @@ async function start(){
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
-  show($('tabPed'), vende); show($('tabCot'), vende || fnc.includes('cotizaciones')); show($('tabPaq'), fnc.includes('paquetes')); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
+  show($('tabPed'), vende); show($('tabCot'), vende || fnc.includes('cotizaciones')); show($('tabPaq'), fnc.includes('paquetes')); show($('tabBol'), fnc.includes('boleteria')); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
   { const c = catOf(data.categoria || ''); $('tabCat').textContent = c.id === 'restaurante' ? '🍽️ Menú' : c.it === 'Servicio' ? '🧾 Servicios' : '🛍️ Catálogo'; }
   // Agenda solo para negocios que agendan citas
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
-  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
+  if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','bol','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
   await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -525,6 +527,7 @@ function openTab(t){
   if (t === 'conv') openInbox();
   show($('tCat'), t === 'cat'); if (t === 'cat') { catEdit = null; loadCatalogo(); }
   show($('tMas'), t === 'mas'); if (t === 'mas') loadMasivos();
+  show($('tBol'), t === 'bol'); if (t === 'bol') { bolEdit = null; loadBoleteria(); }
   show($('tPaq'), t === 'paq'); if (t === 'paq') { paqEdit = null; loadPaquetes(); }
   show($('tSop'), t === 'sop'); if (t === 'sop') { sopNuevo = false; loadSoporte(); }
   show($('tResv'), t === 'resv'); if (t === 'resv') { resvEdit = null; loadReservas(); }
@@ -1432,6 +1435,128 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- Boletería: eventos, mapa de asientos, ventas y validación ----------
+let BOL = null, bolEdit = null, bolEv = null, bolFn = null, bolSel = new Set(), bolF = 'por_verificar', bolScan = null;
+async function loadBoleteria(){
+  if (!tiene('boleteria')) { $('tBol').innerHTML = bloqueo('boleteria', 'Boletería'); return; }
+  const { data, error } = await sb.rpc('mis_eventos', { p_tenant: tenant.id });
+  if (error) { $('tBol').innerHTML = '<div class="card"><p class="sub">La boletería aún no está instalada (falta el SQL 92).</p></div>'; return; }
+  BOL = data; const ev = (BOL.eventos || []).find(e => e.id === bolEv) || (BOL.eventos || []).find(e => e.fecha >= BOL.hoy) || (BOL.eventos || [])[0];
+  bolEv = ev ? ev.id : null; const fn = ev && ((ev.funciones || []).find(f => f.id === bolFn) || (ev.funciones || []).find(f => f.activo));
+  bolFn = fn ? fn.id : null; paintBoleteria();
+}
+function paintBoleteria(){
+  const C = BOL.config || {}, E = BOL.eventos || [], V = BOL.compras || [];
+  const sim = C.moneda === 'EUR' ? '€' : '$', m = (n) => sim + Number(n || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const ev = E.find(e => e.id === bolEv), fn = ev && (ev.funciones || []).find(f => f.id === bolFn);
+  const porVer = V.filter(c => c.estado === 'por_verificar');
+  $('bolBdg').textContent = porVer.length; show($('bolBdg'), porVer.length > 0);
+  const fd = (d) => new Date(d + 'T12:00').toLocaleDateString('es-VE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const e = bolEdit;
+  const editor = !e ? '' : `<div class="grp" id="evForm"><h3>${e.id ? 'Editar evento' : 'Nuevo evento'}</h3>
+      <div class="row"><div><label>Nombre del evento</label><input id="evN" value="${esc(e.nombre || '')}" maxlength="120" placeholder="Ej.: Show Princesas y Superhéroes"></div><div><label>Fecha</label><input id="evF" type="date" value="${esc(e.fecha || '')}"></div></div>
+      <div class="row"><div><label>Lugar</label><input id="evL" value="${esc(e.lugar || '')}" placeholder="Ej.: Auditorio Colegio Santa Ana"></div><div><label>Dirección</label><input id="evD" value="${esc(e.direccion || '')}"></div></div>
+      <div class="row"><div><label>Enlace de Google Maps <span class="opt">(opcional)</span></label><input id="evM" value="${esc(e.mapa_url || '')}" placeholder="https://maps.app.goo.gl/…"></div><div><label>Imagen o afiche <span class="opt">(enlace, opcional)</span></label><input id="evI" value="${esc(e.imagen_url || '')}"></div></div>
+      <label>Funciones (horas)</label><div id="evH" style="display:flex;gap:8px;flex-wrap:wrap">${(e._fun || []).map((f, i) => `<span style="display:flex;gap:4px;align-items:center"><input type="time" data-fh="${i}" value="${esc(String(f.hora || '').slice(0, 5))}"><button class="btn ghost sm" data-fdel="${i}" type="button">✕</button></span>`).join('')}<button class="btn ghost sm" id="evHA" type="button">+ Hora</button></div>
+      <label>Zonas y asientos</label>
+      <div class="hint">Filas separadas por coma (ej. <b>A,B</b> o <b>C,D,E</b>). El código va al inicio de cada asiento (ej. VIP-A5).</div>
+      ${(e._zon || []).map((z, i) => `<div style="display:grid;grid-template-columns:1.4fr .7fr .8fr 1.2fr .8fr auto;gap:6px;margin-top:6px;align-items:center">
+          <input data-zi="${i}" data-zf="nombre" value="${esc(z.nombre || '')}" placeholder="Zona (VIP)"><input data-zi="${i}" data-zf="codigo" value="${esc(z.codigo || '')}" placeholder="Código" maxlength="5">
+          <input data-zi="${i}" data-zf="precio" value="${esc(z.precio ?? '')}" placeholder="Precio" inputmode="decimal"><input data-zi="${i}" data-zf="filas" value="${esc(Array.isArray(z.filas) ? z.filas.join(',') : (z.filas || ''))}" placeholder="Filas (A,B)">
+          <input data-zi="${i}" data-zf="asientos_por_fila" type="number" min="1" max="200" value="${esc(z.asientos_por_fila || 10)}" title="Asientos por fila"><button class="btn ghost sm" data-zdel="${i}" type="button">✕</button></div>`).join('')}
+      <button class="btn ghost sm" id="evZA" type="button" style="margin-top:6px">+ Zona</button>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="evSave" type="button">Guardar evento</button><button class="btn ghost" id="evCancel" type="button">Cancelar</button></div>
+      <div id="evMsg" class="note bad hidden"></div></div>`;
+  const mapa = !fn ? '' : (() => { const oc = fn.ocupados || {}, colores = { apartado: '#f6d77b', por_verificar: '#9ec1f5', pagado: '#8fd3b6', usado: '#b9c2be' };
+    return `<div style="margin-top:12px"><div style="text-align:center;font-size:11px;letter-spacing:.2em;color:var(--muted);border-bottom:3px solid var(--line);padding-bottom:4px;margin-bottom:10px">ESCENARIO</div>
+      ${(ev.zonas || []).map(z => `<div style="margin-top:10px"><b>${esc(z.nombre)}</b> <span class="hint">${m(z.precio)}</span>${(z.filas || []).map(f => `<div style="display:flex;gap:3px;margin-top:3px;overflow-x:auto;align-items:center"><span class="hint" style="width:18px;flex:none">${esc(f)}</span>${Array.from({ length: z.asientos_por_fila }, (_, i) => { const a = (z.codigo || '').toUpperCase() + '-' + f + (i + 1), st = oc[a];
+          return `<button type="button" data-st="${a}" ${st ? 'disabled' : ''} title="${a}${st ? ' · ' + st : ''}" style="flex:none;width:26px;height:26px;border-radius:6px;font:600 10px/1 inherit;padding:0;cursor:${st ? 'default' : 'pointer'};border:1.5px solid ${bolSel.has(a) ? 'var(--brand)' : st ? colores[st] : '#c6d5ce'};background:${bolSel.has(a) ? 'var(--brand)' : st ? colores[st] : '#fff'};color:${bolSel.has(a) ? '#fff' : 'inherit'}">${i + 1}</button>`; }).join('')}</div>`).join('')}</div>`).join('')}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px">${Object.entries({ apartado: 'Apartado', por_verificar: 'Pago por verificar', pagado: 'Pagado', usado: 'Ya entró' }).map(([k, t]) => `<span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colores[k]};vertical-align:-1px"></i> ${t}</span>`).join('')}</div>
+      ${bolSel.size ? `<div class="grp" style="margin-top:10px"><b>Venta en taquilla:</b> ${esc([...bolSel].join(', '))}
+          <div class="row" style="margin-top:6px"><div><input id="tqN" placeholder="Nombre del cliente (opcional)"></div><div><input id="tqT" placeholder="Teléfono (opcional)" inputmode="tel"></div></div>
+          <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" id="tqOk" type="button">💵 Vender (pagado)</button><button class="btn ghost sm" id="tqX" type="button">Quitar selección</button></div></div>`
+        : '<p class="hint" style="margin:8px 0 0">Toca asientos libres para vender en taquilla.</p>'}</div>`; })();
+  const est = { apartada: ['', '⏳ Apartada'], por_verificar: ['h', '💳 Verificar pago'], pagada: ['b', '✅ Pagada'], liberada: ['r', 'Liberada'], cancelada: ['r', 'Anulada'] };
+  const F = { por_verificar: c => c.estado === 'por_verificar', apartada: c => c.estado === 'apartada', pagada: c => c.estado === 'pagada', todas: () => true }[bolF];
+  const fila = (c) => { const t = est[c.estado] || ['', c.estado];
+    return `<div class="promo"><div><b>${esc(c.codigo)}</b> · ${esc(c.nombre || 'Cliente')} <span class="tg ${t[0]}">${t[1]}</span>
+        <div class="meta">🎟️ ${esc(c.evento)} · ${esc(c.hora)} · 💺 ${esc(c.asientos || '')}<br>💵 ${m(c.total)}${c.total_bs ? ' = Bs ' + Number(c.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 }) : ''}${c.telefono ? ' · 📱 +' + esc(c.telefono) : ''}${c.referencia_pago ? '<br>🧾 ' + esc(c.referencia_pago) : ''}</div></div>
+      <div class="acts">${['apartada', 'por_verificar'].includes(c.estado) ? `<button class="btn sm" data-bc="pagada|${c.id}" type="button">✅ Confirmar pago</button><button class="btn ghost sm" data-bc="liberada|${c.id}" type="button" style="color:var(--bad)">Liberar</button>` : ''}
+        ${c.estado === 'pagada' ? `<a class="btn ghost sm" href="${esc(c.link)}" target="_blank" rel="noopener" style="text-decoration:none">🎟️ Ver boletos</a>` : ''}</div></div>`; };
+  const vis = V.filter(F);
+  $('tBol').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2 style="margin:0">🎟️ Boletería</h2><p class="sub" style="margin:4px 0 0">Tu asistente vende los asientos por WhatsApp (o con un enlace al mapa), los aparta y, cuando confirmas el pago, le envía al cliente sus boletos con QR.</p></div>
+      ${e ? '' : '<button class="btn" id="evNew" type="button">+ Nuevo evento</button>'}</div>
+    ${editor}
+    ${!e && E.length ? `<div class="chips" style="margin-top:12px">${E.map(x => `<button type="button" class="chip ${x.id === bolEv ? 'on' : ''}" data-ev="${x.id}">${esc(x.nombre)} · ${fd(x.fecha)}</button>`).join('')}</div>` : ''}
+    ${!e && ev ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">${(ev.funciones || []).filter(f => f.activo).map(f => `<button type="button" class="chip ${f.id === bolFn ? 'on' : ''}" data-fn="${f.id}">🕒 ${esc(f.hora12)} · ✅ ${f.vendidos} · ⏳ ${f.apartados}${f.entraron ? ' · 🚪 ' + f.entraron : ''}</button>`).join('')}
+        <button class="btn ghost sm" id="evEd" type="button">✏️ Editar evento</button></div>${mapa}` : ''}
+    ${!e && !E.length ? '<p class="hint" style="margin-top:12px">Crea tu primer evento con sus funciones y zonas.</p>' : ''}</div>
+    <div class="card"><h2>🚪 Validar entrada</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="vaC" inputmode="numeric" placeholder="Código del boleto (12 números)" style="flex:1;min-width:200px"><button class="btn" id="vaOk" type="button">Validar</button>${'BarcodeDetector' in window ? '<button class="btn ghost" id="vaCam" type="button">📷 Escanear QR</button>' : ''}</div>
+      <video id="vaV" playsinline style="display:none;width:100%;max-width:360px;border-radius:12px;margin-top:10px"></video><div id="vaR" style="margin-top:10px"></div></div>
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">💳 Ventas</h2>
+      <div class="chips">${[['por_verificar', 'Por verificar (' + porVer.length + ')'], ['apartada', 'Apartadas'], ['pagada', 'Pagadas'], ['todas', 'Todas']].map(([k, t]) => `<button type="button" class="chip ${bolF === k ? 'on' : ''}" data-bf="${k}">${t}</button>`).join('')}</div></div>
+      ${vis.length ? vis.map(fila).join('') : '<p class="hint" style="margin:8px 0 0">No hay ventas con ese filtro.</p>'}</div>
+    <div class="card"><h2>⚙️ Ajustes de boletería</h2>
+      <label class="sw"><input type="checkbox" id="bcOn" ${C.activo !== false ? 'checked' : ''}> Mi asistente vende boletos</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div><label>Moneda de los precios</label><select id="bcMon"><option value="USD" ${C.moneda !== 'EUR' ? 'selected' : ''}>Dólares ($)</option><option value="EUR" ${C.moneda === 'EUR' ? 'selected' : ''}>Euros (€)</option></select></div>
+        <div><label>Tasa en Bs <span class="opt">(vacío = tasa del día)</span></label><input id="bcT" value="${esc(C.tasa ?? '')}" inputmode="decimal" placeholder="${BOL.tasa_auto ? esc(BOL.tasa_auto) : 'Ej.: 889,45'}"></div>
+        <div><label>Apartar sin pago (horas)</label><input id="bcH" type="number" min="1" max="168" value="${esc(C.apartado_horas || 12)}"></div>
+        <div><label>Máximo por compra</label><input id="bcX" type="number" min="1" max="50" value="${esc(C.max_por_compra || 10)}"></div></div>
+      <p class="hint" style="margin:6px 0 0">Si los precios están en euros, escribe la tasa del euro. Si están en dólares y dejas la tasa vacía, se usa la tasa del día que guardas con "tasa 40,5".</p>
+      <div style="margin-top:12px"><button class="btn" id="bcSave" type="button">Guardar</button> <span class="saved" id="bcSaved"></span></div></div>`;
+  // eventos
+  if ($('evNew')) $('evNew').onclick = () => { bolEdit = { _fun: [{ hora: '11:00' }], _zon: [{ nombre: 'VIP', codigo: 'VIP', precio: '', filas: 'A', asientos_por_fila: 10 }, { nombre: 'General', codigo: 'G', precio: '', filas: 'B,C', asientos_por_fila: 10 }] }; paintBoleteria(); };
+  if ($('evEd')) $('evEd').onclick = () => { bolEdit = Object.assign({}, ev, { _fun: JSON.parse(JSON.stringify((ev.funciones || []).filter(f => f.activo))), _zon: JSON.parse(JSON.stringify(ev.zonas || [])) }); paintBoleteria(); };
+  const leer = () => { if (!bolEdit) return; Object.assign(bolEdit, { nombre: $('evN').value, fecha: $('evF').value, lugar: $('evL').value, direccion: $('evD').value, mapa_url: $('evM').value, imagen_url: $('evI').value });
+    $('tBol').querySelectorAll('[data-fh]').forEach(i => bolEdit._fun[+i.dataset.fh].hora = i.value);
+    $('tBol').querySelectorAll('[data-zi]').forEach(i => bolEdit._zon[+i.dataset.zi][i.dataset.zf] = i.value); };
+  if ($('evHA')) $('evHA').onclick = () => { leer(); bolEdit._fun.push({ hora: '15:00' }); paintBoleteria(); };
+  if ($('evZA')) $('evZA').onclick = () => { leer(); bolEdit._zon.push({ nombre: '', codigo: '', precio: '', filas: '', asientos_por_fila: 10 }); paintBoleteria(); };
+  $('tBol').querySelectorAll('[data-fdel]').forEach(b => b.onclick = () => { leer(); bolEdit._fun.splice(+b.dataset.fdel, 1); paintBoleteria(); });
+  $('tBol').querySelectorAll('[data-zdel]').forEach(b => b.onclick = () => { leer(); bolEdit._zon.splice(+b.dataset.zdel, 1); paintBoleteria(); });
+  if ($('evCancel')) $('evCancel').onclick = () => { bolEdit = null; paintBoleteria(); };
+  if ($('evSave')) $('evSave').onclick = async () => { leer(); $('evSave').disabled = true;
+    const p = { id: bolEdit.id || null, tenant_id: tenant.id, nombre: bolEdit.nombre, fecha: bolEdit.fecha, lugar: bolEdit.lugar, direccion: bolEdit.direccion, mapa_url: bolEdit.mapa_url, imagen_url: bolEdit.imagen_url,
+      funciones: bolEdit._fun.filter(f => f.hora).map(f => ({ id: f.id || null, hora: f.hora })), zonas: bolEdit._zon.filter(z => (z.nombre || '').trim()).map(z => ({ id: z.id || null, nombre: z.nombre, codigo: z.codigo, precio: String(z.precio ?? ''), filas: Array.isArray(z.filas) ? z.filas.join(',') : z.filas, asientos_por_fila: z.asientos_por_fila })) };
+    const { data, error } = await sb.rpc('mi_evento_guardar', { p }); $('evSave').disabled = false;
+    if (error || !(data && data.ok)) { msg($('evMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
+    bolEdit = null; bolEv = data.id; bolFn = null; loadBoleteria(); };
+  $('tBol').querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { bolEv = b.dataset.ev; bolFn = null; bolSel.clear(); loadBoleteria(); });
+  $('tBol').querySelectorAll('[data-fn]').forEach(b => b.onclick = () => { bolFn = b.dataset.fn; bolSel.clear(); paintBoleteria(); });
+  // taquilla
+  $('tBol').querySelectorAll('[data-st]:not([disabled])').forEach(b => b.onclick = () => { const a = b.dataset.st; bolSel.has(a) ? bolSel.delete(a) : bolSel.add(a); paintBoleteria(); });
+  if ($('tqX')) $('tqX').onclick = () => { bolSel.clear(); paintBoleteria(); };
+  if ($('tqOk')) $('tqOk').onclick = async () => { $('tqOk').disabled = true;
+    const { data, error } = await sb.rpc('mi_venta_taquilla', { p: { funcion_id: bolFn, asientos: [...bolSel], nombre: $('tqN').value, telefono: $('tqT').value } });
+    if (error || !(data && data.ok)) { alert((data && data.mensaje) || (error ? error.message : 'No se pudo vender')); $('tqOk').disabled = false; return; }
+    bolSel.clear(); loadBoleteria(); };
+  // ventas
+  $('tBol').querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { bolF = b.dataset.bf; paintBoleteria(); });
+  $('tBol').querySelectorAll('[data-bc]').forEach(b => b.onclick = async () => { const [a, id] = b.dataset.bc.split('|'); const c = V.find(x => x.id === id);
+    if (!confirm(a === 'pagada' ? `¿Confirmar el pago de ${c.codigo}? Al cliente le llegan sus boletos con QR.` : `¿Liberar los asientos de ${c.codigo}? Se le avisa al cliente.`)) return;
+    b.disabled = true; const { data } = await sb.rpc('mi_compra_accion', { p_id: id, p_accion: a }); if (data && !data.ok) alert(data.error); loadBoleteria(); });
+  // validar
+  const validar = async (cod) => { const { data, error } = await sb.rpc('mi_validar_boleto', { p_tenant: tenant.id, p_codigo: cod });
+    const r = error ? { mensaje: error.message } : data; const ok = r && r.resultado === 'valido';
+    $('vaR').innerHTML = `<div class="note ${ok ? '' : 'bad'}" style="font-size:18px;font-weight:700;${ok ? 'background:var(--ok-soft);color:var(--ok)' : ''}">${esc(r.mensaje || '')}</div>`; $('vaC').value = ''; };
+  $('vaOk').onclick = () => { const v = $('vaC').value.replace(/\D/g, ''); if (v) validar(v); };
+  $('vaC').onkeydown = (ev2) => { if (ev2.key === 'Enter') $('vaOk').click(); };
+  if ($('vaCam')) $('vaCam').onclick = async () => {
+    if (bolScan) { bolScan.getTracks().forEach(t => t.stop()); bolScan = null; $('vaV').style.display = 'none'; return; }
+    try { bolScan = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); } catch (er) { alert('No se pudo abrir la cámara.'); return; }
+    const v = $('vaV'); v.srcObject = bolScan; v.style.display = 'block'; await v.play(); const det = new BarcodeDetector({ formats: ['qr_code'] });
+    const loop = async () => { if (!bolScan) return; try { const r = await det.detect(v); if (r.length) { const cod = String(r[0].rawValue).replace(/\D/g, ''); bolScan.getTracks().forEach(t => t.stop()); bolScan = null; v.style.display = 'none'; validar(cod); return; } } catch (er) {} requestAnimationFrame(loop); };
+    loop(); };
+  // ajustes
+  $('bcSave').onclick = async () => { $('bcSave').disabled = true;
+    const { data, error } = await sb.rpc('mi_config_boleteria', { p: { tenant_id: tenant.id, activo: $('bcOn').checked, moneda: $('bcMon').value, tasa: $('bcT').value, apartado_horas: $('bcH').value, max_por_compra: $('bcX').value } });
+    $('bcSave').disabled = false;
+    if (error || !(data && data.ok)) { alert('No se pudo guardar: ' + (error ? error.message : (data && data.error) || '')); return; }
+    BOL.config = data.config; paintBoleteria(); $('bcSaved').textContent = '✓ Guardado'; setTimeout(() => { if ($('bcSaved')) $('bcSaved').textContent = ''; }, 2500); };
 }
 
 // ---------- Paquetes de viaje: salidas, cupos y reservas ----------
@@ -2413,7 +2538,7 @@ function startRealtime(){
 
 // ---------- Mi plan (consumo, vencimiento, respuestas adicionales) ----------
 const FN_PLAN = { citas:'Agendar citas', reservas:'Reservas', pedidos:'Ventas y pedidos', delivery:'Envíos o delivery', cotizaciones:'Cotizaciones',
-  membresias:'Planes o membresías', tasas:'Tasas del día', paquetes:'Paquetes y viajes', soporte:'Soporte técnico', promociones:'Promociones',
+  membresias:'Planes o membresías', tasas:'Tasas del día', paquetes:'Paquetes y viajes', boleteria:'Venta de boletos con asientos', soporte:'Soporte técnico', promociones:'Promociones',
   fotos:'Fotos de productos', seguimiento:'Seguimiento automático', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos', audios:'Entender notas de voz' };
 const usd = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('es-VE', { maximumFractionDigits: 2 });
 const fd = (d) => d ? d.split('-').reverse().join('/') : '—';
@@ -2525,6 +2650,7 @@ const CATS = [
   { id:'internet',   e:'📡', n:'Venta de internet',           f:['membresias','soporte'],          it:'Plan de internet', faq:['¿Cuánto cuesta la instalación?','¿Hay cobertura en mi zona?','¿Qué velocidad tiene cada plan?'], q:['¿Cuánto tarda la instalación?'] },
   { id:'profesional',e:'💼', n:'Servicios profesionales',     f:['citas','cotizaciones'],          it:'Servicio',  faq:['¿La primera consulta tiene costo?','¿Atienden en línea?','¿Cuánto tarda el trámite?'], q:['¿En qué casos o áreas trabajan?'] },
   { id:'inmobiliaria',e:'🏠',n:'Inmobiliarias',               f:['citas'],                         it:'Propiedad', faq:['¿Aceptan financiamiento?','¿Cuál es la comisión?','¿Puedo visitar el inmueble?'], q:['¿Trabajan venta, alquiler o ambos?'] },
+  { id:'boleteria',  e:'🎟️', n:'Eventos y venta de entradas', f:['boleteria'],                    it:'Entrada',   faq:['¿A qué hora abren las puertas?','¿Los niños pagan entrada?','¿Hay estacionamiento?'], q:['¿Qué eventos tienen próximamente?'] },
   { id:'eventos',    e:'🎉', n:'Eventos y salones de fiesta', f:['reservas','cotizaciones'],       it:'Paquete o servicio', faq:['¿Cuántas personas caben?','¿Incluye decoración?','¿Puedo llevar mi propia comida?'], q:['¿Para qué tipos de eventos trabajan?'] },
   { id:'otro',       e:'✨', n:'Otro',                        f:[],                                it:'Producto o servicio', faq:['¿Hacen envíos?','¿Qué formas de pago aceptan?'], q:[] }
 ];

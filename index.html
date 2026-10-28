@@ -1995,7 +1995,7 @@ function startRealtime(){
 // ---------- Mi plan (consumo, vencimiento, respuestas adicionales) ----------
 const FN_PLAN = { citas:'Agendar citas', reservas:'Reservas', pedidos:'Ventas y pedidos', delivery:'Envíos o delivery', cotizaciones:'Cotizaciones',
   membresias:'Planes o membresías', tasas:'Tasas del día', paquetes:'Paquetes y viajes', soporte:'Soporte técnico', promociones:'Promociones',
-  fotos:'Fotos de productos', seguimiento:'Seguimiento automático', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos' };
+  fotos:'Fotos de productos', seguimiento:'Seguimiento automático', recordatorios:'Recordatorio de citas', conversaciones:'Ver tus conversaciones', crm:'Clientes potenciales y métricas', masivos:'Mensajes masivos', audios:'Entender notas de voz' };
 const usd = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('es-VE', { maximumFractionDigits: 2 });
 const fd = (d) => d ? d.split('-').reverse().join('/') : '—';
 async function loadPlan(){

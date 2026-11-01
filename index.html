@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi Asistente IA · Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -54,6 +54,49 @@
   .note.bad{background:var(--bad-soft);color:var(--bad)} .note.warn{background:var(--warn-soft);color:#6b4a00}
   .login{max-width:400px;margin:8vh auto}
   .hidden{display:none!important}
+
+  /* ===================== Vista amigable (v2) ===================== */
+  :root{ --bg:#edf2ef; --ink:#10201a; --muted:#5a6b63; --line:#d9e2dd; --brand:#0a6e54; --brand-soft:#d6ede3; --mango:#f0a21b; --mango-soft:#fdf0d5; --radius:16px }
+  h1,h2,.card h2,.ttl{font-family:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-.01em}
+  .card{border-radius:var(--radius);box-shadow:0 1px 0 rgba(16,32,26,.04)}
+  input,select,textarea,.btn{border-radius:10px}
+  :focus-visible{outline:3px solid var(--mango);outline-offset:2px}
+  header{background:var(--card)}
+  .bar{max-width:1180px;padding:12px 20px}
+  .logo{background:var(--brand);border-radius:12px}
+  /* estado del asistente como burbuja de chat */
+  .estado{position:relative;display:inline-flex;align-items:center;gap:8px;margin-top:4px;padding:5px 12px 5px 10px;border-radius:12px 12px 12px 3px;font:600 13px/1.3 "Plus Jakarta Sans",sans-serif;background:var(--brand-soft);color:#0b4f3d;max-width:100%}
+  .estado i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+  .estado.warn{background:var(--mango-soft);color:#7a4d00} .estado.bad{background:var(--bad-soft);color:var(--bad)}
+  .bar h1{font-size:18px}
+  @media (max-width:560px){ .bar h1 small{display:none} .bar{padding:10px 16px} }
+  .bar h1 small{font-family:"Plus Jakarta Sans",sans-serif}
+  /* menú lateral agrupado */
+  main#vApp{max-width:1180px;padding:20px 20px 60px}
+  nav.tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 -20px 16px;padding:0 20px 6px;scrollbar-width:thin}
+  nav.tabs .ngrp{display:none}
+  nav.tabs .tab{flex:none;justify-content:flex-start;padding:9px 14px;border-radius:999px;font-weight:600;background:var(--card)}
+  nav.tabs .tab.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  @media (min-width:960px){
+    main#vApp{display:grid;grid-template-columns:232px minmax(0,1fr);column-gap:32px;align-items:start}
+    main#vApp > *{grid-column:2}
+    main#vApp > nav.tabs{grid-column:1;grid-row:1 / span 60;position:sticky;top:84px;flex-direction:column;overflow:visible;margin:0;padding:0;gap:2px}
+    nav.tabs .ngrp{display:block;font:700 12px/1 "Plus Jakarta Sans",sans-serif;color:var(--muted);margin:18px 12px 8px}
+    nav.tabs .ngrp:first-child{margin-top:4px}
+    nav.tabs .tab{width:100%;border:0;box-shadow:none;background:transparent;border-radius:10px;padding:9px 12px;white-space:normal;text-align:left;color:var(--ink)}
+    nav.tabs .tab:hover{background:#e1e9e4}
+    nav.tabs .tab.on{background:var(--ink);color:#fff}
+  }
+  /* primeros pasos */
+  #primeros{border:2px solid var(--mango);background:linear-gradient(0deg,#fff,#fff)}
+  #primeros .pp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  #primeros ol{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px}
+  #primeros li{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:12px;background:#f6f9f7}
+  #primeros li .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 15px "Bricolage Grotesque",sans-serif;background:var(--mango);color:#3b2600}
+  #primeros li.ok .n{background:var(--brand);color:#fff}
+  #primeros li.ok b{text-decoration:line-through;text-decoration-color:rgba(16,32,26,.35)}
+  #primeros li small{display:block;color:var(--muted)}
+  @media (max-width:560px){ #primeros li{grid-template-columns:30px 1fr} #primeros li .btn{grid-column:2;justify-self:start} }
 
   /* ---------- Asistente por pasos ---------- */
   .wz-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;color:var(--muted);font-size:13px;font-weight:600}
@@ -367,7 +410,7 @@
 <header id="hdr" class="hidden">
   <div class="bar">
     <div class="logo">IA</div>
-    <h1 id="hdrName">Mi negocio<small>Portal del asistente de WhatsApp</small></h1>
+    <h1 id="hdrName">Mi negocio<small>Portal del asistente de WhatsApp</small><span class="estado warn" id="estadoBot"><i></i><span id="estadoTxt">Revisando tu asistente…</span></span></h1>
     <button class="btn ghost" id="logout">Salir</button>
   </div>
 </header>
@@ -408,6 +451,7 @@
     <button class="tab" data-t="cfg">⚙️ Configurar mi asistente</button>
     <button class="tab" data-t="plan">📊 Mi plan</button>
   </nav>
+  <div class="card hidden" id="primeros"></div>
   <div id="planBanner" class="hidden" style="margin-bottom:16px"></div>
 
   <!-- WHATSAPP -->
@@ -458,6 +502,7 @@
   <!-- CONFIGURACIÓN -->
   <section id="tCfg" class="hidden">
     <div class="card" id="cfgStatus"></div>
+    <div class="card" id="cfgPago"></div>
     <div class="card" id="cfgSeg"></div>
     <div class="card hidden" id="wz">
       <div class="wz-top"><span id="wzStep"></span><span class="saved" id="wzSaved"></span></div>
@@ -475,12 +520,26 @@
 <script>
 const CFG = window.PORTAL_CONFIG || {};
 const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+
+// ---------- Bitácora: los errores de la pantalla y las acciones importantes quedan registrados ----------
+function bitLog(evento, nivel, resumen, detalle){
+  try { sb.rpc('bitacora_portal', { p_evento: evento, p_nivel: nivel, p_resumen: String(resumen || '').slice(0, 600),
+          p_detalle: { pantalla: (location.pathname.split('/').pop() || 'index.html') + (window.__tabActual ? ' · ' + window.__tabActual : ''), ...(detalle || {}) } }).then(() => {}, () => {}); } catch {}
+}
+window.addEventListener('error', e => bitLog('error_pantalla', 'error', e.message, { archivo: (e.filename || '').split('/').pop(), linea: e.lineno }));
+window.addEventListener('unhandledrejection', e => bitLog('error_pantalla', 'error', (e.reason && e.reason.message) || String(e.reason)));
+{ const rpc0 = sb.rpc.bind(sb);
+  sb.rpc = (fn, args, o) => { const q = rpc0(fn, args, o); if (fn === 'bitacora_portal') return q;
+    return Promise.resolve(q).then(r => { if (r && r.error) bitLog('error_base_datos', 'error', fn + ': ' + r.error.message, { funcion: fn }); return r; }); }; }
+{ const alert0 = window.alert.bind(window);
+  window.alert = (m) => { if (/no se pudo|error|falt|incorrect|inválid|invalid/i.test(String(m))) bitLog('mensaje_de_error', 'aviso', String(m)); return alert0(m); }; }
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let tenant = null, pollTimer = null, PLAN = null;
 
 function show(el, on){ el.classList.toggle('hidden', !on); }
-function msg(el, text, kind){ el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); show(el, !!text); }
+function msg(el, text, kind){ el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); show(el, !!text);
+  if (text && (kind === 'bad' || kind === 'warn' || (el && el.id === 'wzMsg'))) bitLog(el && el.id === 'wzMsg' ? 'formulario_aviso' : 'mensaje_de_error', 'aviso', text, { paso: (typeof step !== 'undefined' && typeof STEPS !== 'undefined' && STEPS[step]) ? STEPS[step].t : undefined }); }
 
 // ---------- Sesión ----------
 $('fLogin').addEventListener('submit', async (e) => {
@@ -501,8 +560,9 @@ async function start(){
   let q = sb.from('tenants').select('*');
   q = (am && am.tenant_id) ? q.eq('id', am.tenant_id) : q.limit(1);
   const { data, error } = await q.maybeSingle();
-  if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; return; }
+  if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; bitLog('sin_negocio', 'error', 'Entró al portal pero su cuenta no tiene negocio asignado' + (error ? ': ' + error.message : '')); return; }
   tenant = data;
+  bitLog('inicio_sesion', 'info', 'Entró al portal' + (am && am.tenant_id ? ' (modo administrador)' : ''), { negocio: data.nombre_negocio });
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
@@ -512,13 +572,68 @@ async function start(){
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
   if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','bol','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
-  await loadPlan(); await initWizard(); loadCfgStatus(); paintSeg(); checkWa();
+  await loadPlan(); await initWizard(); loadCfgStatus(); paintPago(); paintSeg(); checkWa();
+  agruparMenu(); pintarPrimeros();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
 }
 
+
+// ---------- Menú agrupado + "Primeros pasos" + estado del asistente ----------
+const GRUPOS_MENU = [['Tu negocio hoy', ['ofi','ped','conv']],
+                     ['Atiende y vende', ['cat','agenda','cot','resv','memb','paq','bol','sop']],
+                     ['Haz crecer tu negocio', ['promo','mas','cal','met']],
+                     ['Ajustes', ['wa','cfg','plan']]];
+function agruparMenu(){
+  const nav = document.querySelector('nav.tabs'); if (!nav) return;
+  nav.querySelectorAll('.ngrp').forEach(x => x.remove());
+  const ofi = nav.querySelector('[data-t="ofi"]'); if (ofi && !ofi.dataset.ren) { ofi.innerHTML = ofi.innerHTML.replace('Oficina en vivo', 'Inicio'); ofi.dataset.ren = 1; }
+  for (const [nombre, ts] of GRUPOS_MENU) {
+    const btns = ts.map(t => nav.querySelector(`[data-t="${t}"]`)).filter(Boolean);
+    const g = document.createElement('div'); g.className = 'ngrp'; g.textContent = nombre;
+    if (btns.every(b => b.classList.contains('hidden'))) g.classList.add('hidden');
+    nav.appendChild(g); btns.forEach(b => nav.appendChild(b));
+  }
+}
+const PP = { wa: null, form: null, chats: null, oculto: false };
+try { PP.oculto = localStorage.getItem('ppOculto') === '1'; } catch {}
+function estadoBot(){
+  const el = $('estadoBot'), tx = $('estadoTxt'); if (!el || !tenant) return;
+  const bot = (tenant.nombre_bot || '').trim() || 'Tu asistente';
+  let c = 'warn', t = 'Revisando tu asistente…';
+  if (PP.wa && PP.wa !== 'open') { c = 'bad'; t = 'Tu WhatsApp está desconectado: conéctalo para que ' + bot + ' responda'; }
+  else if (PP.form && PP.form !== 'aprobado') { c = 'warn'; t = PP.form === 'enviado' || PP.form === 'pendiente_revision' ? 'Estamos revisando tu configuración' : 'Falta contarle a ' + bot + ' sobre tu negocio'; }
+  else if (PP.wa === 'open' && PP.form === 'aprobado') { c = ''; t = bot + ' está atendiendo tu WhatsApp'; }
+  el.className = 'estado' + (c ? ' ' + c : ''); tx.textContent = t;
+}
+async function pintarPrimeros(){
+  const box = $('primeros'); if (!box || !tenant) return;
+  if (PP.form === null) {
+    try { const { data } = await sb.from('onboarding_forms').select('estado').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(1); PP.form = (data && data[0] && data[0].estado) || (tenant.system_prompt ? 'aprobado' : 'nuevo'); } catch { PP.form = tenant.system_prompt ? 'aprobado' : 'nuevo'; }
+  }
+  if (PP.chats === null) {
+    try { const { count } = await sb.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenant.id); PP.chats = count || 0; } catch { PP.chats = 0; }
+  }
+  estadoBot();
+  const bot = (tenant.nombre_bot || '').trim() || 'tu asistente';
+  const pasos = [
+    { ok: PP.wa === 'open', t: 'Conecta tu WhatsApp', d: PP.wa === 'open' ? 'Conectado.' : 'Escanea el código QR con el WhatsApp de tu negocio.', b: 'Conectar', go: () => { openTab('wa'); if (PP.wa !== 'open') showQr(); } },
+    { ok: PP.form === 'aprobado', t: 'Cuéntale a ' + bot + ' sobre tu negocio', d: PP.form === 'aprobado' ? 'Configuración aprobada.' : (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Enviado: lo estamos revisando. Te avisamos al aprobarlo.' : 'Productos, precios, horario y cómo atiende. Toma unos 10 minutos.', b: (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Ver' : 'Llenar formulario', go: () => openTab('cfg') },
+    { ok: !!(tenant.datos_pago || '').trim(), t: 'Carga tus datos para pagar', d: (tenant.datos_pago || '').trim() ? 'Listo.' : 'Banco, teléfono y cédula del pago móvil, correo de Zelle…', b: 'Cargar datos', go: () => { openTab('cfg'); setTimeout(() => $('cfgPago') && $('cfgPago').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { ok: PP.chats > 0, t: 'Prueba a ' + bot, d: PP.chats > 0 ? 'Ya atendió su primer chat.' : 'Escríbele a tu número desde OTRO teléfono y mira cómo responde.', b: 'Ver chats', go: () => openTab('conv') }
+  ];
+  const hechos = pasos.filter(x => x.ok).length;
+  if (hechos === pasos.length || PP.oculto) { show(box, false); return; }
+  box.innerHTML = `<div class="pp-top"><div><h2>Primeros pasos</h2><p class="sub" style="margin:0">${hechos} de ${pasos.length} listos. Sigue el orden: cada paso habilita el siguiente.</p></div>
+      <button class="btn ghost sm" id="ppHide">Ocultar</button></div>
+    <ol>${pasos.map((x, i) => `<li class="${x.ok ? 'ok' : ''}"><span class="n">${x.ok ? '✓' : i + 1}</span><div><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div>${x.ok ? '' : `<button class="btn sm${i === pasos.findIndex(y => !y.ok) ? '' : ' ghost'}" data-pp="${i}">${esc(x.b)}</button>`}</li>`).join('')}</ol>`;
+  show(box, true);
+  box.querySelectorAll('[data-pp]').forEach(b => b.onclick = () => pasos[+b.dataset.pp].go());
+  $('ppHide').onclick = () => { PP.oculto = true; try { localStorage.setItem('ppOculto', '1'); } catch {} show(box, false); };
+}
+
 // ---------- Pestañas ----------
-function openTab(t){
+function openTab(t){ window.__tabActual = t;
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
   show($('tWa'), t === 'wa'); show($('tCfg'), t === 'cfg'); show($('tPlan'), t === 'plan'); show($('tConv'), t === 'conv');
   $('vApp').classList.toggle('wide', t === 'conv');
@@ -1200,6 +1315,7 @@ async function callWa(accion){
   return r.json();
 }
 function paintState(estado){
+  PP.wa = estado; pintarPrimeros();
   const p = $('waPill');
   const map = { open: ['ok','Conectado'], connecting: ['warn','Esperando que escanees el QR'], close: ['bad','Desconectado'] };
   const [k, t] = map[estado] || ['bad','Desconectado'];
@@ -1210,7 +1326,7 @@ function paintState(estado){
 async function checkWa(){
   try {
     const r = await callWa('estado');
-    if (!r.ok) { $('waPill').className = 'pill warn'; $('waPill').textContent = r.mensaje || 'Sin WhatsApp asignado'; return; }
+    if (!r.ok) { $('waPill').className = 'pill warn'; $('waPill').textContent = r.mensaje || 'Sin WhatsApp asignado'; PP.wa = 'close'; pintarPrimeros(); return; }
     $('waNum').textContent = r.numero ? 'Número: +' + r.numero : 'Instancia: ' + r.instancia;
     paintState(r.estado);
   } catch { $('waPill').className = 'pill warn'; $('waPill').textContent = 'No se pudo consultar'; }
@@ -2214,13 +2330,13 @@ function tasaCard(){
 function dlvCard(){
   if (!DLV) return '';
   const D = DLV, zon = (D.zonas && D.zonas.length) ? D.zonas : [{ nombre: '', costo: '', minutos: '' }];
-  const res = D.modo === 'gratis' ? 'Gratis' : D.modo === 'fijo' ? 'Tarifa fija $' + (D.costo || 0) : 'Por zonas (' + (D.zonas || []).length + ')' + (D.otras != null ? ' · otras $' + D.otras : '');
+  const res = D.modo === 'confirmar' ? 'Según la zona (lo confirmas tú)' : D.modo === 'gratis' ? 'Gratis' : D.modo === 'fijo' ? 'Tarifa fija $' + (D.costo || 0) : 'Por zonas (' + (D.zonas || []).length + ')' + (D.otras != null ? ' · otras $' + D.otras : '');
   return `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>⚙️ Delivery</h2><p class="sub" style="margin:0">Costo del delivery: <b>${esc(res)}</b></p></div>
       <button class="btn ghost" id="dTog">${dlvAbierto ? 'Cerrar' : 'Configurar'}</button></div>
     ${dlvAbierto ? `<div style="margin-top:12px">
       <label>¿Cómo cobras el delivery?</label>
-      <div class="chips" id="dModo">${[['gratis','Gratis'],['fijo','Tarifa fija'],['zonas','Por zonas']].map(([k, t]) => `<button type="button" class="chip ${D.modo === k ? 'on' : ''}" data-m="${k}">${t}</button>`).join('')}</div>
+      <div class="chips" id="dModo">${[['gratis','Gratis'],['fijo','Tarifa fija'],['confirmar','Según la zona (lo confirmo yo)'],['zonas','Por zonas']].map(([k, t]) => `<button type="button" class="chip ${D.modo === k ? 'on' : ''}" data-m="${k}">${t}</button>`).join('')}</div>
       ${D.modo === 'fijo' ? `<label style="margin-top:12px">Costo fijo ($)</label><input id="dCosto" type="number" min="0" step="0.5" value="${D.costo ?? ''}">` : ''}
       ${D.modo === 'zonas' ? `<label style="margin-top:12px">Zonas (nombre · costo $ · minutos de envío)</label>
         <div id="dZonas">${zon.map((z, i) => `<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-top:6px"><input placeholder="Ej.: Chacao" data-zn="${i}" value="${esc(z.nombre || '')}"><input type="number" min="0" step="0.5" placeholder="$" data-zc="${i}" value="${z.costo ?? ''}"><input type="number" min="0" placeholder="min" data-zm="${i}" value="${z.minutos ?? ''}"><button type="button" class="btn sm ghost" data-zx="${i}">✕</button></div>`).join('')}</div>
@@ -2681,7 +2797,8 @@ function blank(){
   return { nombre_negocio:'', descripcion:'', anios_experiencia:'', direccion:'', telefono:'', redes:'', pagos:[], pago_otro:'',
     categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
     nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
-    mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'] };
+    mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'],
+    datos_pago:'', delivery_modo:'', delivery_costo:'' };
 }
 async function fromTenant(t){
   const f = blank();
@@ -2693,7 +2810,8 @@ async function fromTenant(t){
     nombre_bot: t.nombre_bot || '', estilo: ESTILOS[t.estilo] ? t.estilo : 'amigable', emojis: EMOJIS[t.emojis] ? t.emojis : 'poco',
     mensaje_bienvenida: t.mensaje_bienvenida || '', bienv_editado: !!t.mensaje_bienvenida,
     mensaje_fuera_horario: t.mensaje_fuera_horario || '', fuera_editado: !!t.mensaje_fuera_horario,
-    faqs: (t.faqs || []).filter(x => x && x.pregunta)
+    faqs: (t.faqs || []).filter(x => x && x.pregunta),
+    datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? ''
   });
   if (f.funciones.length) f._catPreset = f.categoria;
   if (t.categoria === 'otro') f.otro_rubro = t.tipo_negocio || '';
@@ -2827,7 +2945,10 @@ function rComercio(){
     field('redes', 'Redes sociales o página web', true, 'placeholder="Ej.: Instagram @minegocio · Facebook: Mi Negocio · Web: minegocio.com"') +
     `<label>¿Cómo te pueden pagar?<span class="opt">(toca las que aceptas)</span></label>
      <div class="chips">${PAGOS.map(p => `<button type="button" class="chip ${F.pagos.includes(p) ? 'on' : ''}" data-act="pago" data-v="${p}">${p}</button>`).join('')}</div>
-     <input data-k="pago_otro" value="${esc(F.pago_otro)}" placeholder="¿Otra forma de pago? Escríbela aquí" style="margin-top:8px">`;
+     <input data-k="pago_otro" value="${esc(F.pago_otro)}" placeholder="¿Otra forma de pago? Escríbela aquí" style="margin-top:8px">
+     <label style="margin-top:14px">💳 Datos para pagar <span class="opt">(muy recomendado)</span></label>
+     <textarea data-k="datos_pago" placeholder="Ej.: Pago móvil: Banesco · 0414-1234567 · V-12.345.678&#10;Zelle: pagos@minegocio.com (Juan Pérez)&#10;Binance: minegocio">${esc(F.datos_pago || '')}</textarea>
+     <p class="hint">🔒 Tu asistente le da al cliente <b>solo estos datos</b>, y solo los de la forma de pago que elija. Si lo dejas vacío, le dirá que en un momento le envías los datos.</p>`;
 }
 // Paso 2
 function rCategoria(){
@@ -2860,6 +2981,10 @@ function rPreguntas(){
   const cat = catOf(F.categoria);
   const qs = (list) => list.map(q => qrow('resp', q, F.respuestas[q])).join('');
   let h = `<p class="hint" style="margin:10px 0 0">✅ Al marcar una pregunta se abre la casilla para tu respuesta. Las que no marques no se usan.</p>`;
+  if (F.funciones.includes('delivery')) h += `<div class="grp"><h3>🛵 ¿Cómo cobras el delivery?</h3>
+      <div class="chips">${[['gratis','Gratis'],['fijo','Tarifa fija'],['confirmar','Según la zona (lo confirmo yo)'],['zonas','Precio por zonas']].map(([k, t]) => `<button type="button" class="chip ${F.delivery_modo === k ? 'on' : ''}" data-act="dmodo" data-v="${k}">${t}</button>`).join('')}</div>
+      ${F.delivery_modo === 'fijo' ? field('delivery_costo', 'Costo fijo del delivery ($)', false, 'inputmode="decimal" placeholder="Ej.: 3"') : ''}
+      <p class="hint">${F.delivery_modo === 'zonas' ? 'Las zonas y sus precios los cargas después en la pestaña 🛵 Pedidos → ⚙️ Delivery.' : F.delivery_modo === 'confirmar' ? 'Tu asistente dirá que el costo del delivery se lo confirmas tú y que se suma al total.' : F.delivery_modo === 'fijo' ? 'Tu asistente suma este costo a cada pedido con delivery.' : F.delivery_modo === 'gratis' ? 'Tu asistente dirá que el delivery no tiene costo.' : 'Si no eliges, tu asistente dirá que el costo del delivery lo confirmas tú.'}</p></div>`;
   if (cat.q.length) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
   for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
   const otras = Object.keys(FUNCS).filter(k => !F.funciones.includes(k));
@@ -2978,6 +3103,7 @@ function payload(){
     nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),
     direccion: F.direccion.trim(), telefono: F.telefono.trim(), redes: F.redes.trim(),
     metodos_pago: [...F.pagos, ...F.pago_otro.split(',').map(s => s.trim()).filter(Boolean)].join(', '),
+    datos_pago: (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(),
     categoria: F.categoria, tipo_negocio: F.categoria === 'otro' ? F.otro_rubro.trim() : cat.n,
     funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
     que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
@@ -3015,6 +3141,7 @@ function rResumen(){
 
 // --------- Acciones de botones ---------
 const ACT = {
+  dmodo: (el) => { F.delivery_modo = el.dataset.v; saveDraft(); render(); },
   pago: (el) => { const v = el.dataset.v; F.pagos = F.pagos.includes(v) ? F.pagos.filter(x => x !== v) : [...F.pagos, v]; el.classList.toggle('on'); saveDraft(); },
   cat: (el) => { F.categoria = el.dataset.v; document.querySelectorAll('#catGrid .tile').forEach(t => t.classList.toggle('on', t === el)); show($('otroBox'), F.categoria === 'otro'); saveDraft(); },
   fn: (el) => { const v = el.dataset.v; F.funciones = F.funciones.includes(v) ? F.funciones.filter(x => x !== v) : [...F.funciones, v]; el.classList.toggle('on'); saveDraft(); },
@@ -3084,7 +3211,7 @@ async function enviar(){
   $('wzNext').disabled = false;
   if (error) { msg($('wzMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
   fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
-  clearDraft(); show($('wz'), false); await loadCfgStatus(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  clearDraft(); show($('wz'), false); await loadCfgStatus(); PP.form = 'enviado'; pintarPrimeros(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function initWizard(){
@@ -3104,6 +3231,21 @@ const ESTADOS = {
   error: ['bad','Hubo un problema al preparar tu asistente. Vuelve a enviar el formulario.']
 };
 // ---------- Seguimiento automático ----------
+function paintPago(){
+  const box = $('cfgPago'); if (!box || !tenant) return;
+  box.innerHTML = `<h2>💳 Datos para pagar</h2>
+    <p class="sub">Lo que tu asistente le da al cliente cuando va a pagar (solo los datos de la forma de pago que el cliente elija). Vale al instante, sin revisión.</p>
+    <textarea id="dpTxt" placeholder="Ej.: Pago móvil: Banesco · 0414-1234567 · V-12.345.678&#10;Zelle: pagos@minegocio.com (Juan Pérez)">${esc(tenant.datos_pago || '')}</textarea>
+    ${tenant.datos_pago ? '' : '<div class="note warn">⚠️ Todavía no cargaste tus datos para pagar: tu asistente le dirá al cliente que en un momento se los envías.</div>'}
+    <div style="margin-top:10px"><button class="btn" id="dpSave">Guardar datos</button></div><div id="dpMsg" class="note hidden"></div>`;
+  $('dpSave').onclick = async () => {
+    $('dpSave').disabled = true;
+    const { error } = await sb.rpc('mi_datos_pago', { p_texto: $('dpTxt').value });
+    $('dpSave').disabled = false;
+    if (error) { msg($('dpMsg'), 'No se pudo guardar: ' + error.message, 'bad'); return; }
+    tenant.datos_pago = $('dpTxt').value.trim(); paintPago(); pintarPrimeros(); msg($('dpMsg'), '✅ Guardado. Tu asistente ya usa estos datos.');
+  };
+}
 function paintSeg(){
   const box = $('cfgSeg'); if (!box || !tenant) return;
   if (!tiene('seguimiento')) { box.innerHTML = `<h2>🔒 Seguimiento automático</h2><p class="sub" style="margin:0">Disponible en el Plan ${esc(planMinCon('seguimiento') || 'superior')}. Mira los planes en la pestaña "📊 Mi plan".</p>`; return; }

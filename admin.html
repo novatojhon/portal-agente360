@@ -6,7 +6,7 @@
 <title>Panel Administrador · Agente 360</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
@@ -60,6 +60,35 @@
   .note{padding:11px 13px;border-radius:9px;background:var(--brand-soft);color:#272b8f;margin-top:10px}
   .note.bad{background:var(--bad-soft);color:var(--bad)} .note.warn{background:var(--warn-soft);color:#6b4a00} .note.ok{background:var(--ok-soft);color:var(--ok)}
   .hidden{display:none!important}
+
+  /* ===================== Vista amigable (v2) ===================== */
+  :root{ --mango:#f0a21b; --mango-soft:#fdf0d5 }
+  h1,h2,.card h2{font-family:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-.01em}
+  :focus-visible{outline:3px solid var(--mango);outline-offset:2px}
+  .card{border-radius:16px}
+  .bar,main{max-width:1240px}
+  main{padding:20px 20px 60px}
+  nav.tabs{margin:0 -20px 16px;padding:0 20px 6px}
+  nav.tabs .ngrp{display:none}
+  @media (min-width:1020px){
+    main#vApp{display:grid;grid-template-columns:210px minmax(0,1fr);column-gap:28px;align-items:start}
+    main#vApp > *{grid-column:2}
+    main#vApp > nav.tabs{grid-column:1;grid-row:1 / span 40;position:sticky;top:76px;flex-direction:column;overflow:visible;margin:0;padding:0;gap:2px}
+    nav.tabs .ngrp{display:block;font:700 12px/1 "Plus Jakarta Sans",sans-serif;color:var(--muted);margin:18px 12px 8px}
+    nav.tabs .ngrp:first-child{margin-top:4px}
+    nav.tabs .tab{width:100%;border:0;background:transparent;border-radius:10px;padding:9px 12px;text-align:left;color:var(--ink);display:flex;justify-content:space-between}
+    nav.tabs .tab:hover{background:#e8ebf3}
+    nav.tabs .tab.on{background:var(--ink);color:#fff}
+  }
+  /* acciones del cliente: 2 principales + "Más acciones" */
+  .acts{align-items:center}
+  details.mas{position:relative}
+  details.mas summary{list-style:none;cursor:pointer;padding:6px 10px;border:1px solid var(--line);border-radius:10px;font-weight:600;font-size:13px;background:#fff}
+  details.mas summary::-webkit-details-marker{display:none}
+  details.mas[open] summary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  details.mas .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(20,24,40,.14);padding:6px;display:grid;min-width:210px}
+  details.mas .menu .btn{justify-content:flex-start;text-align:left;white-space:nowrap;border:0;background:transparent;color:var(--ink);padding:9px 10px;font-weight:600}
+  details.mas .menu .btn:hover{background:#eef1f7}
   .login{max-width:400px;margin:8vh auto}
   dialog{border:0;border-radius:14px;padding:0;width:min(640px,94vw);max-height:90vh;box-shadow:0 20px 60px rgba(0,0,0,.25)}
   dialog::backdrop{background:rgba(15,18,30,.5)}
@@ -95,6 +124,7 @@
     <button class="tab" data-t="pla">💳 Planes</button>
     <button class="tab" data-t="aju">⚙️ Tarifas y condiciones</button>
     <button class="tab" data-t="man">🧰 Mantenimiento</button>
+    <button class="tab" data-t="bit">📜 Bitácora<span class="n hidden" id="nBit"></span></button>
   </nav>
   <section id="tcli"></section>
   <section id="tcon" class="hidden"></section>
@@ -102,6 +132,7 @@
   <section id="tpla" class="hidden"></section>
   <section id="taju" class="hidden"></section>
   <section id="tman" class="hidden"></section>
+  <section id="tbit" class="hidden"></section>
 </main>
 
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
@@ -109,6 +140,19 @@
 <script>
 const CFG = window.PORTAL_CONFIG || {};
 const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+
+// ---------- Bitácora: los errores de la pantalla y las acciones importantes quedan registrados ----------
+function bitLog(evento, nivel, resumen, detalle){
+  try { sb.rpc('bitacora_portal', { p_evento: evento, p_nivel: nivel, p_resumen: String(resumen || '').slice(0, 600),
+          p_detalle: { pantalla: (location.pathname.split('/').pop() || 'index.html') + (window.__tabActual ? ' · ' + window.__tabActual : ''), ...(detalle || {}) } }).then(() => {}, () => {}); } catch {}
+}
+window.addEventListener('error', e => bitLog('error_pantalla', 'error', e.message, { archivo: (e.filename || '').split('/').pop(), linea: e.lineno }));
+window.addEventListener('unhandledrejection', e => bitLog('error_pantalla', 'error', (e.reason && e.reason.message) || String(e.reason)));
+{ const rpc0 = sb.rpc.bind(sb);
+  sb.rpc = (fn, args, o) => { const q = rpc0(fn, args, o); if (fn === 'bitacora_portal') return q;
+    return Promise.resolve(q).then(r => { if (r && r.error) bitLog('error_base_datos', 'error', fn + ': ' + r.error.message, { funcion: fn }); return r; }); }; }
+{ const alert0 = window.alert.bind(window);
+  window.alert = (m) => { if (/no se pudo|error|falt|incorrect|inválid|invalid/i.test(String(m))) bitLog('mensaje_de_error', 'aviso', String(m)); return alert0(m); }; }
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const show = (el, on) => el.classList.toggle('hidden', !on);
@@ -168,13 +212,14 @@ function rCon(){
     <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>Estado de las conexiones</h2><p class="sub" style="margin:0">Primero los que tienen problemas. Se actualiza solo cuando WhatsApp avisa un cambio; pulsa "Comprobar ahora" para consultar a Evolution en este momento.</p></div>
       <button class="btn" id="bLive">🔄 Comprobar ahora</button></div>
-      <div style="overflow:auto;margin-top:12px"><table class="t"><tr><th>Negocio</th><th>Estado</th><th>Instancia</th><th>Número</th><th>Último cambio</th><th>Último mensaje</th><th>Plan</th></tr>
+      <div style="overflow:auto;margin-top:12px"><table class="t"><tr><th>Negocio</th><th>Estado</th><th>Instancia</th><th>Número</th><th>Último cambio</th><th>Último mensaje</th><th>Plan</th><th></th></tr>
       ${I.map(x => { const [c, t] = EST[x.estado] || ['', x.estado];
         return `<tr><td><b>${esc(x.negocio)}</b>${x.activo ? '' : ' <span class="pill bad">Inactivo</span>'}</td><td><span class="pill ${c}">${t}</span></td>
-          <td>${esc(x.instancia)}</td><td>${x.numero ? '+' + esc(x.numero) : '—'}</td><td>${hace(x.actualizado)}</td><td>${hace(x.ultimo_mensaje)}</td><td>${esc(x.plan || '')}</td></tr>`; }).join('') || '<tr><td colspan="7">No hay instancias registradas.</td></tr>'}
+          <td>${esc(x.instancia)}</td><td>${x.numero ? '+' + esc(x.numero) : '—'}</td><td>${hace(x.actualizado)}</td><td>${hace(x.ultimo_mensaje)}</td><td>${esc(x.plan || '')}</td><td>${x.estado === 'conectada' ? `<button class="btn sm ghost" data-desc="${esc(x.instancia)}" data-neg="${esc(x.negocio)}">📴 Desconectar</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="7">No hay instancias registradas.</td></tr>'}
       </table></div>
       ${k.caidas ? '<div class="note bad">🔴 Los clientes desconectados deben entrar a su portal → "Mi WhatsApp" → "Mostrar código QR" y escanearlo. Mientras tanto su asistente no responde.</div>' : ''}
     </div>`;
+  $('tcon').querySelectorAll('[data-desc]').forEach(b => b.onclick = () => dDesconectar(b.dataset.desc, b.dataset.neg));
   $('bLive').onclick = async () => {
     $('bLive').disabled = true; $('bLive').textContent = 'Consultando…';
     try {
@@ -188,11 +233,67 @@ function rCon(){
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  for (const t of ['cli','con','frm','pla','aju','man']) show($('t' + t), b.dataset.t === t);
+  for (const t of ['cli','con','frm','pla','aju','man','bit']) show($('t' + t), b.dataset.t === t);
   if (b.dataset.t === 'man') rMan();
+  if (b.dataset.t === 'bit') rBit(); else bitStop();
 });
+
+// ---------- Menú agrupado ----------
+function agruparMenuAdm(){
+  const nav = document.querySelector('nav.tabs'); if (!nav) return;
+  nav.querySelectorAll('.ngrp').forEach(x => x.remove());
+  for (const [nombre, ts] of [['Clientes', ['cli','frm','con']], ['Cobros', ['pla','aju']], ['Sistema', ['bit','man']]]) {
+    const g = document.createElement('div'); g.className = 'ngrp'; g.textContent = nombre; nav.appendChild(g);
+    ts.forEach(t => { const b = nav.querySelector(`[data-t="${t}"]`); if (b) nav.appendChild(b); });
+  }
+}
+agruparMenuAdm();
+document.addEventListener('click', e => { document.querySelectorAll('details.mas[open]').forEach(d => { if (!d.contains(e.target) || e.target.closest('.menu .btn')) d.removeAttribute('open'); }); });
 function openDlg(html){ $('dlgBody').innerHTML = html; $('dlg').showModal(); }
 function closeDlg(){ $('dlg').close(); }
+
+
+// ---------- 📜 Bitácora: todo lo que sucede (bot, portal, WhatsApp, errores) ----------
+const BIT = { f: { tenant_id: '', origen: '', nivel: '', q: '' }, timer: null, abiertos: new Set() };
+const BIT_ORIGEN = { bot:'🤖 Bot', portal:'🖥️ Portal', admin:'👑 Admin', whatsapp:'📱 WhatsApp', sistema:'⚙️ Sistema', n8n:'🔧 n8n' };
+const BIT_NIVEL = { info:['', 'Info'], aviso:['warn', 'Aviso'], error:['bad', 'Error'] };
+function bitStop(){ if (BIT.timer) { clearInterval(BIT.timer); BIT.timer = null; } }
+async function rBit(){
+  const f = BIT.f;
+  if (!$('bitF')) {
+    $('tbit').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><h2>📜 Bitácora</h2><p class="sub" style="margin:0">Todo lo que pasa en el sistema, lo más nuevo arriba. Toca una línea para ver el detalle. Se actualiza sola cada 15 segundos.</p></div>
+      <div id="bitR" class="sub" style="margin:0"></div></div>
+      <div id="bitF" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <select id="bitT" style="width:auto"><option value="">Todos los negocios</option></select>
+        <select id="bitO" style="width:auto"><option value="">Todo origen</option>${Object.entries(BIT_ORIGEN).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+        <select id="bitN" style="width:auto"><option value="">Todo</option><option value="problemas">⚠️ Solo problemas</option><option value="error">🔴 Solo errores</option></select>
+        <input id="bitQ" placeholder="🔎 Buscar texto o número" style="width:220px">
+        <button class="btn ghost" id="bitG">Actualizar</button>
+      </div></div>
+      <div class="card" style="padding:0;overflow:auto"><table class="t" id="bitTb"></table></div>`;
+    $('bitT').onchange = () => { f.tenant_id = $('bitT').value; rBit(); };
+    $('bitO').onchange = () => { f.origen = $('bitO').value; rBit(); };
+    $('bitN').onchange = () => { f.nivel = $('bitN').value; rBit(); };
+    let qT; $('bitQ').oninput = () => { clearTimeout(qT); qT = setTimeout(() => { f.q = $('bitQ').value.trim(); rBit(); }, 400); };
+    $('bitG').onclick = () => rBit();
+  }
+  bitStop(); BIT.timer = setInterval(() => { if (!$('tbit').classList.contains('hidden')) rBit(); }, 15000);
+  const r = await rpc('admin_bitacora', { p: { ...f, limite: 300 } }).catch(() => null); if (!r) return;
+  const sel = $('bitT'); if (sel.options.length <= 1) { r.negocios.forEach(n => sel.add(new Option(n.nombre, n.id))); sel.value = f.tenant_id; }
+  const k = r.resumen_24h || {};
+  $('bitR').innerHTML = `Últimas 24 h: <b>${k.total || 0}</b> registros · <span style="color:var(--warn)"><b>${k.avisos || 0}</b> avisos</span> · <span style="color:var(--bad)"><b>${k.errores || 0}</b> errores</span>`;
+  $('nBit').textContent = k.errores || ''; show($('nBit'), (k.errores || 0) > 0);
+  $('bitTb').innerHTML = `<tr><th>Hora</th><th>Negocio</th><th>Origen</th><th></th><th>Qué pasó</th><th>Número</th></tr>` + (r.filas.map(x => {
+    const [c, t] = BIT_NIVEL[x.nivel] || ['', x.nivel];
+    const open = BIT.abiertos.has(x.id);
+    return `<tr class="bitRow" data-id="${x.id}" style="cursor:pointer;${x.nivel === 'error' ? 'background:var(--bad-soft)' : x.nivel === 'aviso' ? 'background:var(--warn-soft)' : ''}">
+      <td style="white-space:nowrap">${esc(x.hora)}</td><td>${esc(x.negocio || '—')}</td><td style="white-space:nowrap">${BIT_ORIGEN[x.origen] || esc(x.origen)}</td>
+      <td>${c ? `<span class="pill ${c}">${t}</span>` : ''}</td><td>${esc(x.resumen || x.evento)}</td><td>${x.numero ? '+' + esc(x.numero) : ''}</td></tr>
+      ${open ? `<tr><td colspan="6"><pre style="white-space:pre-wrap;font-size:12px;margin:0;max-height:360px;overflow:auto">${esc(JSON.stringify({ evento: x.evento, ejecucion_n8n: x.ref || undefined, ...(x.detalle || {}) }, null, 2))}</pre></td></tr>` : ''}`;
+  }).join('') || '<tr><td colspan="6">Todavía no hay registros con esos filtros.</td></tr>');
+  $('bitTb').querySelectorAll('.bitRow').forEach(tr => tr.onclick = () => { const id = +tr.dataset.id; BIT.abiertos.has(id) ? BIT.abiertos.delete(id) : BIT.abiertos.add(id); rBit(); });
+}
 
 // ---------- Clientes ----------
 function rCli(){
@@ -231,7 +332,7 @@ function rCli(){
           <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
           ${Number(x.extra_pendiente) > 0 ? `<div class="small" style="color:var(--bad)">Extra por cobrar: <b>${money(x.extra_pendiente)}</b></div>` : ''}
           <div class="small">${x.autoriza_extra ? '✅ Autorizó extra' + (x.extra_tope ? ' (tope ' + x.extra_tope + ')' : '') : 'Sin autorizar extra'}</div></div>
-        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button><button class="btn sm" data-cfg="${x.id}">⚙️ Configurar</button><button class="btn sm ghost" data-key="${x.id}">🔑 Clave</button><button class="btn sm ghost" data-pru="${x.id}">📱 PRUEBAS</button><button class="btn sm ghost" data-rch="${x.id}">🔄 Reiniciar chat</button></div>
+        <div class="acts"><button class="btn sm" data-cfg="${x.id}">⚙️ Configurar</button><button class="btn sm ok" data-pay="${x.id}">💵 Registrar pago</button><details class="mas"><summary>Más acciones ▾</summary><div class="menu"><button class="btn sm" data-edit="${x.id}">✏️ Editar datos y plan</button><button class="btn sm" data-hist="${x.id}">🧾 Historial de pagos</button><button class="btn sm" data-seg="${x.id}">🔁 Seguimiento automático</button><button class="btn sm" data-key="${x.id}">🔑 Contraseña del portal</button><button class="btn sm" data-pru="${x.id}">📱 Prestar WhatsApp PRUEBAS</button><button class="btn sm" data-rch="${x.id}">🔄 Reiniciar chat de un cliente</button></div></details></div>
       </div>`; }).join('') || '<p class="sub">No hay clientes.</p>';
     $('lCli').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => dPago(c.find(x => x.id === b.dataset.pay)));
     $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
@@ -266,6 +367,22 @@ function dReiniciarChat(x){
     if (!confirm('¿Borrar todo lo del número ' + n + ' en ' + x.negocio + '? No se puede deshacer.')) return;
     const r = await rpc('admin_reiniciar_chat', { p_tenant: x.id, p_telefono: n }).catch(() => null);
     if (r) { closeDlg(); const b = r.borrado || {}; toast('Listo: +' + r.numero + ' es cliente nuevo en ' + r.negocio + ' (' + Object.entries(b).map(([k, v]) => v + ' ' + k).join(', ') + ')'); }
+  };
+}
+function dDesconectar(instancia, negocio){
+  openDlg(`<h3>📴 Desconectar WhatsApp</h3><p class="sub">Cierra la sesión del WhatsApp <b>${esc(instancia)}</b>${negocio ? ' (' + esc(negocio) + ')' : ''}. El bot deja de responder por ese número hasta que se vuelva a escanear el QR desde el portal del cliente → "Mi WhatsApp" → "Mostrar código QR".</p>
+    <div class="note warn">Úsalo para probar desde cero o si el número se vinculó por error. En el teléfono el dispositivo vinculado desaparece solo.</div>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn bad" id="dcOk">Desconectar</button></div>`);
+  $('dcOk').onclick = async () => {
+    $('dcOk').disabled = true; $('dcOk').textContent = 'Desconectando…';
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const r = await fetch(CFG.N8N_URL + '/webhook/admin-conexiones', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'desconectar', instancia, access_token: session.access_token, anon_key: CFG.SUPABASE_ANON_KEY }) }).then(x => x.json());
+      if (r.ok) { closeDlg(); toast('WhatsApp ' + instancia + ' desconectado. El cliente debe escanear el QR.'); bitLog('whatsapp_desconectado', 'aviso', 'El administrador desconectó el WhatsApp ' + instancia + (negocio ? ' (' + negocio + ')' : ''), { instancia }); }
+      else { toast(r.mensaje || 'No se pudo desconectar'); bitLog('whatsapp_desconectar_fallo', 'error', 'No se pudo desconectar ' + instancia + ': ' + (r.mensaje || ''), { instancia }); $('dcOk').disabled = false; $('dcOk').textContent = 'Desconectar'; }
+    } catch (e) { toast('No se pudo desconectar. Intenta de nuevo.'); bitLog('whatsapp_desconectar_fallo', 'error', 'No se pudo desconectar ' + instancia + ': ' + e.message, { instancia }); $('dcOk').disabled = false; $('dcOk').textContent = 'Desconectar'; }
+    await loadCon(); D = await rpc('admin_datos'); rCli();
   };
 }
 function dPruebas(x){

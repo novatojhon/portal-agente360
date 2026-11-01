@@ -231,7 +231,7 @@ function rCli(){
           <div class="meter"><i class="${cls}" style="width:${pct}%"></i></div>
           ${Number(x.extra_pendiente) > 0 ? `<div class="small" style="color:var(--bad)">Extra por cobrar: <b>${money(x.extra_pendiente)}</b></div>` : ''}
           <div class="small">${x.autoriza_extra ? '✅ Autorizó extra' + (x.extra_tope ? ' (tope ' + x.extra_tope + ')' : '') : 'Sin autorizar extra'}</div></div>
-        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button><button class="btn sm" data-cfg="${x.id}">⚙️ Configurar</button><button class="btn sm ghost" data-key="${x.id}">🔑 Clave</button><button class="btn sm ghost" data-pru="${x.id}">📱 PRUEBAS</button></div>
+        <div class="acts"><button class="btn sm ok" data-pay="${x.id}">💵 Pago</button><button class="btn sm ghost" data-edit="${x.id}">Editar</button><button class="btn sm ghost" data-hist="${x.id}">Pagos</button><button class="btn sm ghost" data-seg="${x.id}">🔁 Seguimiento</button><button class="btn sm" data-cfg="${x.id}">⚙️ Configurar</button><button class="btn sm ghost" data-key="${x.id}">🔑 Clave</button><button class="btn sm ghost" data-pru="${x.id}">📱 PRUEBAS</button><button class="btn sm ghost" data-rch="${x.id}">🔄 Reiniciar chat</button></div>
       </div>`; }).join('') || '<p class="sub">No hay clientes.</p>';
     $('lCli').querySelectorAll('[data-pay]').forEach(b => b.onclick = () => dPago(c.find(x => x.id === b.dataset.pay)));
     $('lCli').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => dEditar(c.find(x => x.id === b.dataset.edit)));
@@ -240,6 +240,7 @@ function rCli(){
     $('lCli').querySelectorAll('[data-cfg]').forEach(b => b.onclick = async () => { if (await rpc('admin_configurar', { p_tenant: b.dataset.cfg }).catch(() => null)) location.href = 'index.html?v=' + Date.now(); });
     $('lCli').querySelectorAll('[data-key]').forEach(b => b.onclick = () => dClave(c.find(x => x.id === b.dataset.key)));
     $('lCli').querySelectorAll('[data-pru]').forEach(b => b.onclick = () => dPruebas(c.find(x => x.id === b.dataset.pru)));
+    $('lCli').querySelectorAll('[data-rch]').forEach(b => b.onclick = () => dReiniciarChat(c.find(x => x.id === b.dataset.rch)));
   };
   $('qCli').oninput = paint; $('bNew').onclick = dNuevo; paint();
 }
@@ -250,6 +251,22 @@ function dClave(x){
     <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="kOk">Guardar</button></div>`);
   $('kOk').onclick = async () => { const r = await rpc('admin_clave_cliente', { p_tenant: x.id, p_clave: $('kC').value }).catch(() => null);
     if (r) { closeDlg(); toast((r.creado ? 'Acceso creado: ' : 'Contraseña cambiada: ') + r.email); } };
+}
+function dReiniciarChat(x){
+  openDlg(`<h3>🔄 Reiniciar chat</h3><p class="sub">${esc(x.negocio)} · borra todo lo de un número en este negocio (mensajes, pedidos, citas, reservas, cotizaciones, boletos, encuestas…) para que vuelva a escribir como <b>cliente nuevo</b>. Las existencias de sus pedidos vuelven al catálogo. No se puede deshacer.</p>
+    <label>Número del cliente</label><input id="rcN" placeholder="Ej.: 0412-5734163" inputmode="tel">
+    <div id="rcL" class="note">Cargando chats…</div>
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn bad" id="rcOk">Reiniciar</button></div>`);
+  rpc('admin_chats_negocio', { p_tenant: x.id }).then(l => {
+    $('rcL').innerHTML = (l && l.length) ? '<b>Chats de este negocio</b> (toca uno para elegirlo):' + l.slice(0, 15).map(k => `<div class="rcI" data-n="${esc(k.numero)}" style="cursor:pointer;padding:6px 0;border-bottom:1px solid var(--line)"><b>+${esc(k.numero)}</b> ${esc(k.nombre || '')} · ${k.mensajes} mensajes · ${esc(k.fecha || '')}<br><span style="color:var(--muted)">${esc(k.ultimo || '')}</span></div>`).join('') : 'Este negocio todavía no tiene chats.';
+    $('rcL').querySelectorAll('.rcI').forEach(d => d.onclick = () => { $('rcN').value = d.dataset.n; });
+  }).catch(() => { $('rcL').textContent = 'No se pudo cargar la lista. Escribe el número.'; });
+  $('rcOk').onclick = async () => {
+    const n = $('rcN').value.trim(); if (!n) { toast('Escribe o elige el número'); return; }
+    if (!confirm('¿Borrar todo lo del número ' + n + ' en ' + x.negocio + '? No se puede deshacer.')) return;
+    const r = await rpc('admin_reiniciar_chat', { p_tenant: x.id, p_telefono: n }).catch(() => null);
+    if (r) { closeDlg(); const b = r.borrado || {}; toast('Listo: +' + r.numero + ' es cliente nuevo en ' + r.negocio + ' (' + Object.entries(b).map(([k, v]) => v + ' ' + k).join(', ') + ')'); }
+  };
 }
 function dPruebas(x){
   openDlg(`<h3>📱 WhatsApp de pruebas</h3><p class="sub">El número de pruebas (instancia <b>PRUEBAS</b>) pasará a atender como <b>${esc(x.negocio)}</b>. El negocio que lo tenía deja de responder por ese número hasta que se lo devuelvas con este mismo botón.</p>

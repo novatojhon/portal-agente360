@@ -2775,6 +2775,17 @@ const CATS = [
 const catOf = (id) => CATS.find(c => c.id === id) || CATS[CATS.length - 1];
 
 const PAGOS = ['Efectivo','Pago móvil','Transferencia','Zelle','Binance','Punto de venta','PayPal'];
+// datos que necesita cada forma de pago (las que no aparecen aquí no necesitan datos)
+const PAGO_DATOS = { 'Pago móvil': 'Banco · teléfono · cédula (ej.: Banesco · 0414-1234567 · V-12.345.678)',
+  'Transferencia': 'Banco · número de cuenta · titular · cédula o RIF', 'Zelle': 'Correo o teléfono · nombre del titular',
+  'Binance': 'Correo, Pay ID o usuario de Binance', 'PayPal': 'Correo de PayPal' };
+function pagosPendientes(){ return F.pagos.filter(p => PAGO_DATOS[p] && !String((F.pagos_datos || {})[p] || '').trim()); }
+function componerDatosPago(){
+  const d = F.pagos_datos || {}, l = [];
+  for (const p of F.pagos) if (PAGO_DATOS[p] && String(d[p] || '').trim()) l.push(p + ': ' + String(d[p]).trim());
+  if (F.pago_otro.trim() && String(d.Otras || '').trim()) l.push(String(d.Otras).trim());
+  return l.join('\n');
+}
 const DIAS = [['lun','Lunes'],['mar','Martes'],['mie','Miércoles'],['jue','Jueves'],['vie','Viernes'],['sab','Sábado'],['dom','Domingo']];
 const ESTILOS = {
   formal:   { e:'🎩', n:'Formal',   tono:'formal y respetuoso, trata de usted',
@@ -2798,7 +2809,7 @@ function blank(){
     categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
     nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
     mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'],
-    datos_pago:'', delivery_modo:'', delivery_costo:'' };
+    datos_pago:'', pagos_datos:{}, delivery_modo:'', delivery_costo:'', zonas:[] };
 }
 async function fromTenant(t){
   const f = blank();
@@ -2813,6 +2824,8 @@ async function fromTenant(t){
     faqs: (t.faqs || []).filter(x => x && x.pregunta),
     datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? ''
   });
+  f.pagos_datos = {};
+  for (const ln of String(t.datos_pago || '').split('\n')) { const m = ln.match(/^\s*([^:]{3,25}):\s*(.+)$/); if (m && PAGO_DATOS[m[1].trim()]) f.pagos_datos[m[1].trim()] = m[2].trim(); else if (ln.trim()) f.pagos_datos.Otras = ((f.pagos_datos.Otras || '') + ' ' + ln.trim()).trim(); }
   if (f.funciones.length) f._catPreset = f.categoria;
   if (t.categoria === 'otro') f.otro_rubro = t.tipo_negocio || '';
   const pm = String(t.metodos_pago || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -2830,15 +2843,17 @@ async function fromTenant(t){
   return f;
 }
 function saveDraft(){
-  try { localStorage.setItem(KEY(), JSON.stringify({ F, step })); $('wzSaved').textContent = '✓ Avance guardado'; } catch {}
+  try { localStorage.setItem(KEY(), JSON.stringify({ F, step, at: new Date().toISOString() })); $('wzSaved').textContent = '✓ Avance guardado'; } catch {}
 }
-function loadDraft(){ try { return JSON.parse(localStorage.getItem(KEY()) || 'null'); } catch { return null; } }
+function loadDraft(){ try { const d = JSON.parse(localStorage.getItem(KEY()) || 'null'); if (d && tenant && tenant.reiniciado_at && (!d.at || d.at < tenant.reiniciado_at)) { clearDraft(); return null; } return d; } catch { return null; } }
 function clearDraft(){ try { localStorage.removeItem(KEY()); } catch {} }
 
 // --------- Pasos ---------
 const STEPS = [
   { e:'🏪', t:'Tu comercio', s:'Cuéntanos lo básico de tu negocio.', r: rComercio,
-    v: () => !F.nombre_negocio.trim() ? 'Escribe el nombre de tu negocio.' : !F.descripcion.trim() ? 'Cuéntanos a qué se dedica tu negocio.' : '' },
+    v: () => { if (!F.nombre_negocio.trim()) return 'Escribe el nombre de tu negocio.'; if (!F.descripcion.trim()) return 'Cuéntanos a qué se dedica tu negocio.';
+      const f = pagosPendientes(); if (f.length && !F._avisoPago) { F._avisoPago = true; return 'Te faltan los datos de: ' + f.join(', ') + '. Sin ellos tu asistente le dirá al cliente que en un momento se los envías. Escríbelos, o toca "Siguiente" otra vez para seguir.'; }
+      return ''; } },
   { e:'🏷️', t:'¿En qué categoría está tu negocio?', s:'Así preparamos tu asistente con lo que más usa tu tipo de negocio.', r: rCategoria,
     v: () => !F.categoria ? 'Elige una categoría.' : (F.categoria === 'otro' && !F.otro_rubro.trim()) ? 'Escribe qué tipo de negocio es.' : '' },
   { e:'🧩', t:'¿Qué hará tu asistente?', s:'Ya marcamos lo más común para tu categoría. Toca para marcar o desmarcar.', r: rFunciones, v: () => '' },
@@ -2897,6 +2912,9 @@ function bindAll(){
     const x = F.profesionales[+el.dataset.ph]; x.horario = x.horario || {};
     if (Array.isArray(x.horario[el.dataset.d])) x.horario[el.dataset.d][+el.dataset.p] = el.value; saveDraft();
   }));
+  $('wzBody').querySelectorAll('[data-fzn],[data-fzc]').forEach(el => el.addEventListener('input', () => { F.zonas = F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]; const i = +(el.dataset.fzn ?? el.dataset.fzc); F.zonas[i] = F.zonas[i] || { nombre: '', costo: '' }; F.zonas[i][el.dataset.fzn != null ? 'nombre' : 'costo'] = el.value; saveDraft(); }));
+  { const po = $('wzBody').querySelector('[data-k="pago_otro"]'); if (po) po.addEventListener('change', () => render()); }
+  $('wzBody').querySelectorAll('[data-pd]').forEach(el => el.addEventListener('input', () => { F.pagos_datos = F.pagos_datos || {}; F.pagos_datos[el.dataset.pd] = el.value; saveDraft(); }));
   $('wzBody').querySelectorAll('[data-qa]').forEach(el => el.addEventListener('input', () => {
     const q = el.dataset.q;
     if (el.dataset.kind === 'resp') F.respuestas[q] = el.value;
@@ -2946,9 +2964,10 @@ function rComercio(){
     `<label>¿Cómo te pueden pagar?<span class="opt">(toca las que aceptas)</span></label>
      <div class="chips">${PAGOS.map(p => `<button type="button" class="chip ${F.pagos.includes(p) ? 'on' : ''}" data-act="pago" data-v="${p}">${p}</button>`).join('')}</div>
      <input data-k="pago_otro" value="${esc(F.pago_otro)}" placeholder="¿Otra forma de pago? Escríbela aquí" style="margin-top:8px">
-     <label style="margin-top:14px">💳 Datos para pagar <span class="opt">(muy recomendado)</span></label>
-     <textarea data-k="datos_pago" placeholder="Ej.: Pago móvil: Banesco · 0414-1234567 · V-12.345.678&#10;Zelle: pagos@minegocio.com (Juan Pérez)&#10;Binance: minegocio">${esc(F.datos_pago || '')}</textarea>
-     <p class="hint">🔒 Tu asistente le da al cliente <b>solo estos datos</b>, y solo los de la forma de pago que elija. Si lo dejas vacío, le dirá que en un momento le envías los datos.</p>`;
+     ${F.pagos.some(p => PAGO_DATOS[p]) || F.pago_otro.trim() ? `<div class="grp" style="margin-top:14px"><h3>💳 Datos para que te paguen</h3>
+       <p class="hint" style="margin:0 0 6px">Tu asistente le da al cliente <b>solo estos datos</b>, y solo los de la forma de pago que elija.</p>
+       ${F.pagos.filter(p => PAGO_DATOS[p]).map(p => `<label style="margin-top:10px">${esc(p)}</label><input data-pd="${esc(p)}" value="${esc((F.pagos_datos || {})[p] || '')}" placeholder="${esc(PAGO_DATOS[p])}">`).join('')}
+       ${F.pago_otro.trim() ? `<label style="margin-top:10px">${esc(F.pago_otro.trim())}</label><input data-pd="Otras" value="${esc((F.pagos_datos || {}).Otras || '')}" placeholder="Datos para pagar con ${esc(F.pago_otro.trim())}">` : ''}</div>` : ''}`;
 }
 // Paso 2
 function rCategoria(){
@@ -2984,7 +3003,10 @@ function rPreguntas(){
   if (F.funciones.includes('delivery')) h += `<div class="grp"><h3>🛵 ¿Cómo cobras el delivery?</h3>
       <div class="chips">${[['gratis','Gratis'],['fijo','Tarifa fija'],['confirmar','Según la zona (lo confirmo yo)'],['zonas','Precio por zonas']].map(([k, t]) => `<button type="button" class="chip ${F.delivery_modo === k ? 'on' : ''}" data-act="dmodo" data-v="${k}">${t}</button>`).join('')}</div>
       ${F.delivery_modo === 'fijo' ? field('delivery_costo', 'Costo fijo del delivery ($)', false, 'inputmode="decimal" placeholder="Ej.: 3"') : ''}
-      <p class="hint">${F.delivery_modo === 'zonas' ? 'Las zonas y sus precios los cargas después en la pestaña 🛵 Pedidos → ⚙️ Delivery.' : F.delivery_modo === 'confirmar' ? 'Tu asistente dirá que el costo del delivery se lo confirmas tú y que se suma al total.' : F.delivery_modo === 'fijo' ? 'Tu asistente suma este costo a cada pedido con delivery.' : F.delivery_modo === 'gratis' ? 'Tu asistente dirá que el delivery no tiene costo.' : 'Si no eliges, tu asistente dirá que el costo del delivery lo confirmas tú.'}</p></div>`;
+      ${F.delivery_modo === 'zonas' ? `<label style="margin-top:12px">Zonas y precio del delivery</label>
+        ${(F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]).map((z, i) => `<div style="display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-top:6px"><input data-fzn="${i}" value="${esc(z.nombre || '')}" placeholder="Zona (ej.: Chacao)"><input data-fzc="${i}" value="${esc(z.costo || '')}" inputmode="decimal" placeholder="Costo $"><button type="button" class="btn sm ghost" data-act="delZona" data-i="${i}" title="Quitar">✕</button></div>`).join('')}
+        <button type="button" class="btn sm ghost" data-act="addZona" style="margin-top:8px">+ Agregar zona</button>` : ''}
+      <p class="hint">${F.delivery_modo === 'zonas' ? 'Si el cliente está en una zona que no anotaste, tu asistente le dirá que el costo se lo confirmas tú. Luego puedes cambiarlas en 🛵 Pedidos → ⚙️ Delivery.' : F.delivery_modo === 'confirmar' ? 'Tu asistente dirá que el costo del delivery se lo confirmas tú y que se suma al total.' : F.delivery_modo === 'fijo' ? 'Tu asistente suma este costo a cada pedido con delivery.' : F.delivery_modo === 'gratis' ? 'Tu asistente dirá que el delivery no tiene costo.' : 'Si no eliges, tu asistente dirá que el costo del delivery lo confirmas tú.'}</p></div>`;
   if (cat.q.length) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
   for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
   const otras = Object.keys(FUNCS).filter(k => !F.funciones.includes(k));
@@ -3074,13 +3096,22 @@ function refreshStyleExamples(){
   if (!F.bienv_editado) { F.mensaje_bienvenida = welcome(); const t = document.querySelector('[data-k="mensaje_bienvenida"]'); if (t) t.value = F.mensaje_bienvenida; }
 }
 // Paso 8
+// temas: una sugerencia de pregunta frecuente se oculta si su tema ya se preguntó antes en el formulario
+const FAQ_TEMAS = [/garant/, /env[ií]o|delivery|despach|domicilio/, /pag(o|ar)|cuota|zelle|efectivo|tarjeta/, /cobertura|zona/, /talla|cambi/,
+  /ubica|direcci|d[oó]nde (est|qued)/, /horario|abren|cierran/, /cita/, /reserv/, /instalaci/, /inscrip|clase de prueba/, /certificad/, /visa|requisit/];
+function faqRepetida(q){
+  const cat = catOf(F.categoria);
+  const antes = [...cat.q, ...F.funciones.flatMap(k => (FUNCS[k] || { q: [] }).q)].map(x => x.toLowerCase()).join(' | ');
+  const ql = q.toLowerCase();
+  return FAQ_TEMAS.some(re => re.test(ql) && (re.test(antes) || (re.source.startsWith('pag') && F.pagos.length) || (re.source.startsWith('ubica') && F.direccion.trim())));
+}
 function rFaqs(){
-  const comunes = catOf(F.categoria).faq;
+  const comunes = catOf(F.categoria).faq.filter(q => !faqRepetida(q) || F.faqs.some(x => x.pregunta === q));
   const propias = F.faqs.map((f, i) => [f, i]).filter(([f]) => !comunes.includes(f.pregunta));
   const p = faqEdit >= 0 ? F.faqs[faqEdit] : { pregunta:'', respuesta:'' };
   const ans = (q) => { const f = F.faqs.find(x => x.pregunta === q); return f ? f.respuesta : undefined; };
-  return `<div class="grp"><h3>💡 Preguntas comunes en tu tipo de negocio</h3><p class="hint" style="margin:0">Marca las que te hacen tus clientes y escribe la respuesta.</p>
-      ${comunes.map(q => qrow('faq', q, ans(q))).join('')}</div>
+  return `${comunes.length ? `<div class="grp"><h3>💡 Otras preguntas comunes en tu tipo de negocio</h3><p class="hint" style="margin:0">Marca las que te hacen tus clientes y escribe la respuesta. Las que ya respondiste en los pasos anteriores no se repiten aquí.</p>
+      ${comunes.map(q => qrow('faq', q, ans(q))).join('')}</div>` : '<p class="hint" style="margin:10px 0 0">✅ Las preguntas comunes de tu tipo de negocio ya las respondiste en los pasos anteriores. Si tus clientes preguntan algo más, agrégalo abajo.</p>'}
     <div class="grp"><h3>➕ Tus propias preguntas</h3>
       ${propias.map(([f, i]) => i === faqEdit ? '' : `<div class="faqc"><div><b>${esc(f.pregunta)}</b><span>${esc(f.respuesta)}</span></div>
         <button class="link" type="button" data-act="editFaq" data-i="${i}">Editar</button><button class="link" type="button" data-act="delFaq" data-i="${i}" style="color:var(--bad)">Quitar</button></div>`).join('')}
@@ -3103,7 +3134,7 @@ function payload(){
     nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),
     direccion: F.direccion.trim(), telefono: F.telefono.trim(), redes: F.redes.trim(),
     metodos_pago: [...F.pagos, ...F.pago_otro.split(',').map(s => s.trim()).filter(Boolean)].join(', '),
-    datos_pago: (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(),
+    datos_pago: componerDatosPago() || (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(), zonas: F.delivery_modo === 'zonas' ? (F.zonas || []).filter(z => (z.nombre || '').trim()).map(z => ({ nombre: z.nombre.trim(), costo: String(z.costo || '').trim() })) : [],
     categoria: F.categoria, tipo_negocio: F.categoria === 'otro' ? F.otro_rubro.trim() : cat.n,
     funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
     que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
@@ -3142,7 +3173,9 @@ function rResumen(){
 // --------- Acciones de botones ---------
 const ACT = {
   dmodo: (el) => { F.delivery_modo = el.dataset.v; saveDraft(); render(); },
-  pago: (el) => { const v = el.dataset.v; F.pagos = F.pagos.includes(v) ? F.pagos.filter(x => x !== v) : [...F.pagos, v]; el.classList.toggle('on'); saveDraft(); },
+  addZona: () => { F.zonas = (F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]); F.zonas.push({ nombre: '', costo: '' }); saveDraft(); render(); },
+  delZona: (el) => { F.zonas = (F.zonas || []).filter((_, i) => i !== +el.dataset.i); saveDraft(); render(); },
+  pago: (el) => { const v = el.dataset.v; F.pagos = F.pagos.includes(v) ? F.pagos.filter(x => x !== v) : [...F.pagos, v]; F._avisoPago = false; saveDraft(); render(); },
   cat: (el) => { F.categoria = el.dataset.v; document.querySelectorAll('#catGrid .tile').forEach(t => t.classList.toggle('on', t === el)); show($('otroBox'), F.categoria === 'otro'); saveDraft(); },
   fn: (el) => { const v = el.dataset.v; F.funciones = F.funciones.includes(v) ? F.funciones.filter(x => x !== v) : [...F.funciones, v]; el.classList.toggle('on'); saveDraft(); },
   addExtra: () => { F.extra.push({ pregunta:'', respuesta:'' }); render(); },

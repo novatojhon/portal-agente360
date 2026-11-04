@@ -1423,7 +1423,7 @@ function paintPromos(){
 // ---------- Catálogo: productos, precios, fotos, opciones y existencias (al instante, sin revisión) ----------
 let CAT = [], catEdit = null, catQ = '', catVer = 'todos';
 const catInfo = () => { const c = catOf((tenant && tenant.categoria) || ''); const fn = (tenant && tenant.funciones) || [];
-  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos'), citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias'), reservas: fn.includes('reservas'), paquetes: fn.includes('paquetes') }; };
+  return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos') || !fn.length, citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias'), reservas: fn.includes('reservas'), paquetes: fn.includes('paquetes') }; };
 const perTxt = (d) => ({ 7: '1 semana', 15: '15 días', 30: '1 mes', 60: '2 meses', 90: '3 meses', 180: '6 meses', 365: '1 año' })[+d] || (d + ' días');
 const catPrecio = (k) => k.precio != null ? usd(k.precio) : ((k.datos_extra || {}).precio_texto || 'Sin precio');
 const catAgotado = (k) => k.vars.length ? k.vars.filter(v => v.activo).every(v => v.stock === 0) : k.stock === 0;
@@ -2330,7 +2330,7 @@ function tasaCard(){
 function dlvCard(){
   if (!DLV) return '';
   const D = DLV, zon = (D.zonas && D.zonas.length) ? D.zonas : [{ nombre: '', costo: '', minutos: '' }];
-  const res = D.modo === 'confirmar' ? 'Según la zona (lo confirmas tú)' : D.modo === 'gratis' ? 'Gratis' : D.modo === 'fijo' ? 'Tarifa fija $' + (D.costo || 0) : 'Por zonas (' + (D.zonas || []).length + ')' + (D.otras != null ? ' · otras $' + D.otras : '');
+  const res = (D.modo === 'confirmar' ? 'Según la zona (lo confirmas tú)' : D.modo === 'gratis' ? 'Gratis' : D.modo === 'fijo' ? 'Tarifa fija $' + (D.costo || 0) : 'Por zonas (' + (D.zonas || []).length + ')' + (D.otras != null ? ' · otras $' + D.otras : '')) + (D.modo !== 'gratis' && D.gratis_desde != null ? ' · gratis desde $' + D.gratis_desde : '');
   return `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>⚙️ Delivery</h2><p class="sub" style="margin:0">Costo del delivery: <b>${esc(res)}</b></p></div>
       <button class="btn ghost" id="dTog">${dlvAbierto ? 'Cerrar' : 'Configurar'}</button></div>
@@ -2342,6 +2342,7 @@ function dlvCard(){
         <div id="dZonas">${zon.map((z, i) => `<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-top:6px"><input placeholder="Ej.: Chacao" data-zn="${i}" value="${esc(z.nombre || '')}"><input type="number" min="0" step="0.5" placeholder="$" data-zc="${i}" value="${z.costo ?? ''}"><input type="number" min="0" placeholder="min" data-zm="${i}" value="${z.minutos ?? ''}"><button type="button" class="btn sm ghost" data-zx="${i}">✕</button></div>`).join('')}</div>
         <button type="button" class="btn sm ghost" id="dAdd" style="margin-top:8px">+ Agregar zona</button>
         <label style="margin-top:12px">Otras zonas ($) <span class="hint">(déjalo vacío si NO entregas fuera de tus zonas)</span></label><input id="dOtras" type="number" min="0" step="0.5" value="${D.otras ?? ''}">` : ''}
+      ${D.modo !== 'gratis' ? `<label style="margin-top:12px">🎁 Delivery gratis en compras desde ($) <span class="hint">(vacío = nunca gratis)</span></label><input id="dGratis" type="number" min="0" step="0.5" value="${D.gratis_desde ?? ''}" placeholder="Ej.: 50">` : ''}
       ${D.modo !== 'zonas' ? `<label style="margin-top:12px">Minutos de envío</label><input id="dMin" type="number" min="0" value="${D.minutos ?? 15}">` : ''}
       <label style="margin-top:12px">Minutos de preparación de un pedido</label><input id="dPrep" type="number" min="0" value="${D.preparacion ?? 20}">
       <label class="sw" style="margin-top:12px"><input type="checkbox" id="dRet" ${D.retiro !== false ? 'checked' : ''}> También se puede retirar en el local</label>
@@ -2351,6 +2352,7 @@ function dlvLeer(){
   const D = DLV, o = { modo: D.modo, retiro: $('dRet') ? $('dRet').checked : D.retiro, preparacion: $('dPrep') ? $('dPrep').value : D.preparacion };
   if ($('dCosto')) o.costo = $('dCosto').value; else o.costo = D.costo;
   if ($('dMin')) o.minutos = $('dMin').value; else o.minutos = D.minutos;
+  o.gratis_desde = $('dGratis') ? $('dGratis').value : (D.modo === 'gratis' ? '' : (D.gratis_desde ?? ''));
   if (D.modo === 'zonas') { o.otras = $('dOtras') ? $('dOtras').value : D.otras;
     o.zonas = [...document.querySelectorAll('[data-zn]')].map(el => { const i = el.dataset.zn; return { nombre: el.value.trim(), costo: document.querySelector(`[data-zc="${i}"]`).value, minutos: document.querySelector(`[data-zm="${i}"]`).value }; }).filter(z => z.nombre); }
   return o;
@@ -2809,7 +2811,7 @@ function blank(){
     categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
     nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
     mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'],
-    datos_pago:'', pagos_datos:{}, delivery_modo:'', delivery_costo:'', zonas:[] };
+    datos_pago:'', pagos_datos:{}, delivery_modo:'', delivery_costo:'', dgratis:false, delivery_gratis_desde:'', zonas:[] };
 }
 async function fromTenant(t){
   const f = blank();
@@ -2822,7 +2824,7 @@ async function fromTenant(t){
     mensaje_bienvenida: t.mensaje_bienvenida || '', bienv_editado: !!t.mensaje_bienvenida,
     mensaje_fuera_horario: t.mensaje_fuera_horario || '', fuera_editado: !!t.mensaje_fuera_horario,
     faqs: (t.faqs || []).filter(x => x && x.pregunta),
-    datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? ''
+    datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? '', dgratis: t.delivery_gratis_desde != null, delivery_gratis_desde: t.delivery_gratis_desde ?? ''
   });
   f.pagos_datos = {};
   for (const ln of String(t.datos_pago || '').split('\n')) { const m = ln.match(/^\s*([^:]{3,25}):\s*(.+)$/); if (m && PAGO_DATOS[m[1].trim()]) f.pagos_datos[m[1].trim()] = m[2].trim(); else if (ln.trim()) f.pagos_datos.Otras = ((f.pagos_datos.Otras || '') + ' ' + ln.trim()).trim(); }
@@ -2996,18 +2998,29 @@ function qrow(kind, q, ans, ph){
     ${on ? `<textarea data-qa data-kind="${kind}" data-q="${esc(q)}" rows="2" placeholder="${esc(ph || 'Escribe tu respuesta…')}">${esc(ans)}</textarea>` : ''}</div>`;
 }
 // Paso 4
+// preguntas del paso 4 que ya se respondieron en el paso 1 o en "¿Cómo cobras el delivery?"
+function qYaRespondida(q){
+  const ql = q.toLowerCase(), dlv = F.funciones.includes('delivery') && !!F.delivery_modo;
+  if (/tienda f[ií]sica|d[oó]nde (est|qued)|direcci/.test(ql) && F.direccion.trim()) return true;
+  if (dlv && /qu[eé] zonas hacen delivery|cu[aá]nto cuesta el (env[ií]o|delivery)/.test(ql)) return true;
+  if (/formas? de pago|c[oó]mo (se )?paga/.test(ql) && !/mensualidad|cuota/.test(ql) && F.pagos.length) return true;
+  return false;
+}
 function rPreguntas(){
   const cat = catOf(F.categoria);
-  const qs = (list) => list.map(q => qrow('resp', q, F.respuestas[q])).join('');
+  const qs = (list) => list.filter(q => !qYaRespondida(q) || F.respuestas[q] !== undefined && (F.respuestas[q] || '').trim()).map(q => qrow('resp', q, F.respuestas[q])).join('');
   let h = `<p class="hint" style="margin:10px 0 0">✅ Al marcar una pregunta se abre la casilla para tu respuesta. Las que no marques no se usan.</p>`;
   if (F.funciones.includes('delivery')) h += `<div class="grp"><h3>🛵 ¿Cómo cobras el delivery?</h3>
       <div class="chips">${[['gratis','Gratis'],['fijo','Tarifa fija'],['confirmar','Según la zona (lo confirmo yo)'],['zonas','Precio por zonas']].map(([k, t]) => `<button type="button" class="chip ${F.delivery_modo === k ? 'on' : ''}" data-act="dmodo" data-v="${k}">${t}</button>`).join('')}</div>
       ${F.delivery_modo === 'fijo' ? field('delivery_costo', 'Costo fijo del delivery ($)', false, 'inputmode="decimal" placeholder="Ej.: 3"') : ''}
       ${F.delivery_modo === 'zonas' ? `<label style="margin-top:12px">Zonas y precio del delivery</label>
         ${(F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]).map((z, i) => `<div style="display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-top:6px"><input data-fzn="${i}" value="${esc(z.nombre || '')}" placeholder="Zona (ej.: Chacao)"><input data-fzc="${i}" value="${esc(z.costo || '')}" inputmode="decimal" placeholder="Costo $"><button type="button" class="btn sm ghost" data-act="delZona" data-i="${i}" title="Quitar">✕</button></div>`).join('')}
-        <button type="button" class="btn sm ghost" data-act="addZona" style="margin-top:8px">+ Agregar zona</button>` : ''}
+        <button type="button" class="btn sm ghost" data-act="addZona" style="margin-top:8px">+ Agregar zona</button>
+        <p class="hint" style="margin:6px 0 0">Pon <b>0</b> en el costo si en esa zona el delivery es gratis.</p>` : ''}
+      ${F.delivery_modo && F.delivery_modo !== 'gratis' ? `<label class="sw" style="margin-top:12px"><input type="checkbox" data-act="dgratis" ${F.dgratis ? 'checked' : ''}> 🎁 Delivery <b>gratis</b> en compras desde un monto</label>
+        ${F.dgratis ? `<div style="max-width:340px">${field('delivery_gratis_desde', 'Compra mínima para delivery gratis ($)', false, 'inputmode="decimal" placeholder="Ej.: 50"')}</div>` : ''}` : ''}
       <p class="hint">${F.delivery_modo === 'zonas' ? 'Si el cliente está en una zona que no anotaste, tu asistente le dirá que el costo se lo confirmas tú. Luego puedes cambiarlas en 🛵 Pedidos → ⚙️ Delivery.' : F.delivery_modo === 'confirmar' ? 'Tu asistente dirá que el costo del delivery se lo confirmas tú y que se suma al total.' : F.delivery_modo === 'fijo' ? 'Tu asistente suma este costo a cada pedido con delivery.' : F.delivery_modo === 'gratis' ? 'Tu asistente dirá que el delivery no tiene costo.' : 'Si no eliges, tu asistente dirá que el costo del delivery lo confirmas tú.'}</p></div>`;
-  if (cat.q.length) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
+  if (qs(cat.q)) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
   for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
   const otras = Object.keys(FUNCS).filter(k => !F.funciones.includes(k));
   if (otras.length) h += `<details class="more" ${otras.some(k => FUNCS[k].q.some(q => F.respuestas[q] !== undefined)) ? 'open' : ''}><summary>Ver más preguntas que podrían servirte</summary>
@@ -3021,18 +3034,19 @@ function rPreguntas(){
 }
 // Paso 5
 function rCatalogo(){
-  const it = catOf(F.categoria).it, citas = F.funciones.includes('citas'), tasas = F.funciones.includes('tasas'), fotosOk = permitida('fotos');
+  const it = catOf(F.categoria).it, citas = F.funciones.includes('citas'), tasas = F.funciones.includes('tasas'), vende = F.funciones.includes('pedidos'), fotosOk = permitida('fotos');
   return `<div style="margin-top:12px">${F.catalogo.map((x, i) => `<div class="item"><button class="x" type="button" data-act="delItem" data-i="${i}" title="Quitar">✕</button>
       <div class="row3">
         <div><span class="mini">${esc(it)}</span><input data-arr="catalogo" data-i="${i}" data-f="nombre" value="${esc(x.nombre)}" placeholder="Nombre"></div>
         <div><span class="mini">${tasas ? 'Tasa' : 'Precio'}</span><input data-arr="catalogo" data-i="${i}" data-f="precio" value="${esc(x.precio)}" placeholder="${tasas ? 'Ej.: 36,50' : 'Ej.: 25'}" inputmode="decimal"></div>
-        ${citas ? `<div><span class="mini">Duración (min)</span><input data-arr="catalogo" data-i="${i}" data-f="duracion_min" value="${esc(x.duracion_min)}" type="number" min="5" step="5" placeholder="30"></div>` : '<div></div>'}
+        ${citas ? `<div><span class="mini">Duración (min)</span><input data-arr="catalogo" data-i="${i}" data-f="duracion_min" value="${esc(x.duracion_min)}" type="number" min="5" step="5" placeholder="30"></div>` : vende ? `<div><span class="mini">Cantidad disponible <span class="opt">(opcional)</span></span><input data-arr="catalogo" data-i="${i}" data-f="cantidad" value="${esc(x.cantidad || '')}" type="number" min="0" step="1" placeholder="Ej.: 10"></div>` : '<div></div>'}
       </div>
       <span class="mini" style="margin-top:6px">Detalle <span class="opt">(opcional)</span></span>
       <input data-arr="catalogo" data-i="${i}" data-f="descripcion" value="${esc(x.descripcion)}" placeholder="Ej.: incluye…, tallas…, marca…">
       ${fotosOk ? `<span class="mini" style="margin-top:8px">Fotos <span class="opt">(hasta 3)</span></span><div class="fotos">${(x.imagenes || []).map((u, j) => `<div class="th"><img src="${esc(u)}" alt="" loading="lazy"><button type="button" data-act="delFoto" data-i="${i}" data-j="${j}" title="Quitar foto">✕</button></div>`).join('')}
         ${(x.imagenes || []).length < 3 ? `<label class="addf">📷<span>Agregar</span><input type="file" accept="image/*" data-foto="${i}"></label>` : ''}</div>` : ''}</div>`).join('')}
     <button type="button" class="btn add" data-act="addItem">+ Agregar ${esc(it.toLowerCase())}</button>
+    ${vende ? '<p class="hint" style="margin-top:10px">📦 <b>Cantidad disponible</b>: cuántos tienes. Tu asistente no vende más de lo que hay y la cantidad baja sola cuando confirmas el pago de una venta. Déjala vacía si no llevas control. Los colores o tallas con su cantidad se cargan después en 🛍️ Catálogo.</p>' : ''}
     <p class="hint" style="margin-top:10px">💡 Escribe los precios en dólares. Si un precio varía, escribe "según modelo" o "desde 10". Cuando tu asistente esté activo, podrás cambiar esta lista al instante en la pestaña 🛍️ Catálogo.</p>
     ${fotosOk ? '<p class="hint">📷 Si un cliente pide ver un producto, tu asistente le envía sus fotos por WhatsApp (las fotos se activan cuando aprobemos tu formulario).</p>' : `<p class="hint">🔒 Las fotos de productos están disponibles en el Plan ${esc(planMinCon('fotos') || 'superior')}.</p>`}</div>`;
 }
@@ -3103,6 +3117,7 @@ function faqRepetida(q){
   const cat = catOf(F.categoria);
   const antes = [...cat.q, ...F.funciones.flatMap(k => (FUNCS[k] || { q: [] }).q)].map(x => x.toLowerCase()).join(' | ');
   const ql = q.toLowerCase();
+  if (qYaRespondida(q) || (/env[ií]o|delivery|domicilio|zona/.test(ql) && F.funciones.includes('delivery') && F.delivery_modo)) return true;
   return FAQ_TEMAS.some(re => re.test(ql) && (re.test(antes) || (re.source.startsWith('pag') && F.pagos.length) || (re.source.startsWith('ubica') && F.direccion.trim())));
 }
 function rFaqs(){
@@ -3134,12 +3149,12 @@ function payload(){
     nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),
     direccion: F.direccion.trim(), telefono: F.telefono.trim(), redes: F.redes.trim(),
     metodos_pago: [...F.pagos, ...F.pago_otro.split(',').map(s => s.trim()).filter(Boolean)].join(', '),
-    datos_pago: componerDatosPago() || (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(), zonas: F.delivery_modo === 'zonas' ? (F.zonas || []).filter(z => (z.nombre || '').trim()).map(z => ({ nombre: z.nombre.trim(), costo: String(z.costo || '').trim() })) : [],
+    datos_pago: componerDatosPago() || (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(), delivery_gratis_desde: F.dgratis && F.delivery_modo !== 'gratis' ? String(F.delivery_gratis_desde || '').trim() : '', zonas: F.delivery_modo === 'zonas' ? (F.zonas || []).filter(z => (z.nombre || '').trim()).map(z => ({ nombre: z.nombre.trim(), costo: String(z.costo || '').trim() })) : [],
     categoria: F.categoria, tipo_negocio: F.categoria === 'otro' ? F.otro_rubro.trim() : cat.n,
     funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
     que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
     catalogo: F.catalogo.filter(x => (x.nombre || '').trim()).map(x => ({ nombre: x.nombre.trim(), precio: String(x.precio || '').trim(),
-      descripcion: (x.descripcion || '').trim(), duracion_min: String(x.duracion_min || '').trim(), tipo: cat.it,
+      descripcion: (x.descripcion || '').trim(), duracion_min: String(x.duracion_min || '').trim(), cantidad: String(x.cantidad ?? '').trim(), tipo: cat.it,
       imagenes: permitida('fotos') ? (x.imagenes || []).filter(Boolean).slice(0, 3) : [] })),
     horario, duracion_cita_min: parseInt(F.duracion_cita_min || 30, 10) || 30,
     nombre_bot: F.nombre_bot.trim(), estilo: F.estilo, emojis: F.emojis, tono: ESTILOS[F.estilo].tono,
@@ -3173,6 +3188,7 @@ function rResumen(){
 // --------- Acciones de botones ---------
 const ACT = {
   dmodo: (el) => { F.delivery_modo = el.dataset.v; saveDraft(); render(); },
+  dgratis: (el) => { F.dgratis = el.checked; if (!F.dgratis) F.delivery_gratis_desde = ''; saveDraft(); render(); },
   addZona: () => { F.zonas = (F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]); F.zonas.push({ nombre: '', costo: '' }); saveDraft(); render(); },
   delZona: (el) => { F.zonas = (F.zonas || []).filter((_, i) => i !== +el.dataset.i); saveDraft(); render(); },
   pago: (el) => { const v = el.dataset.v; F.pagos = F.pagos.includes(v) ? F.pagos.filter(x => x !== v) : [...F.pagos, v]; F._avisoPago = false; saveDraft(); render(); },
@@ -3244,7 +3260,7 @@ async function enviar(){
   $('wzNext').disabled = false;
   if (error) { msg($('wzMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
   fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
-  clearDraft(); show($('wz'), false); await loadCfgStatus(); PP.form = 'enviado'; pintarPrimeros(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  clearDraft(); show($('wz'), false); paintPago(); await loadCfgStatus(); PP.form = 'enviado'; pintarPrimeros(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function initWizard(){
@@ -3252,7 +3268,7 @@ async function initWizard(){
   if (d && d.F) { F = Object.assign(blank(), d.F); step = Math.min(d.step || 0, STEPS.length - 1); }
   else { F = await fromTenant(tenant); step = 0; }
 }
-function openWizard(auto){ if (auto === true && !$('wz').classList.contains('hidden')) return; show($('wz'), true); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
+function openWizard(auto){ if (auto === true && !$('wz').classList.contains('hidden')) return; show($('wz'), true); paintPago(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
 
 // --------- Estado de la configuración ---------
 const ESTADOS = {
@@ -3266,6 +3282,8 @@ const ESTADOS = {
 // ---------- Seguimiento automático ----------
 function paintPago(){
   const box = $('cfgPago'); if (!box || !tenant) return;
+  const wzAbierto = $('wz') && !$('wz').classList.contains('hidden');
+  show(box, !wzAbierto); if (wzAbierto) return;
   box.innerHTML = `<h2>💳 Datos para pagar</h2>
     <p class="sub">Lo que tu asistente le da al cliente cuando va a pagar (solo los datos de la forma de pago que el cliente elija). Vale al instante, sin revisión.</p>
     <textarea id="dpTxt" placeholder="Ej.: Pago móvil: Banesco · 0414-1234567 · V-12.345.678&#10;Zelle: pagos@minegocio.com (Juan Pérez)">${esc(tenant.datos_pago || '')}</textarea>
@@ -3283,16 +3301,21 @@ function paintSeg(){
   const box = $('cfgSeg'); if (!box || !tenant) return;
   if (!tiene('seguimiento')) { box.innerHTML = `<h2>🔒 Seguimiento automático</h2><p class="sub" style="margin:0">Disponible en el Plan ${esc(planMinCon('seguimiento') || 'superior')}. Mira los planes en la pestaña "📊 Mi plan".</p>`; return; }
   const c = Object.assign({ activo: true, horas: [24, 72], promo: true }, tenant.seguimiento || {});
-  const h = (c.horas || []).map(Number).sort((a, b) => a - b), h1 = h[0] || 24, h2 = h[1] || 0;
+  const mm = (Array.isArray(c.minutos) && c.minutos.length ? c.minutos.map(Number) : (c.horas || []).map(x => Number(x) * 60)).sort((a, b) => a - b);
+  const PRI = [[5,'A los 5 minutos'],[10,'A los 10 minutos'],[15,'A los 15 minutos'],[30,'A los 30 minutos'],[60,'A la 1 hora'],[120,'A las 2 horas'],[240,'A las 4 horas'],[480,'A las 8 horas'],[720,'A las 12 horas'],[1440,'Al día siguiente (24 h)']];
+  const SEG = [[0,'No enviar segundo'],[60,'A la 1 hora'],[240,'A las 4 horas'],[720,'A las 12 horas'],[1440,'Al día siguiente (24 h)'],[2880,'A los 2 días'],[4320,'A los 3 días'],[7200,'A los 5 días']];
+  const h1 = Math.min(mm[0] || 1440, 1440), h2 = mm[1] || 0;
+  const conV = (arr, v) => arr.some(([x]) => x === v) ? arr : arr.concat([[v, v < 60 ? `A los ${v} minutos` : `A las ${Math.round(v / 60)} horas`]]).sort((a, b) => a[0] - b[0]);
   const opt = (arr, v) => arr.map(([x, t]) => `<option value="${x}" ${x === v ? 'selected' : ''}>${t}</option>`).join('');
   box.innerHTML = `<h2>🔁 Seguimiento automático</h2>
     <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Solo en tu horario de atención, nunca a quien dijo que no.</p>
     <p class="hint" style="margin-top:-4px">📌 Cómo funciona: si el cliente <b>compró o agendó</b> en esa conversación, le llega la <b>encuesta</b> (pestaña ⭐ Calidad). Si <b>preguntó y no compró</b>, le llega el <b>seguimiento</b>, aunque te haya comprado otras veces.</p>
     <label class="sw"><input type="checkbox" id="sgA" ${c.activo ? 'checked' : ''}> Activado</label>
     <div class="row" style="margin-top:10px">
-      <div><label>Primer seguimiento</label><select id="sg1">${opt([[4,'A las 4 horas'],[12,'A las 12 horas'],[24,'Al día siguiente (24 h)'],[48,'A los 2 días']], h1)}</select></div>
-      <div><label>Segundo seguimiento</label><select id="sg2">${opt([[0,'No enviar segundo'],[48,'A los 2 días'],[72,'A los 3 días'],[120,'A los 5 días']], h2)}</select></div>
+      <div><label>Primer seguimiento</label><select id="sg1">${opt(conV(PRI, h1), h1)}</select></div>
+      <div><label>Segundo seguimiento</label><select id="sg2">${opt(h2 ? conV(SEG, h2) : SEG, h2)}</select></div>
     </div>
+    <p class="hint" style="margin:6px 0 0">El tiempo cuenta desde el último mensaje del cliente. Se revisa cada pocos minutos, así que puede llegar unos minutos después.</p>
     <label class="sw" style="margin-top:10px"><input type="checkbox" id="sgP" ${c.promo ? 'checked' : ''}> Ofrecer mi promoción vigente en el segundo seguimiento</label>
     <div style="margin-top:12px"><button class="btn" id="sgS" type="button">Guardar</button></div>
     <div id="sgM" class="note hidden"></div>`;
@@ -3300,7 +3323,7 @@ function paintSeg(){
     const a = +$('sg1').value, b = +$('sg2').value;
     if (b && b <= a) { msg($('sgM'), 'El segundo seguimiento debe ir después del primero.', 'bad'); return; }
     $('sgS').disabled = true;
-    const { data, error } = await sb.rpc('mi_config_seguimiento', { p_activo: $('sgA').checked, p_horas: b ? [a, b] : [a], p_promo: $('sgP').checked });
+    const { data, error } = await sb.rpc('mi_config_seguimiento_min', { p_activo: $('sgA').checked, p_minutos: b ? [a, b] : [a], p_promo: $('sgP').checked });
     $('sgS').disabled = false;
     if (error || !data || !data.ok) { msg($('sgM'), 'No se pudo guardar: ' + ((error && error.message) || (data && data.mensaje) || ''), 'bad'); return; }
     tenant.seguimiento = data.seguimiento; msg($('sgM'), '✓ Guardado', 'ok');

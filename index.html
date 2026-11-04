@@ -259,7 +259,7 @@
   .ofi-tk span{font-size:13px;color:#D6DCF2;white-space:nowrap}.ofi-tk span em{font-style:normal;color:#A8B3D6;margin-right:6px}
   @keyframes o-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   .ofi .stars{color:#F5C451;letter-spacing:2px}
-  @media (max-width:1100px){.ofi-g{grid-template-columns:1fr 1fr}.ofi-sc{grid-column:1/-1;order:-1}}
+  @media (max-width:1500px){.ofi-g{grid-template-columns:1fr 1fr}.ofi-sc{grid-column:1/-1;order:-1;max-height:560px}}
   @media (max-width:640px){.ofi{padding:12px;border-radius:16px}.ofi-g{grid-template-columns:1fr}}
   @media (max-height:520px) and (orientation:landscape){.ofi-g{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.ofi-sc{grid-column:auto;order:-1;grid-row:span 2}}
   @media (prefers-reduced-motion:reduce){.ofi *{animation:none!important}}
@@ -560,6 +560,7 @@ async function start(){
   let q = sb.from('tenants').select('*');
   q = (am && am.tenant_id) ? q.eq('id', am.tenant_id) : q.limit(1);
   const { data, error } = await q.maybeSingle();
+  if ((error || !data) && tenant) return;   // un segundo intento fallido no borra el negocio ya cargado
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; bitLog('sin_negocio', 'error', 'Entró al portal pero su cuenta no tiene negocio asignado' + (error ? ': ' + error.message : '')); return; }
   tenant = data;
   bitLog('inicio_sesion', 'info', 'Entró al portal' + (am && am.tenant_id ? ' (modo administrador)' : ''), { negocio: data.nombre_negocio });

@@ -618,10 +618,10 @@ async function pintarPrimeros(){
   estadoBot();
   const bot = (tenant.nombre_bot || '').trim() || 'tu asistente';
   const pasos = [
-    { ok: PP.wa === 'open', t: 'Conecta tu WhatsApp', d: PP.wa === 'open' ? 'Conectado.' : 'Escanea el código QR con el WhatsApp de tu negocio.', b: 'Conectar', go: () => { openTab('wa'); if (PP.wa !== 'open') showQr(); } },
-    { ok: PP.form === 'aprobado', t: 'Cuéntale a ' + bot + ' sobre tu negocio', d: PP.form === 'aprobado' ? 'Configuración aprobada.' : (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Enviado: lo estamos revisando. Te avisamos al aprobarlo.' : 'Productos, precios, horario y cómo atiende. Toma unos 10 minutos.', b: (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Ver' : 'Llenar formulario', go: () => openTab('cfg') },
+    { ok: PP.wa === 'open', t: 'Conecta tu WhatsApp', d: PP.wa === 'open' ? 'Conectado.' : 'Escanea el código QR con el WhatsApp de tu negocio.', b: 'Conectar', go: () => { irA('wa'); if (PP.wa !== 'open') showQr(); } },
+    { ok: PP.form === 'aprobado', t: 'Cuéntale a ' + bot + ' sobre tu negocio', d: PP.form === 'aprobado' ? 'Configuración aprobada.' : (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Enviado: lo estamos revisando. Te avisamos al aprobarlo.' : 'Productos, precios, horario y cómo atiende. Toma unos 10 minutos.', b: (PP.form === 'enviado' || PP.form === 'pendiente_revision') ? 'Ver' : 'Llenar formulario', go: () => { openTab('cfg'); if (PP.form === 'enviado' || PP.form === 'pendiente_revision') bajarA('cfg'); else setTimeout(() => openWizard(), 150); } },
     { ok: !!(tenant.datos_pago || '').trim(), t: 'Carga tus datos para pagar', d: (tenant.datos_pago || '').trim() ? 'Listo.' : 'Banco, teléfono y cédula del pago móvil, correo de Zelle…', b: 'Cargar datos', go: () => { openTab('cfg'); setTimeout(() => $('cfgPago') && $('cfgPago').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
-    { ok: PP.chats > 0, t: 'Prueba a ' + bot, d: PP.chats > 0 ? 'Ya atendió su primer chat.' : 'Escríbele a tu número desde OTRO teléfono y mira cómo responde.', b: 'Ver chats', go: () => openTab('conv') }
+    { ok: PP.chats > 0, t: 'Prueba a ' + bot, d: PP.chats > 0 ? 'Ya atendió su primer chat.' : 'Escríbele a tu número desde OTRO teléfono y mira cómo responde.', b: 'Ver chats', go: () => irA('conv') }
   ];
   const hechos = pasos.filter(x => x.ok).length;
   if (hechos === pasos.length || PP.oculto) { show(box, false); return; }
@@ -656,7 +656,14 @@ function openTab(t){ window.__tabActual = t;
   if (t === 'promo') loadPromos();
   if (t === 'met') loadMetricas();
 }
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => openTab(b.dataset.t));
+// al tocar una opción del menú, la pantalla baja a donde se va a trabajar
+function bajarA(t){ setTimeout(() => {
+  const wz = $('wz'); let el = (t === 'cfg' && wz && !wz.classList.contains('hidden')) ? wz : null;
+  if (!el) el = [...document.querySelectorAll('#vApp section')].find(x => !x.classList.contains('hidden'));
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}, 120); }
+function irA(t){ openTab(t); bajarA(t); }
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => irA(b.dataset.t));
 
 
 // ---------- Oficina en vivo ----------

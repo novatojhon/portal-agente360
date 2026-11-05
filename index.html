@@ -2395,6 +2395,7 @@ function paintPedidos(){
       if (p.estado === 'confirmado') b += btn(p.numero, '2', '👨‍🍳 Preparando');
       if (p.estado === 'preparando') b += btn(p.numero, '3', p.tipo === 'delivery' ? '🛵 Salió' : p.tipo === 'envio' ? '📦 Enviado' : '🛍️ Listo para retirar');
       if (['en_camino','listo_retiro'].includes(p.estado)) b += btn(p.numero, 'entregado', '✅ Entregado', 'ok');
+      if (p.tipo === 'delivery' && Number(p.envio) > 0) b += btn(p.numero, 'gratis', '🎁 Delivery gratis', 'ghost');
       if (!p.cancel_solicitada) b += btn(p.numero, 'anular', 'Anular', 'ghost');
     }
     return `<div class="ped ${p.cancel_solicitada || p.estado === 'pago_por_verificar' ? 'alerta' : ''} ${f ? 'fin' : ''}">
@@ -2436,6 +2437,7 @@ function paintPedidos(){
   };
   $('tPed').querySelectorAll('[data-pn]').forEach(b => b.onclick = async () => {
     if (b.dataset.pa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
+    if (b.dataset.pa === 'gratis' && !confirm('¿Regalar el delivery de este pedido? El total baja y se le avisa al cliente.')) return;
     b.disabled = true;
     const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.pn, p_accion: b.dataset.pa });
     if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }

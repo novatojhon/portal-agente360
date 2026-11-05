@@ -2354,6 +2354,11 @@ function dlvCard(){
       ${D.modo !== 'zonas' ? `<label style="margin-top:12px">Minutos de envío</label><input id="dMin" type="number" min="0" value="${D.minutos ?? 15}">` : ''}
       <label style="margin-top:12px">Minutos de preparación de un pedido</label><input id="dPrep" type="number" min="0" value="${D.preparacion ?? 20}">
       <label class="sw" style="margin-top:12px"><input type="checkbox" id="dRet" ${D.retiro !== false ? 'checked' : ''}> También se puede retirar en el local</label>
+      ${D.nacional !== undefined ? `<div class="grp" style="margin-top:14px"><h3>📦 Envíos nacionales</h3>
+        <label class="sw"><input type="checkbox" id="dNac" ${D.nacional ? 'checked' : ''}> Hago envíos a todo el país por agencia</label>
+        ${D.nacional ? `<label style="margin-top:10px">Agencias</label><input id="dAg" value="${esc(D.agencias || '')}" placeholder="MRW, Zoom, Tealca">
+          <label style="margin-top:10px">¿Cómo se cobra?</label><select id="dNm"><option value="cobro_destino" ${D.nacional_modo !== 'fijo' ? 'selected' : ''}>Cobro a destino (lo paga el cliente en la agencia)</option><option value="fijo" ${D.nacional_modo === 'fijo' ? 'selected' : ''}>Costo fijo que cobro yo</option></select>
+          ${D.nacional_modo === 'fijo' ? `<label style="margin-top:10px">Costo ($)</label><input id="dNc" type="number" min="0" step="0.5" value="${D.nacional_costo ?? ''}">` : ''}` : ''}</div>` : ''}
       <div style="margin-top:14px"><button class="btn" id="dSave">Guardar</button></div><div id="dMsg" class="note hidden"></div></div>` : ''}</div>`;
 }
 function dlvLeer(){
@@ -2361,6 +2366,7 @@ function dlvLeer(){
   if ($('dCosto')) o.costo = $('dCosto').value; else o.costo = D.costo;
   if ($('dMin')) o.minutos = $('dMin').value; else o.minutos = D.minutos;
   o.gratis_desde = $('dGratis') ? $('dGratis').value : (D.modo === 'gratis' ? '' : (D.gratis_desde ?? ''));
+  if ($('dNac')) { o.nacional = $('dNac').checked; o.agencias = $('dAg') ? $('dAg').value : (D.agencias || ''); o.nacional_modo = $('dNm') ? $('dNm').value : (D.nacional_modo || 'cobro_destino'); o.nacional_costo = $('dNc') ? $('dNc').value : (D.nacional_costo ?? ''); }
   if (D.modo === 'zonas') { o.otras = $('dOtras') ? $('dOtras').value : D.otras;
     o.zonas = [...document.querySelectorAll('[data-zn]')].map(el => { const i = el.dataset.zn; return { nombre: el.value.trim(), costo: document.querySelector(`[data-zc="${i}"]`).value, minutos: document.querySelector(`[data-zm="${i}"]`).value }; }).filter(z => z.nombre); }
   return o;
@@ -2371,6 +2377,8 @@ function dlvBind(){
   if (!dlvAbierto) return;
   const guardarLocal = () => { const o = dlvLeer(); DLV = Object.assign({}, DLV, o, { costo: o.costo === '' ? null : o.costo, otras: o.otras === '' ? null : o.otras }); if (o.zonas) DLV.zonas = o.zonas; };
   $('dModo').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { guardarLocal(); DLV.modo = b.dataset.m; paintPedidos(); });
+  if ($('dNac')) $('dNac').onchange = () => { guardarLocal(); DLV.nacional = $('dNac').checked; paintPedidos(); };
+  if ($('dNm')) $('dNm').onchange = () => { guardarLocal(); DLV.nacional_modo = $('dNm').value; paintPedidos(); };
   if ($('dAdd')) $('dAdd').onclick = () => { guardarLocal(); DLV.zonas = (DLV.zonas || []).concat([{ nombre: '', costo: '', minutos: '' }]); paintPedidos(); };
   document.querySelectorAll('[data-zx]').forEach(b => b.onclick = () => { guardarLocal(); DLV.zonas = (DLV.zonas || []).filter((_, i) => i !== +b.dataset.zx); paintPedidos(); });
   $('dSave').onclick = async () => {
@@ -2824,7 +2832,7 @@ function blank(){
     categoria:'', otro_rubro:'', funciones:[], respuestas:{}, extra:[], catalogo:[], horario:{}, duracion_cita_min:30,
     nombre_bot:'', estilo:'amigable', emojis:'poco', mensaje_bienvenida:'', bienv_editado:false,
     mensaje_fuera_horario:'', fuera_editado:false, faqs:[], profesionales:[], datos_cita:['Nombre y apellido','Número de celular'],
-    datos_pago:'', pagos_datos:{}, delivery_modo:'', delivery_costo:'', dgratis:false, delivery_gratis_desde:'', zonas:[] };
+    datos_pago:'', pagos_datos:{}, delivery_modo:'', delivery_costo:'', dgratis:false, delivery_gratis_desde:'', nacional:'', agencias:'', nacional_modo:'cobro_destino', nacional_costo:'', zonas:[] };
 }
 async function fromTenant(t){
   const f = blank();
@@ -2837,7 +2845,7 @@ async function fromTenant(t){
     mensaje_bienvenida: t.mensaje_bienvenida || '', bienv_editado: !!t.mensaje_bienvenida,
     mensaje_fuera_horario: t.mensaje_fuera_horario || '', fuera_editado: !!t.mensaje_fuera_horario,
     faqs: (t.faqs || []).filter(x => x && x.pregunta),
-    datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? '', dgratis: t.delivery_gratis_desde != null, delivery_gratis_desde: t.delivery_gratis_desde ?? ''
+    datos_pago: t.datos_pago || '', delivery_modo: t.delivery_modo || '', delivery_costo: t.delivery_costo ?? '', dgratis: t.delivery_gratis_desde != null, delivery_gratis_desde: t.delivery_gratis_desde ?? '', nacional: t.envio_nacional === true ? 'si' : '', agencias: t.agencias || '', nacional_modo: t.envio_nacional_modo || 'cobro_destino', nacional_costo: t.envio_nacional_costo ?? ''
   });
   f.pagos_datos = {};
   for (const ln of String(t.datos_pago || '').split('\n')) { const m = ln.match(/^\s*([^:]{3,25}):\s*(.+)$/); if (m && PAGO_DATOS[m[1].trim()]) f.pagos_datos[m[1].trim()] = m[2].trim(); else if (ln.trim()) f.pagos_datos.Otras = ((f.pagos_datos.Otras || '') + ' ' + ln.trim()).trim(); }
@@ -3016,6 +3024,7 @@ function qYaRespondida(q){
   const ql = q.toLowerCase(), dlv = F.funciones.includes('delivery') && !!F.delivery_modo;
   if (/tienda f[ií]sica|d[oó]nde (est|qued)|direcci/.test(ql) && F.direccion.trim()) return true;
   if (dlv && /qu[eé] zonas hacen delivery|cu[aá]nto cuesta el (env[ií]o|delivery)/.test(ql)) return true;
+  if (F.nacional && /env[ií]os nacionales/.test(ql)) return true;
   if (/formas? de pago|c[oó]mo (se )?paga/.test(ql) && !/mensualidad|cuota/.test(ql) && F.pagos.length) return true;
   return false;
 }
@@ -3033,6 +3042,13 @@ function rPreguntas(){
       ${F.delivery_modo && F.delivery_modo !== 'gratis' ? `<label class="sw" style="margin-top:12px"><input type="checkbox" data-act="dgratis" ${F.dgratis ? 'checked' : ''}> 🎁 Delivery <b>gratis</b> en compras desde un monto</label>
         ${F.dgratis ? `<div style="max-width:340px">${field('delivery_gratis_desde', 'Compra mínima para delivery gratis ($)', false, 'inputmode="decimal" placeholder="Ej.: 50"')}</div>` : ''}` : ''}
       <p class="hint">${F.delivery_modo === 'zonas' ? 'Si el cliente está en una zona que no anotaste, tu asistente le dirá que el costo se lo confirmas tú. Luego puedes cambiarlas en 🛵 Pedidos → ⚙️ Delivery.' : F.delivery_modo === 'confirmar' ? 'Tu asistente dirá que el costo del delivery se lo confirmas tú y que se suma al total.' : F.delivery_modo === 'fijo' ? 'Tu asistente suma este costo a cada pedido con delivery.' : F.delivery_modo === 'gratis' ? 'Tu asistente dirá que el delivery no tiene costo.' : 'Si no eliges, tu asistente dirá que el costo del delivery lo confirmas tú.'}</p></div>`;
+  if (F.funciones.includes('pedidos')) h += `<div class="grp"><h3>📦 ¿Haces envíos nacionales por agencia?</h3>
+      <div class="chips">${[['si','Sí, envío a todo el país'],['no','No']].map(([k, t]) => `<button type="button" class="chip ${F.nacional === k ? 'on' : ''}" data-act="nacional" data-v="${k}">${t}</button>`).join('')}</div>
+      ${F.nacional === 'si' ? `${field('agencias', 'Agencias con las que envías', false, 'placeholder="Ej.: MRW, Zoom, Tealca"')}
+        <label style="margin-top:12px">¿Cómo se cobra el envío?</label>
+        <div class="chips">${[['cobro_destino','Cobro a destino (lo paga el cliente en la agencia)'],['fijo','Costo fijo que cobro yo']].map(([k, t]) => `<button type="button" class="chip ${(F.nacional_modo || 'cobro_destino') === k ? 'on' : ''}" data-act="nmodo" data-v="${k}">${t}</button>`).join('')}</div>
+        ${F.nacional_modo === 'fijo' ? `<div style="max-width:260px">${field('nacional_costo', 'Costo del envío nacional ($)', false, 'inputmode="decimal" placeholder="Ej.: 5"')}</div>` : ''}
+        <p class="hint">Tu asistente pide los datos para el envío (nombre, cédula, teléfono y la agencia/oficina de destino) después del pago.</p>` : ''}</div>`;
   if (qs(cat.q)) h += `<div class="grp"><h3>${cat.e} Sobre tu negocio</h3>${qs(cat.q)}</div>`;
   for (const k of F.funciones) h += `<div class="grp"><h3>${FUNCS[k].e} ${FUNCS[k].n}</h3>${qs(FUNCS[k].q)}</div>`;
   const otras = Object.keys(FUNCS).filter(k => !F.funciones.includes(k));
@@ -3162,7 +3178,7 @@ function payload(){
     nombre_negocio: F.nombre_negocio.trim(), descripcion: F.descripcion.trim(), anios_experiencia: String(F.anios_experiencia || '').trim(),
     direccion: F.direccion.trim(), telefono: F.telefono.trim(), redes: F.redes.trim(),
     metodos_pago: [...F.pagos, ...F.pago_otro.split(',').map(s => s.trim()).filter(Boolean)].join(', '),
-    datos_pago: componerDatosPago() || (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(), delivery_gratis_desde: F.dgratis && F.delivery_modo !== 'gratis' ? String(F.delivery_gratis_desde || '').trim() : '', zonas: F.delivery_modo === 'zonas' ? (F.zonas || []).filter(z => (z.nombre || '').trim()).map(z => ({ nombre: z.nombre.trim(), costo: String(z.costo || '').trim() })) : [],
+    datos_pago: componerDatosPago() || (F.datos_pago || '').trim(), delivery_modo: F.funciones.includes('delivery') ? (F.delivery_modo || 'confirmar') : '', delivery_costo: String(F.delivery_costo || '').trim(), delivery_gratis_desde: F.dgratis && F.delivery_modo !== 'gratis' ? String(F.delivery_gratis_desde || '').trim() : '', envio_nacional: F.funciones.includes('pedidos') ? (F.nacional || '') : '', agencias: String(F.agencias || '').trim(), nacional_modo: F.nacional_modo || 'cobro_destino', nacional_costo: String(F.nacional_costo || '').trim(), zonas: F.delivery_modo === 'zonas' ? (F.zonas || []).filter(z => (z.nombre || '').trim()).map(z => ({ nombre: z.nombre.trim(), costo: String(z.costo || '').trim() })) : [],
     categoria: F.categoria, tipo_negocio: F.categoria === 'otro' ? F.otro_rubro.trim() : cat.n,
     funciones: fn, info_extra: info, objetivo, agenda_citas: fn.includes('citas'),
     que_hacer: ['Dar información del negocio', ...fn.map(k => FUNCS[k].n)].join(', '),
@@ -3201,6 +3217,8 @@ function rResumen(){
 // --------- Acciones de botones ---------
 const ACT = {
   dmodo: (el) => { F.delivery_modo = el.dataset.v; saveDraft(); render(); },
+  nacional: (el) => { F.nacional = el.dataset.v; if (F.nacional === 'si' && !String(F.agencias || '').trim()) F.agencias = 'MRW, Zoom, Tealca'; saveDraft(); render(); },
+  nmodo: (el) => { F.nacional_modo = el.dataset.v; saveDraft(); render(); },
   dgratis: (el) => { F.dgratis = el.checked; if (!F.dgratis) F.delivery_gratis_desde = ''; saveDraft(); render(); },
   addZona: () => { F.zonas = (F.zonas && F.zonas.length ? F.zonas : [{ nombre: '', costo: '' }]); F.zonas.push({ nombre: '', costo: '' }); saveDraft(); render(); },
   delZona: (el) => { F.zonas = (F.zonas || []).filter((_, i) => i !== +el.dataset.i); saveDraft(); render(); },

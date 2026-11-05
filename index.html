@@ -2398,6 +2398,7 @@ function paintPedidos(){
       if (p.tipo === 'delivery' && Number(p.envio) > 0) b += btn(p.numero, 'gratis', '🎁 Delivery gratis', 'ghost');
       if (!p.cancel_solicitada) b += btn(p.numero, 'anular', 'Anular', 'ghost');
     }
+    if (p.estado !== 'cancelado') b += btn(p.numero, 'encuesta', '⭐ Enviar encuesta', 'ghost');
     return `<div class="ped ${p.cancel_solicitada || p.estado === 'pago_por_verificar' ? 'alerta' : ''} ${f ? 'fin' : ''}">
       <div class="hd"><b>${esc(p.num)} · ${esc(p.cliente || 'Cliente')}</b><span class="pill ${PILL[p.estado] || ''}">${esc(p.estado_txt)}</span></div>
       <div class="small">${esc(p.hora)} · hace ${p.hace_min} min · ${p.telefono ? '+' + esc(p.telefono) : ''}</div>
@@ -2437,10 +2438,12 @@ function paintPedidos(){
   };
   $('tPed').querySelectorAll('[data-pn]').forEach(b => b.onclick = async () => {
     if (b.dataset.pa === 'anular' && !confirm('¿Anular este pedido? Se le avisará al cliente.')) return;
+    if (b.dataset.pa === 'encuesta' && !confirm('¿Enviarle ahora la encuesta de satisfacción a este cliente?')) return;
     if (b.dataset.pa === 'gratis' && !confirm('¿Regalar el delivery de este pedido? El total baja y se le avisa al cliente.')) return;
     b.disabled = true;
     const { data, error } = await sb.rpc('mi_pedido_accion', { p_numero: +b.dataset.pn, p_accion: b.dataset.pa });
     if (error || !data || !data.ok) { alert('No se pudo: ' + (error ? error.message : (data && data.mensaje) || '')); b.disabled = false; return; }
+    if (['encuesta','gratis'].includes(b.dataset.pa) && data.mensaje) alert(data.mensaje);
     try { fetch(CFG.N8N_URL + '/webhook/avisos360-ya', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
     loadPedidos(true);
   });

@@ -565,6 +565,7 @@ async function start(){
   tenant = data;
   bitLog('inicio_sesion', 'info', 'Entró al portal' + (am && am.tenant_id ? ' (modo administrador)' : ''), { negocio: data.nombre_negocio });
   $('hdrName').firstChild.textContent = data.nombre_negocio;
+  setTimeout(avisoVence, 300);
   if (am && am.tenant_id) { $('admNeg').textContent = am.negocio || data.nombre_negocio; show($('admBar'), true); }
   const fnc = data.funciones || [], vende = fnc.includes('pedidos');
   show($('tabPed'), vende); show($('tabCot'), vende || fnc.includes('cotizaciones')); show($('tabPaq'), fnc.includes('paquetes')); show($('tabBol'), fnc.includes('boleteria')); show($('tabMemb'), fnc.includes('membresias')); show($('tabResv'), fnc.includes('reservas')); show($('tabSop'), fnc.includes('soporte'));
@@ -598,6 +599,21 @@ function agruparMenu(){
 }
 const PP = { wa: null, form: null, chats: null, oculto: false };
 try { PP.oculto = localStorage.getItem('ppOculto') === '1'; } catch {}
+// cuenta regresiva del plan (5 días antes) arriba en todas las pantallas
+async function avisoVence(){
+  let P = null; try { const { data } = await sb.rpc('mi_plan'); P = data; } catch {}
+  let el = $('avisoVence');
+  if (!el) { el = document.createElement('div'); el.id = 'avisoVence'; const hdr = $('hdrName') && $('hdrName').closest('header'); (hdr || document.body.firstElementChild).insertAdjacentElement('afterend', el); }
+  if (!P || !P.ok || P.sin_vencimiento || P.dias_para_vencer == null || P.dias_para_vencer > 5 || P.estado_cuenta === 'suspendida') { el.innerHTML = ''; return; }
+  const d = P.dias_para_vencer, prueba = P.estado_cuenta === 'prueba', fd = String(P.vence || '').slice(0, 10).split('-').reverse().join('/');
+  const que = prueba ? 'tu período de prueba' : 'tu plan ' + (P.plan_nombre || '');
+  const txt = !P.puede_responder ? `⛔ <b>Tu asistente está detenido:</b> ${prueba ? 'terminó tu período de prueba' : 'tu plan venció'} el ${fd}.`
+    : d < 0 ? `⚠️ ${que.charAt(0).toUpperCase() + que.slice(1)} venció el ${fd}. Estás en días de gracia: renueva hoy.`
+    : d === 0 ? `⏳ <b>Hoy es el último día</b> de ${que}. Tu asistente se detiene esta noche a la 1:00 am si no renuevas.`
+    : `⏳ Te ${d === 1 ? 'queda <b>1 día</b>' : 'quedan <b>' + d + ' días</b>'} de ${que} (vence el ${fd}). Renueva para que tu asistente no se detenga.`;
+  el.innerHTML = `<div style="margin:10px auto;max-width:1180px;padding:12px 16px;border-radius:12px;background:${!P.puede_responder || d <= 1 ? '#FDE8E8' : '#FFF4DB'};color:#3b2a00;font-size:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <span>${txt}</span>${P.numero_soporte ? `<a class="btn sm" href="https://wa.me/${String(P.numero_soporte).replace(/\D/g, '')}?text=${encodeURIComponent('Hola, quiero renovar mi plan de ' + (tenant && tenant.nombre_negocio || ''))}" target="_blank" rel="noopener">Renovar por WhatsApp</a>` : ''}</div>`;
+}
 function estadoBot(){
   const el = $('estadoBot'), tx = $('estadoTxt'); if (!el || !tenant) return;
   const bot = (tenant.nombre_bot || '').trim() || 'Tu asistente';

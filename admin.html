@@ -270,6 +270,7 @@ async function rBit(){
         <select id="bitN" style="width:auto"><option value="">Todo</option><option value="problemas">⚠️ Solo problemas</option><option value="error">🔴 Solo errores</option></select>
         <input id="bitQ" placeholder="🔎 Buscar texto o número" style="width:220px">
         <button class="btn ghost" id="bitG">Actualizar</button>
+        <button class="btn ghost" id="bitL" title="Borra los registros viejos para liberar espacio">🧹 Limpiar</button>
       </div></div>
       <div class="card" style="padding:0;overflow:auto"><table class="t" id="bitTb"></table></div>`;
     $('bitT').onchange = () => { f.tenant_id = $('bitT').value; rBit(); };
@@ -277,6 +278,12 @@ async function rBit(){
     $('bitN').onchange = () => { f.nivel = $('bitN').value; rBit(); };
     let qT; $('bitQ').oninput = () => { clearTimeout(qT); qT = setTimeout(() => { f.q = $('bitQ').value.trim(); rBit(); }, 400); };
     $('bitG').onclick = () => rBit();
+    $('bitL').onclick = async () => {
+      const d = prompt('¿Borrar los registros con más de cuántos días? (0 = borrar todo)', '7');
+      if (d === null) return; const n = parseInt(d, 10); if (isNaN(n) || n < 0) return;
+      const r = await rpc('admin_limpiar_bitacora', { p_dias: n }).catch(() => null);
+      if (r) { toast('🧹 Se borraron ' + r.borrados + ' registros'); rBit(); }
+    };
   }
   bitStop(); BIT.timer = setInterval(() => { if (!$('tbit').classList.contains('hidden')) rBit(); }, 15000);
   const r = await rpc('admin_bitacora', { p: { ...f, limite: 300 } }).catch(() => null); if (!r) return;
@@ -475,7 +482,7 @@ async function dSeg(x){
   openDlg(`<h3>🔁 Seguimiento automático</h3><p class="sub">${esc(x.negocio)}</p>
     <div class="chks"><label class="chk"><input type="checkbox" id="sA" ${cfg.activo !== false ? 'checked' : ''}> Activado</label>
       <label class="chk"><input type="checkbox" id="sP" ${cfg.promo !== false ? 'checked' : ''}> Ofrecer promoción desde el 2.º intento</label>
-      <label class="chk"><input type="checkbox" id="sH" ${cfg.ignorar_horario ? 'checked' : ''}> Ignorar horario de atención (pruebas)</label></div>
+      <label class="chk"><input type="checkbox" id="sH" ${cfg.ignorar_horario !== false ? 'checked' : ''}> Enviar las 24 horas (ignorar horario de atención)</label></div>
     <div class="row" style="margin-top:12px"><div><label>Cantidad de intentos</label><select id="sN">${[1,2,3,4,5].map(n => `<option ${n === mins.length ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
     <div id="sT" class="row"></div>
     <p class="small">⏱️ Cada tiempo se cuenta en <b>minutos desde el último mensaje del cliente</b> (1440 = 24 h; 4320 = 3 días). Para probar usa, por ejemplo, 2 y 5. El sistema revisa cada 5 minutos, así que puede tardar hasta 5 min más. Si el cliente guarda su seguimiento en su portal, vuelve a sus horas.</p>

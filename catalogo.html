@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo</title>
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f6f5f2; --card:#fff; --ink:#1b1d1c; --muted:#6b706d; --line:#e6e4df; --acc:#1f6f5c; --acc-soft:#e4f1ec; --bad:#a8362d; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#121413; --card:#1b1e1d; --ink:#eef0ef; --muted:#9aa19d; --line:#2c302e; --acc:#5cc0a3; --acc-soft:#1d332c; --bad:#ef8a80; } }
+  :root[data-theme="dark"]{ --bg:#121413; --card:#1b1e1d; --ink:#eef0ef; --muted:#9aa19d; --line:#2c302e; --acc:#5cc0a3; --acc-soft:#1d332c; --bad:#ef8a80; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 Outfit, system-ui, sans-serif; }
+  header{ position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 16px; }
+  .top{ display:flex; align-items:center; gap:12px; padding:14px 0 10px; }
+  .top img{ width:46px; height:46px; border-radius:12px; object-fit:cover; background:var(--card); border:1px solid var(--line); }
+  .top h1{ font-size:20px; line-height:1.2; margin:0; font-weight:700; }
+  .top small{ color:var(--muted); font-size:13px; }
+  .tools{ display:flex; gap:8px; padding-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+  .tools::-webkit-scrollbar{ display:none; }
+  input[type=search]{ flex:0 0 200px; padding:9px 12px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); font:inherit; font-size:15px; }
+  .chip{ flex:none; padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+  .chip.on{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .chip:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--acc); outline-offset:2px; }
+  main{ padding:18px 0 40px; }
+  h2{ font-size:15px; font-weight:600; color:var(--muted); margin:22px 0 10px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(165px, 1fr)); gap:12px; }
+  .p{ background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .ph{ position:relative; aspect-ratio:1/1; background:var(--acc-soft); display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .ph::-webkit-scrollbar{ display:none; }
+  .ph img{ flex:0 0 100%; width:100%; height:100%; object-fit:cover; scroll-snap-align:start; }
+  .ph .no{ margin:auto; font-size:40px; opacity:.5; }
+  .dots{ position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:11px; color:#fff; text-shadow:0 1px 2px #0008; pointer-events:none; }
+  .ag{ position:absolute; top:8px; left:8px; background:var(--bad); color:#fff; font-size:12px; font-weight:600; padding:3px 9px; border-radius:999px; }
+  .b{ padding:10px 12px 12px; display:flex; flex-direction:column; gap:4px; flex:1; }
+  .b b{ font-weight:600; font-size:15px; line-height:1.25; }
+  .pr{ font-weight:700; font-size:17px; }
+  .bs{ color:var(--muted); font-size:13px; }
+  .op{ color:var(--muted); font-size:13px; }
+  .det{ color:var(--muted); font-size:13px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .wa{ margin-top:auto; display:block; text-align:center; text-decoration:none; background:var(--acc); color:#fff; font-weight:600; font-size:14px; padding:9px 10px; border-radius:10px; }
+  .p.off .wa{ background:var(--line); color:var(--muted); }
+  .msg{ text-align:center; color:var(--muted); padding:60px 0; }
+  @media (min-width:700px){ .grid{ grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:16px; } .top h1{ font-size:24px; } }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="top"><img id="lg" alt="" hidden><div><h1 id="neg">Catálogo</h1><small id="sub"></small></div></div>
+  <div class="tools" id="tools" hidden><input id="q" type="search" placeholder="Buscar modelo…" aria-label="Buscar"></div>
+</div></header>
+<main class="wrap" id="main"><p class="msg">Cargando catálogo…</p></main>
+<script>
+const CFG = window.PORTAL_CONFIG || {};
+const qs = new URLSearchParams(location.search);
+const NEG = qs.get('n') || '';
+let DATA = null, MARCA = qs.get('m') || '', Q = '';
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const usd = (n) => '$' + Number(n).toLocaleString('es', { maximumFractionDigits: 2 });
+const bs = (n) => 'Bs ' + Number(n).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+async function cargar(){
+  if (!/^[0-9a-f-]{36}$/i.test(NEG)) { $('main').innerHTML = '<p class="msg">Este enlace de catálogo no es válido.</p>'; return; }
+  try {
+    const r = await fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/catalogo_publico', { method: 'POST',
+      headers: { apikey: CFG.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_negocio: NEG }) });
+    DATA = await r.json();
+  } catch { DATA = null; }
+  if (!DATA || !DATA.ok) { $('main').innerHTML = '<p class="msg">Este catálogo no está disponible.</p>'; return; }
+  document.title = 'Catálogo · ' + DATA.negocio;
+  $('neg').textContent = DATA.negocio;
+  if (DATA.logo) { $('lg').src = DATA.logo; $('lg').hidden = false; }
+  const marcas = [...new Set(DATA.productos.map(p => p.marca).filter(Boolean))];
+  const mm = marcas.find(m => norm(m) === norm(MARCA)); MARCA = mm || '';
+  $('tools').hidden = false;
+  $('tools').insertAdjacentHTML('beforeend', (marcas.length > 1 ? ['', ...marcas] : []).map(m => `<button type="button" class="chip" data-m="${esc(m)}">${m ? esc(m) : 'Todo'}</button>`).join(''));
+  $('tools').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { MARCA = b.dataset.m; pintar(); });
+  $('q').oninput = (e) => { Q = e.target.value; pintar(); };
+  pintar();
+}
+function pintar(){
+  $('tools').querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === MARCA));
+  const q = norm(Q);
+  const L = DATA.productos.filter(p => (!MARCA || p.marca === MARCA) && (!q || norm(p.nombre + ' ' + (p.marca || '') + ' ' + (p.detalle || '')).includes(q)));
+  $('sub').textContent = L.length + (L.length === 1 ? ' producto' : ' productos') + (MARCA ? ' · ' + MARCA : '');
+  if (!L.length) { $('main').innerHTML = '<p class="msg">No hay productos con ese filtro.</p>'; return; }
+  const grupos = {}; for (const p of L) (grupos[p.marca || 'Otros'] = grupos[p.marca || 'Otros'] || []).push(p);
+  const multi = Object.keys(grupos).length > 1;
+  $('main').innerHTML = Object.entries(grupos).map(([g, ps]) => (multi ? `<h2>${esc(g)}</h2>` : '') + `<div class="grid">${ps.map(card).join('')}</div>`).join('');
+}
+function card(p){
+  const f = p.fotos || [];
+  const wa = DATA.whatsapp ? `https://wa.me/${DATA.whatsapp}?text=${encodeURIComponent('Hola, me interesa: ' + p.nombre)}` : '';
+  const precio = p.precio != null ? `<span class="pr">${usd(p.precio)}</span>${DATA.tasa ? `<span class="bs">${bs(p.precio * DATA.tasa)}</span>` : ''}` : `<span class="pr">${esc(p.precio_texto || 'Consultar precio')}</span>`;
+  return `<article class="p ${p.agotado ? 'off' : ''}">
+    <div class="ph">${f.length ? f.map((u, i) => `<img src="${esc(u)}" alt="${esc(p.nombre)}${f.length > 1 ? ' — foto ' + (i + 1) : ''}" loading="lazy">`).join('') : '<span class="no">📦</span>'}
+      ${f.length > 1 ? `<span class="dots">${f.length} fotos · desliza</span>` : ''}${p.agotado ? '<span class="ag">Agotado</span>' : ''}</div>
+    <div class="b"><b>${esc(p.nombre)}</b>${precio}
+      ${(p.opciones || []).length ? `<span class="op">Disponible en: ${esc(p.opciones.join(', '))}</span>` : ''}
+      ${p.detalle ? `<span class="det">${esc(p.detalle)}</span>` : ''}
+      ${wa ? `<a class="wa" href="${wa}" target="_blank" rel="noopener">${p.agotado ? 'Preguntar cuándo llega' : 'Pedir por WhatsApp'}</a>` : ''}</div></article>`;
+}
+function $(id){ return document.getElementById(id); }
+cargar();
+</script>
+</body>
+</html>

@@ -358,8 +358,22 @@ function dClave(x){
     <label>Nueva contraseña (mín. 6)</label><input id="kC" type="text" autocomplete="new-password">
     <div class="note">Si el cliente aún no tiene acceso, se crea con su correo.</div>
     <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="kOk">Guardar</button></div>`);
-  $('kOk').onclick = async () => { const r = await rpc('admin_clave_cliente', { p_tenant: x.id, p_clave: $('kC').value }).catch(() => null);
-    if (r) { closeDlg(); toast((r.creado ? 'Acceso creado: ' : 'Contraseña cambiada: ') + r.email); } };
+  $('kOk').onclick = async () => { const clave = $('kC').value; const r = await rpc('admin_clave_cliente', { p_tenant: x.id, p_clave: clave }).catch(() => null);
+    if (r) { closeDlg(); toast((r.creado ? 'Acceso creado: ' : 'Contraseña cambiada: ') + r.email); dAcceso(x.negocio, r.email, clave, x.telefono); } };
+}
+// ---------- Enviar el acceso al cliente por WhatsApp (A-03 / A-05) ----------
+function dAcceso(negocio, email, clave, tel){
+  if (!email) return;
+  const url = location.origin + '/';
+  const txt = `Hola 👋 Ya tienes acceso al portal de tu asistente de *${negocio}*.\n\n🔗 Entra aquí: ${url}\n📧 Correo: ${email}` + (clave ? `\n🔑 Contraseña: ${clave}` : '') +
+    `\n\nAdentro puedes ver tus conversaciones, tu catálogo, tus pedidos y configurar tu asistente. Te recomiendo cambiar la contraseña en ⚙️ Configurar.`;
+  let d = String(tel || '').replace(/\D/g, ''); if (d.startsWith('0')) d = '58' + d.slice(1); else if (d.length === 10 && d.startsWith('4')) d = '58' + d;
+  openDlg(`<h3>📲 Enviar el acceso al cliente</h3><p class="sub">Revisa el mensaje y envíalo desde tu WhatsApp.</p>
+    <textarea id="acT" rows="8" style="width:100%">${esc(txt)}</textarea>
+    <label>WhatsApp del cliente</label><input id="acN" value="${esc(d)}" placeholder="584121234567">
+    <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cerrar</button><button class="btn ghost" id="acC">📋 Copiar</button><button class="btn" id="acW">📲 Abrir WhatsApp</button></div>`);
+  $('acC').onclick = async () => { try { await navigator.clipboard.writeText($('acT').value); toast('Mensaje copiado'); } catch { $('acT').select(); } };
+  $('acW').onclick = () => { const n = $('acN').value.replace(/\D/g, ''); window.open('https://wa.me/' + n + '?text=' + encodeURIComponent($('acT').value), '_blank', 'noopener'); };
 }
 function dReiniciarNegocio(x){
   openDlg(`<h3>♻️ Reiniciar negocio desde cero</h3><p class="sub"><b>${esc(x.negocio)}</b> queda como recién creado para volver a probar: se borran el formulario, el catálogo, los chats, pedidos, citas, reservas, cotizaciones, promociones y encuestas, y la configuración del asistente vuelve a la de fábrica.</p>
@@ -518,7 +532,9 @@ function dNuevo(){
     <div class="foot"><button class="btn ghost" onclick="closeDlg()">Cancelar</button><button class="btn" id="nOk">Crear cliente</button></div>`);
   $('nOk').onclick = async () => {
     const r = await rpc('admin_crear_cliente', { p: { negocio: $('nN').value.trim(), email: $('nE').value.trim(), telefono: $('nT').value.trim(), plan: $('nP').value, instancia: $('nI').value.trim(), clave: $('nC').value } }).catch(() => null);
-    if (r) { closeDlg(); toast(r.usuario_creado ? 'Cliente y acceso creados ✅' : r.usuario_enlazado ? 'Cliente creado y enlazado a su usuario' : 'Cliente creado sin acceso. Usa 🔑 Clave para crearle uno.'); load(); }
+    const datos = { negocio: $('nN').value.trim(), email: $('nE').value.trim(), clave: $('nC').value, tel: $('nT').value.trim() };
+    if (r) { closeDlg(); toast(r.usuario_creado ? 'Cliente y acceso creados ✅' : r.usuario_enlazado ? 'Cliente creado y enlazado a un usuario que ya existía (su contraseña no cambió)' : 'Cliente creado sin acceso. Usa 🔑 Clave para crearle uno.'); load();
+      if (r.usuario_creado || r.usuario_enlazado) dAcceso(datos.negocio, datos.email, r.usuario_creado ? datos.clave : '', datos.tel); }
   };
 }
 

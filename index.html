@@ -409,7 +409,7 @@
 <div id="admBar" class="hidden" style="background:#7c3aed;color:#fff;padding:8px 16px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap"><span>🛠️ <b>Modo administrador</b> — estás configurando: <b id="admNeg"></b></span><button class="btn sm" id="admSalir" style="background:#fff;color:#7c3aed">Volver al panel admin</button></div>
 <header id="hdr" class="hidden">
   <div class="bar">
-    <div class="logo">IA</div>
+    <div class="logo" id="hdrLogo">IA</div>
     <h1 id="hdrName">Mi negocio<small>Portal del asistente de WhatsApp</small><span class="estado warn" id="estadoBot"><i></i><span id="estadoTxt">Revisando tu asistente…</span></span></h1>
     <button class="btn ghost" id="logout">Salir</button>
   </div>
@@ -504,6 +504,7 @@
     <div class="card" id="cfgStatus"></div>
     <div class="card" id="cfgPago"></div>
     <div class="card" id="cfgSeg"></div>
+    <div class="card" id="cfgLogo"></div>
     <div class="card" id="cfgAv2"></div>
     <div class="card" id="cfgClave"></div>
     <div class="card hidden" id="wz">
@@ -564,7 +565,7 @@ async function start(){
   const { data, error } = await q.maybeSingle();
   if ((error || !data) && tenant) return;   // un segundo intento fallido no borra el negocio ya cargado
   if (error || !data) { $('hdrName').firstChild.textContent = 'Cuenta sin negocio asignado'; bitLog('sin_negocio', 'error', 'Entró al portal pero su cuenta no tiene negocio asignado' + (error ? ': ' + error.message : '')); return; }
-  tenant = data;
+  tenant = data; pintarLogo();
   bitLog('inicio_sesion', 'info', 'Entró al portal' + (am && am.tenant_id ? ' (modo administrador)' : ''), { negocio: data.nombre_negocio });
   $('hdrName').firstChild.textContent = data.nombre_negocio;
   setTimeout(avisoVence, 300);
@@ -576,7 +577,7 @@ async function start(){
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
   if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','bol','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
-  await loadPlan(); await initWizard(); loadCfgStatus(); paintPago(); paintSeg(); paintAv2(); paintClave(); checkWa();
+  await loadPlan(); await initWizard(); loadCfgStatus(); paintPago(); paintSeg(); paintLogo(); paintAv2(); paintClave(); checkWa();
   agruparMenu(); pintarPrimeros();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -1518,6 +1519,10 @@ function paintCatalogo(){
   $('tCat').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>${titulo}</h2><p class="sub" style="margin:0">Lo que cambies aquí lo usa tu asistente <b>desde el próximo mensaje</b>: precios, fotos${I.vende ? ', colores y existencias' : ''}. No necesita revisión.</p></div>
       ${e ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="kMas" type="button">📥 Carga masiva</button><button class="btn" id="kNew" type="button">+ Agregar ${esc(I.it.toLowerCase())}</button></div>`}</div>
+    ${!e && tenant && tenant.catalogo_web !== undefined && I.vende ? `<div class="note" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>🔗 <b>Tu catálogo web</b> (tu asistente lo envía cuando el cliente quiere ver el catálogo o una marca completa):</span>
+      <a href="${esc(catWebUrl())}" target="_blank" rel="noopener" style="word-break:break-all">${esc(catWebUrl())}</a>
+      <button class="btn ghost sm" id="kWebC" type="button">📋 Copiar</button>
+      <label class="sw" style="margin:0"><input type="checkbox" id="kWebA" ${tenant.catalogo_web ? 'checked' : ''}> Activo</label></div>` : ''}
     ${!e && catMas ? catMasivaHtml(I, fotosOk) : ''}
     ${form}
     ${e ? '' : `<div class="cbar"><input id="kQ" type="search" placeholder="Buscar…" value="${esc(catQ)}">
@@ -1532,6 +1537,8 @@ function paintCatalogo(){
       : `<p class="hint" style="margin-top:14px">${CAT.length ? 'No hay resultados con ese filtro.' : 'Aún no tienes nada en tu catálogo. Agrega el primero con el botón de arriba.'}</p>`)}
     </div>`;
   if ($('kNew')) $('kNew').onclick = () => { catEdit = { activo: true, _imgs: [], _vars: [] }; paintCatalogo(); $('kN').focus(); };
+  if ($('kWebC')) $('kWebC').onclick = async () => { try { await navigator.clipboard.writeText(catWebUrl()); $('kWebC').textContent = '✓ Copiado'; } catch {} };
+  if ($('kWebA')) $('kWebA').onchange = async (ev) => { const v = ev.target.checked; const { data } = await sb.rpc('mi_catalogo_web', { p_activo: v }); if (data && data.ok) tenant.catalogo_web = v; else ev.target.checked = !v; };
   if ($('kMas')) $('kMas').onclick = () => { catMas = !catMas; catMasRows = null; paintCatalogo(); };
   if (catMas && !e) catMasivaBind(I);
   if ($('kQ')) $('kQ').oninput = (ev) => { catQ = ev.target.value; const pos = ev.target.selectionStart; paintCatalogo(); const n = $('kQ'); n.focus(); n.setSelectionRange(pos, pos); };
@@ -3567,6 +3574,30 @@ function paintSeg(){
     if (h.data && h.data.ok) tenant.seguimiento = h.data.seguimiento;
     msg($('sgM'), '✓ Guardado', 'ok');
   };
+}
+function pintarLogo(){
+  const el = $('hdrLogo'); if (!el || !tenant) return;
+  el.innerHTML = tenant.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : 'IA';
+}
+const catWebUrl = () => tenant ? location.origin + location.pathname.replace(/[^/]*$/, '') + 'catalogo.html?n=' + tenant.id : '';
+function paintLogo(){
+  const box = $('cfgLogo'); if (!box || !tenant) return;
+  if (tenant.logo_url === undefined) { box.classList.add('hidden'); return; }
+  box.innerHTML = `<h2>🖼️ Logo de mi negocio</h2>
+    <p class="sub">Se ve arriba en este portal y en tu catálogo web.</p>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div style="width:72px;height:72px;border-radius:16px;border:1px solid var(--line);background:var(--brand-soft);display:flex;align-items:center;justify-content:center;overflow:hidden">${tenant.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="Logo" style="width:100%;height:100%;object-fit:cover">` : '<span class="hint">Sin logo</span>'}</div>
+      <label class="btn" style="cursor:pointer">${tenant.logo_url ? 'Cambiar logo' : 'Subir logo'}<input id="lgF" type="file" accept="image/*" style="display:none"></label>
+      ${tenant.logo_url ? '<button class="btn ghost" id="lgX" type="button">Quitar</button>' : ''}</div>
+    <div id="lgM" class="note hidden"></div>`;
+  const guardar = async (url) => {
+    const { data, error } = await sb.rpc('mi_logo', { p_url: url });
+    if (error || !data || !data.ok) { msg($('lgM'), 'No se pudo guardar: ' + ((error && error.message) || (data && data.mensaje) || ''), 'bad'); return; }
+    tenant.logo_url = data.logo_url; pintarLogo(); paintLogo(); msg($('lgM'), '✓ Guardado', 'ok');
+  };
+  $('lgF').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; msg($('lgM'), 'Subiendo…', 'ok');
+    try { await guardar(await subirFoto(f)); } catch (er) { msg($('lgM'), er.message, 'bad'); } };
+  if ($('lgX')) $('lgX').onclick = () => guardar('');
 }
 function paintAv2(){
   const box = $('cfgAv2'); if (!box || !tenant) return;

@@ -2349,7 +2349,7 @@ function tasaCard(){
   return `<div class="card"><h2>💱 Tasa del día</h2>
     <p class="sub" style="margin:0 0 8px">1 $ = Bs ${t || '—'} ${DLV.tasa_at ? '· actualizada ' + esc(DLV.tasa_at) : '· <b>sin tasa</b> (los pedidos no muestran bolívares)'}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="tTasa" inputmode="decimal" placeholder="Ej.: 39,50" value="${t}" style="max-width:160px"><button class="btn" id="tSave">Guardar tasa</button></div>
-    <p class="hint" style="margin-top:6px">También puedes escribir en el WhatsApp del negocio, en "Mensaje para mí": <b>tasa 39,50</b></p><div id="tMsg" class="note hidden"></div></div>`;
+    <p class="hint" style="margin-top:6px">También puedes escribir en el WhatsApp del negocio, en "Mensaje para mí": <b>tasa 39,50</b>. Para quitar la tasa (no mostrar bolívares) déjala vacía o en 0 y guarda.</p><div id="tMsg" class="note hidden"></div></div>`;
 }
 function dlvCard(){
   if (!DLV) return '';
@@ -2456,7 +2456,8 @@ function paintPedidos(){
     tenant.validar_monto = v; paintPedidos();
   };
   if ($('tSave')) $('tSave').onclick = async () => {
-    const { data, error } = await sb.rpc('mi_tasa', { p_tasa: $('tTasa').value });
+    const tv = String($('tTasa').value || '').trim();
+    const { data, error } = (!tv || Number(tv.replace(',', '.')) === 0) ? await sb.rpc('mi_quitar_tasa') : await sb.rpc('mi_tasa', { p_tasa: tv });
     if (error || !data || !data.ok) { msg($('tMsg'), 'No se pudo guardar: ' + (error ? error.message : (data && data.mensaje) || ''), 'bad'); return; }
     const r = await sb.rpc('mi_delivery'); DLV = (r.data && r.data.ok) ? r.data : DLV; paintPedidos();
   };

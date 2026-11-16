@@ -1447,7 +1447,7 @@ function paintPromos(){
 }
 
 // ---------- Catálogo: productos, precios, fotos, opciones y existencias (al instante, sin revisión) ----------
-let CAT = [], catEdit = null, catQ = '', catVer = 'todos';
+let CAT = [], catEdit = null, catQ = '', catVer = 'todos', catMas = false, catMasRows = null;
 const catInfo = () => { const c = catOf((tenant && tenant.categoria) || ''); const fn = (tenant && tenant.funciones) || [];
   return { it: c.it || 'Producto', menu: c.id === 'restaurante', vende: fn.includes('pedidos') || !fn.length, citas: fn.includes('citas'), tasas: fn.includes('tasas'), planes: fn.includes('membresias'), reservas: fn.includes('reservas'), paquetes: fn.includes('paquetes') }; };
 const perTxt = (d) => ({ 7: '1 semana', 15: '15 días', 30: '1 mes', 60: '2 meses', 90: '3 meses', 180: '6 meses', 365: '1 año' })[+d] || (d + ' días');
@@ -1517,7 +1517,8 @@ function paintCatalogo(){
   }
   $('tCat').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
       <div><h2>${titulo}</h2><p class="sub" style="margin:0">Lo que cambies aquí lo usa tu asistente <b>desde el próximo mensaje</b>: precios, fotos${I.vende ? ', colores y existencias' : ''}. No necesita revisión.</p></div>
-      ${e ? '' : `<button class="btn" id="kNew" type="button">+ Agregar ${esc(I.it.toLowerCase())}</button>`}</div>
+      ${e ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="kMas" type="button">📥 Carga masiva</button><button class="btn" id="kNew" type="button">+ Agregar ${esc(I.it.toLowerCase())}</button></div>`}</div>
+    ${!e && catMas ? catMasivaHtml(I, fotosOk) : ''}
     ${form}
     ${e ? '' : `<div class="cbar"><input id="kQ" type="search" placeholder="Buscar…" value="${esc(catQ)}">
       <div class="chips">${[['todos', 'Todos (' + nAct + ')'], ['agotados', 'Agotados (' + nAg + ')'], ['ocultos', 'Ocultos (' + nOff + ')']].filter(([v], i) => i === 0 || (v === 'agotados' ? I.vende : nOff)).map(([v, t]) => `<button type="button" class="chip ${catVer === v ? 'on' : ''}" data-kv="${v}">${t}</button>`).join('')}</div></div>`}
@@ -1531,6 +1532,8 @@ function paintCatalogo(){
       : `<p class="hint" style="margin-top:14px">${CAT.length ? 'No hay resultados con ese filtro.' : 'Aún no tienes nada en tu catálogo. Agrega el primero con el botón de arriba.'}</p>`)}
     </div>`;
   if ($('kNew')) $('kNew').onclick = () => { catEdit = { activo: true, _imgs: [], _vars: [] }; paintCatalogo(); $('kN').focus(); };
+  if ($('kMas')) $('kMas').onclick = () => { catMas = !catMas; catMasRows = null; paintCatalogo(); };
+  if (catMas && !e) catMasivaBind(I);
   if ($('kQ')) $('kQ').oninput = (ev) => { catQ = ev.target.value; const pos = ev.target.selectionStart; paintCatalogo(); const n = $('kQ'); n.focus(); n.setSelectionRange(pos, pos); };
   $('tCat').querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { catVer = b.dataset.kv; paintCatalogo(); });
   $('tCat').querySelectorAll('[data-ke]').forEach(b => b.onclick = () => {
@@ -1577,6 +1580,122 @@ function paintCatalogo(){
     $('kSave').disabled = false;
     if (error || !(data && data.ok)) { msg($('kMsg'), (data && data.error) || ('No se pudo guardar: ' + (error ? error.message : '')), 'bad'); return; }
     catEdit = null; await loadCatalogo(); };
+}
+
+// ---------- 📥 Carga masiva del catálogo (Excel/CSV) y fotos en lote ----------
+const catNorm = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function catMasivaHtml(I, fotosOk){
+  const R = catMasRows;
+  const prev = !R ? '' : `<div class="note ${R.filas.length ? '' : 'bad'}" style="margin-top:10px">
+      Archivo leído: <b>${R.filas.length}</b> fila(s) válidas · <b>${R.filas.filter(f => !f.k).length}</b> nuevas · <b>${R.filas.filter(f => f.k).length}</b> ya existen (se actualizan)${R.malas ? ` · <b>${R.malas}</b> sin nombre (se omiten)` : ''}.</div>
+    ${R.filas.length ? `<div style="max-height:220px;overflow:auto;margin-top:8px"><table class="t" style="width:100%;font-size:13px"><tr><th>Nombre</th><th>Precio</th><th>Sección/marca</th>${I.vende ? '<th>Existencia</th>' : ''}<th></th></tr>
+      ${R.filas.slice(0, 300).map(f => `<tr><td>${esc(f.nombre)}</td><td>${esc(f.precio)}</td><td>${esc(f.seccion)}</td>${I.vende ? `<td>${esc(f.existencia)}</td>` : ''}<td>${f.k ? '✏️ actualiza' : '🆕 nuevo'}</td></tr>`).join('')}</table></div>
+      <div style="margin-top:10px"><button class="btn" id="kmGo" type="button">Cargar ${R.filas.length} ${R.filas.length === 1 ? 'fila' : 'filas'}</button></div>` : ''}`;
+  return `<div class="grp" id="catMas"><h3>📥 Carga masiva</h3>
+    <p class="hint" style="margin:0 0 8px">1) Descarga la plantilla y llénala en Excel (una fila por ${esc(I.it.toLowerCase())}). 2) Guárdala como Excel (.xlsx) o CSV y súbela aquí. Si el nombre ya existe, se actualiza (lo que dejes vacío no se cambia).</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn ghost sm" id="kmPl" type="button">⬇️ Descargar plantilla</button>
+      <label class="btn sm" style="cursor:pointer">📄 Subir Excel o CSV<input id="kmF" type="file" accept=".xlsx,.xls,.csv,text/csv" style="display:none"></label></div>
+    ${prev}
+    ${fotosOk ? `<div style="border-top:1px solid var(--line, #e5e5e5);margin-top:14px;padding-top:12px"><b>📸 Fotos en lote</b>
+      <p class="hint" style="margin:4px 0 8px">Ponle a cada foto el nombre del ${esc(I.it.toLowerCase())} (por ejemplo <b>Curren 8329.jpg</b>, <b>Curren 8329-2.jpg</b>). Selecciona varias a la vez: cada una se agrega a su ${esc(I.it.toLowerCase())} (máximo 3 por ${esc(I.it.toLowerCase())}).</p>
+      <label class="btn ghost sm" style="cursor:pointer">🖼️ Elegir fotos<input id="kmFo" type="file" accept="image/*" multiple style="display:none"></label></div>` : ''}
+    <div id="kmMsg" class="note hidden"></div>
+    <div style="margin-top:10px"><button class="btn ghost sm" id="kmX" type="button">Cerrar</button></div></div>`;
+}
+function catCsv(txt){
+  const sep = (txt.split('\n')[0].match(/;/g) || []).length > (txt.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+  const out = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i];
+    if (q) { if (ch === '"') { if (txt[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; continue; }
+    if (ch === '"') q = true; else if (ch === sep) { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && txt[i + 1] === '\n') i++; row.push(cur); out.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); out.push(row); }
+  return out;
+}
+async function catLeerArchivo(file){
+  if (/\.csv$/i.test(file.name) || file.type === 'text/csv') return catCsv((await file.text()).replace(/^\uFEFF/, ''));
+  if (!window.XLSX) await new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = ok; sc.onerror = () => bad(new Error('No se pudo abrir el lector de Excel. Guarda el archivo como CSV e inténtalo de nuevo.')); document.head.appendChild(sc); });
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
+}
+function catMasivaBind(I){
+  $('kmX').onclick = () => { catMas = false; catMasRows = null; paintCatalogo(); };
+  $('kmPl').onclick = () => {
+    const cab = ['nombre', 'precio', 'seccion o marca'].concat(I.vende ? ['existencia'] : []).concat(['detalle', 'foto (enlace, opcional)']);
+    const ej = I.menu ? ['Pizza margarita', '12', 'Pizzas'].concat(I.vende ? [''] : []).concat(['Salsa de tomate, mozzarella y albahaca', ''])
+                      : ['Curren 8329', '45', 'Curren'].concat(I.vende ? ['8'] : []).concat(['Reloj de acero, resistente al agua', '']);
+    const csv = '\uFEFF' + [cab, ej].map(r => r.map(c => /[;"\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c).join(';')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'plantilla_catalogo.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $('kmF').onchange = async (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      const M = (await catLeerArchivo(f)).filter(r => r.some(c => String(c).trim() !== ''));
+      if (M.length < 2) throw new Error('El archivo no tiene filas debajo de los títulos.');
+      const H = M[0].map(catNorm), col = (...ks) => H.findIndex(h => ks.some(k => h.startsWith(k)));
+      const ci = { n: col('nombre', 'producto', 'articulo', 'servicio', 'plato'), p: col('precio', 'costo', 'valor'), s: col('seccion', 'marca', 'categoria'),
+                   e: col('existencia', 'cantidad', 'stock', 'disponible', 'unidades'), d: col('detalle', 'descripcion'), f: col('foto', 'imagen') };
+      if (ci.n < 0) throw new Error('No encontré la columna "nombre". Usa la plantilla.');
+      const porNom = new Map(CAT.map(k => [catNorm(k.nombre), k])), vistos = new Set();
+      let malas = 0; const filas = [];
+      for (const r of M.slice(1)) {
+        const g = (i) => i < 0 ? '' : String(r[i] == null ? '' : r[i]).trim();
+        const nombre = g(ci.n); if (!nombre) { malas++; continue; }
+        const key = catNorm(nombre); if (vistos.has(key)) continue; vistos.add(key);
+        filas.push({ nombre, precio: g(ci.p).replace(/^\$\s*/, ''), seccion: g(ci.s), existencia: g(ci.e).replace(/[^\d]/g, ''), detalle: g(ci.d), foto: g(ci.f), k: porNom.get(key) || null });
+      }
+      catMasRows = { filas, malas }; paintCatalogo();
+    } catch (er) { msg($('kmMsg'), er.message || 'No se pudo leer el archivo.', 'bad'); }
+  };
+  if ($('kmGo')) $('kmGo').onclick = async () => {
+    const F = catMasRows.filas; $('kmGo').disabled = true; let ok = 0; const errs = [];
+    for (let i = 0; i < F.length; i++) {
+      const f = F[i], k = f.k, dx = (k && k.datos_extra) || {};
+      $('kmGo').textContent = `Cargando ${i + 1} de ${F.length}…`;
+      const imgs = (k && Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : []);
+      if (/^https?:\/\//.test(f.foto) && !imgs.includes(f.foto) && imgs.length < 3) imgs.push(f.foto);
+      const p = { id: k ? k.id : null, tenant_id: tenant.id, nombre: k ? k.nombre : f.nombre,
+        precio: f.precio || (k ? (k.precio != null ? String(k.precio) : (dx.precio_texto || '')) : ''),
+        categoria: f.seccion || (k ? k.categoria || '' : ''), descripcion: f.detalle || (k ? k.descripcion || '' : ''),
+        duracion_min: dx.duracion_min ? String(dx.duracion_min) : '', periodo_dias: dx.periodo_dias ? String(dx.periodo_dias) : '',
+        reserva_por: dx.reserva_unidades ? (dx.reserva_por || 'noche') : '', reserva_unidades: dx.reserva_unidades ? String(dx.reserva_unidades) : '',
+        capacidad: dx.capacidad ? String(dx.capacidad) : '', paquete: !!dx.paquete, imagenes: imgs, activo: k ? k.activo !== false : true,
+        stock: I.vende && f.existencia !== '' && !(k && k.vars.length) ? f.existencia : (k && k.stock != null ? String(k.stock) : '') };
+      const { data, error } = await sb.rpc('mi_producto_guardar', { p });
+      if (error || !(data && data.ok)) errs.push(f.nombre + ': ' + ((data && data.error) || (error && error.message) || 'error')); else ok++;
+    }
+    catMasRows = null; await loadCatalogo();
+    msg($('kmMsg'), `✓ Listo: ${ok} guardado(s).` + (errs.length ? ` ${errs.length} con problema: ` + errs.slice(0, 5).join(' · ') : ''), errs.length ? 'bad' : 'ok');
+  };
+  if ($('kmFo')) $('kmFo').onchange = async (ev) => {
+    const files = [...ev.target.files]; if (!files.length) return;
+    const porNom = new Map(CAT.map(k => [catNorm(k.nombre), k])), add = new Map(), sin = [];
+    for (const fl of files) {
+      const base = catNorm(fl.name.replace(/\.[^.]+$/, '').replace(/([ _-]+\d{1,2}|\s*\(\d{1,2}\))$/, ''));
+      const k = porNom.get(catNorm(fl.name.replace(/\.[^.]+$/, ''))) || porNom.get(base);
+      if (!k) { sin.push(fl.name); continue; }
+      (add.get(k.id) || add.set(k.id, []).get(k.id)).push(fl);
+    }
+    let n = 0, i = 0; const errs = [];
+    for (const [id, fls] of add) {
+      const k = CAT.find(x => x.id === id), dx = k.datos_extra || {};
+      const imgs = Array.isArray(k.imagen_url) ? k.imagen_url.filter(Boolean) : [];
+      for (const fl of fls) { if (imgs.length >= 3) break; i++; msg($('kmMsg'), `Subiendo foto ${i}…`, 'ok');
+        try { imgs.push(await subirFoto(fl)); n++; } catch (er) { errs.push(fl.name + ': ' + er.message); } }
+      const p = { id: k.id, tenant_id: tenant.id, nombre: k.nombre, precio: k.precio != null ? String(k.precio) : (dx.precio_texto || ''), categoria: k.categoria || '',
+        descripcion: k.descripcion || '', duracion_min: dx.duracion_min ? String(dx.duracion_min) : '', periodo_dias: dx.periodo_dias ? String(dx.periodo_dias) : '',
+        reserva_por: dx.reserva_unidades ? (dx.reserva_por || 'noche') : '', reserva_unidades: dx.reserva_unidades ? String(dx.reserva_unidades) : '',
+        capacidad: dx.capacidad ? String(dx.capacidad) : '', paquete: !!dx.paquete, imagenes: imgs, activo: k.activo !== false, stock: k.stock != null ? String(k.stock) : '' };
+      const { data, error } = await sb.rpc('mi_producto_guardar', { p });
+      if (error || !(data && data.ok)) errs.push(k.nombre + ': no se pudo guardar');
+    }
+    await loadCatalogo();
+    msg($('kmMsg'), `✓ ${n} foto(s) agregada(s) a ${add.size} ${catInfo().it.toLowerCase()}(s).` + (sin.length ? ` Sin ${catInfo().it.toLowerCase()} con ese nombre: ${sin.slice(0, 8).join(', ')}${sin.length > 8 ? '…' : ''}.` : '') + (errs.length ? ' Problemas: ' + errs.slice(0, 4).join(' · ') : ''), sin.length || errs.length ? 'bad' : 'ok');
+  };
 }
 
 // ---------- Boletería: eventos, mapa de asientos, ventas y validación ----------

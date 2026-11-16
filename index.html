@@ -2391,12 +2391,24 @@ async function loadMetricas(){
   $('tMet').innerHTML = '<div class="card"><p class="hint" style="margin:0">Cargando…</p></div>';
   const { data } = await sb.rpc('mis_metricas', { p_dias: metDias });
   if (!data || !data.ok) { $('tMet').innerHTML = data && data.bloqueado ? bloqueo('crm', 'Métricas') : '<div class="card"><p class="sub">No se pudieron cargar las métricas.</p></div>'; return; }
+  const I = catInfo();
+  if (I.vende && !I.citas) {   // tiendas y restaurantes: ventas en $ en lugar de citas
+    const desde = new Date(Date.now() - metDias * 864e5).toISOString();
+    const { data: P } = await sb.from('pedidos').select('estado,total,telefono_cliente,created_at').eq('tenant_id', tenant.id).gte('created_at', desde).not('telefono_cliente', 'like', 'sim%').limit(5000);
+    const OK = ['confirmado','preparando','en_camino','listo_retiro','entregado'];
+    const V = (P || []).filter(x => OK.includes(x.estado));
+    data.ventas = { n: V.length, monto: V.reduce((a, x) => a + Number(x.total || 0), 0), clientes: new Set(V.map(x => x.telefono_cliente)).size,
+      pendientes: (P || []).filter(x => ['esperando_pago','pago_por_verificar'].includes(x.estado)).length,
+      dias: (() => { const m = {}; for (const x of V) { const d = new Date(x.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' }); m[d] = (m[d] || 0) + Number(x.total || 0); }
+        return Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Caracas' }); return { dia: d, n: Math.round(m[d] || 0) }; }); })() };
+  }
   paintMetricas(data);
 }
 function paintMetricas(M){
   const n = (x) => Number(x || 0).toLocaleString('es');
   const et = M.etapas || {}, totLeads = Object.values(et).reduce((a, b) => a + b, 0);
-  const conv = totLeads ? Math.round(100 * (et.cerrado_ganado || 0) / totLeads) : 0;
+  const VT = M.ventas, usd0 = (x) => '$' + Number(x || 0).toLocaleString('es', { maximumFractionDigits: 2 });
+  const conv = VT ? (M.conversaciones ? Math.min(100, Math.round(100 * VT.clientes / M.conversaciones)) : 0) : (totLeads ? Math.round(100 * (et.cerrado_ganado || 0) / totLeads) : 0);
   const respT = (M.respuestas_bot || 0) + (M.respuestas_humano || 0);
   const auto = respT ? Math.round(100 * M.respuestas_bot / respT) : 0;
   const ph = M.por_hora || [], maxH = Math.max(1, ...ph), pico = ph.indexOf(Math.max(...ph));
@@ -2411,9 +2423,16 @@ function paintMetricas(M){
       <div><b>${n(M.nuevas)}</b><span>Clientes nuevos</span></div>
       <div><b>${n(M.mensajes_clientes)}</b><span>Mensajes recibidos</span></div>
       <div><b>${auto}%</b><span>Respondido por el asistente</span></div>
-      <div><b>${n(M.citas)}</b><span>Citas agendadas</span></div>
-      <div><b>${conv}%</b><span>Conversión (cerrados ÷ clientes)</span></div>
+      ${VT ? `<div><b>${n(VT.n)}</b><span>Ventas cerradas (pago confirmado)</span></div>
+      <div><b>${usd0(VT.monto)}</b><span>Vendido</span></div>
+      <div><b>${VT.n ? usd0(VT.monto / VT.n) : '$0'}</b><span>Ticket promedio</span></div>
+      <div><b>${n(VT.pendientes)}</b><span>Pedidos esperando pago</span></div>
+      <div><b>${conv}%</b><span>Conversión (compraron ÷ conversaciones)</span></div>` : `<div><b>${n(M.citas)}</b><span>Citas agendadas</span></div>
+      <div><b>${conv}%</b><span>Conversión (cerrados ÷ clientes)</span></div>`}
     </div>
+    ${VT ? (() => { const mx = Math.max(1, ...VT.dias.map(x => x.n)); return `<div class="card"><h2>Ventas por día ($)</h2><p class="sub">Últimos 14 días · solo pedidos con pago confirmado</p>
+      <div class="bars">${VT.dias.map(x => `<div class="b" style="height:${Math.round(100 * x.n / mx)}%"><span class="tip">${fd(x.dia)}: ${usd0(x.n)}</span></div>`).join('')}</div>
+      <div class="axis">${VT.dias.map((x, i) => `<span>${i % 2 === 0 ? x.dia.slice(8, 10) + '/' + x.dia.slice(5, 7) : ''}</span>`).join('')}</div></div>`; })() : ''}
     <div class="card"><h2>¿A qué hora te escriben más?</h2>
       <p class="sub">${Math.max(...ph) ? `La hora con más mensajes es de <b>${h12(pico)} a ${h12((pico + 1) % 24)}</b>.` : 'Aún no hay mensajes en este período.'}</p>
       <div class="bars">${ph.map((v, h) => `<div class="b ${h === pico && v ? 'pk' : ''}" style="height:${Math.round(100 * v / maxH)}%"><span class="tip">${h12(h)}: ${n(v)} mensaje(s)</span></div>`).join('')}</div>

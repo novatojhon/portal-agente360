@@ -504,6 +504,8 @@
     <div class="card" id="cfgStatus"></div>
     <div class="card" id="cfgPago"></div>
     <div class="card" id="cfgSeg"></div>
+    <div class="card" id="cfgAv2"></div>
+    <div class="card" id="cfgClave"></div>
     <div class="card hidden" id="wz">
       <div class="wz-top"><span id="wzStep"></span><span class="saved" id="wzSaved"></span></div>
       <div class="prog"><i id="wzProg"></i></div>
@@ -574,7 +576,7 @@ async function start(){
   show($('tabAgenda'), fnc.includes('citas') || !vende);
   // En comercios, Pedidos va primero y se abre de entrada
   if (vende) { const nav = document.querySelector('nav.tabs'); ['cfg','met','mas','promo','cal','wa','conv','cat','cot','memb','resv','sop','paq','bol','ped','ofi'].forEach(k => { const b = nav.querySelector('[data-t="' + k + '"]'); if (b) nav.prepend(b); }); nav.append(nav.querySelector('[data-t="cfg"]'), nav.querySelector('[data-t="plan"]')); }
-  await loadPlan(); await initWizard(); loadCfgStatus(); paintPago(); paintSeg(); checkWa();
+  await loadPlan(); await initWizard(); loadCfgStatus(); paintPago(); paintSeg(); paintAv2(); paintClave(); checkWa();
   agruparMenu(); pintarPrimeros();
   if (vende) setInterval(contarPedidos, 30000);
   openTab('ofi');
@@ -2349,7 +2351,8 @@ function tasaCard(){
   return `<div class="card"><h2>💱 Tasa del día</h2>
     <p class="sub" style="margin:0 0 8px">1 $ = Bs ${t || '—'} ${DLV.tasa_at ? '· actualizada ' + esc(DLV.tasa_at) : '· <b>sin tasa</b> (los pedidos no muestran bolívares)'}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="tTasa" inputmode="decimal" placeholder="Ej.: 39,50" value="${t}" style="max-width:160px"><button class="btn" id="tSave">Guardar tasa</button></div>
-    <p class="hint" style="margin-top:6px">También puedes escribir en el WhatsApp del negocio, en "Mensaje para mí": <b>tasa 39,50</b>. Para quitar la tasa (no mostrar bolívares) déjala vacía o en 0 y guarda.</p><div id="tMsg" class="note hidden"></div></div>`;
+    <p class="hint" style="margin-top:6px">También puedes escribir en el WhatsApp del negocio, en "Mensaje para mí": <b>tasa 39,50</b>. Para quitar la tasa (no mostrar bolívares) déjala vacía o en 0 y guarda.</p>
+    ${tenant && tenant.recordatorio_tasa !== undefined ? `<label class="sw" style="margin-top:8px"><input type="checkbox" id="tRec" ${tenant.recordatorio_tasa ? 'checked' : ''}> ⏰ Recordarme por WhatsApp a las 7:00 pm que actualice la tasa</label>` : ''}<div id="tMsg" class="note hidden"></div></div>`;
 }
 function dlvCard(){
   if (!DLV) return '';
@@ -2454,6 +2457,13 @@ function paintPedidos(){
     e.target.disabled = false;
     if (error || !data || !data.ok) { e.target.checked = v; msg($('vMsg'), 'No se pudo guardar: ' + (error ? error.message : ''), 'bad'); return; }
     tenant.validar_monto = v; paintPedidos();
+  };
+  if ($('tRec')) $('tRec').onchange = async (e) => {
+    const v = e.target.checked; e.target.disabled = true;
+    const { data, error } = await sb.rpc('mi_config_recordatorio_tasa', { p_activo: v });
+    e.target.disabled = false;
+    if (error || !data || !data.ok) { e.target.checked = !v; msg($('tMsg'), 'No se pudo guardar: ' + (error ? error.message : ''), 'bad'); return; }
+    tenant.recordatorio_tasa = v; msg($('tMsg'), v ? '✓ Te lo recordaremos a las 7:00 pm.' : '✓ Recordatorio apagado.', 'ok');
   };
   if ($('tSave')) $('tSave').onclick = async () => {
     const tv = String($('tTasa').value || '').trim();
@@ -2620,7 +2630,7 @@ function openInbox(){
   clearInterval(convTimer); convTimer = setInterval(() => { if (!$('tConv').classList.contains('hidden')) { loadConvs(); if (convSel) loadChat(convSel, true); } }, 20000);
 }
 async function loadConvs(){
-  const { data } = await sb.from('conversations').select('id,tenant_id,numero_cliente,nombre_cliente,bot_activo,ultimo_mensaje,ultimo_mensaje_at').order('ultimo_mensaje_at', { ascending: false }).limit(300);
+  const { data } = await sb.from('conversations').select('id,tenant_id,numero_cliente,nombre_cliente,bot_activo,silencio_hasta,ultimo_mensaje,ultimo_mensaje_at').order('ultimo_mensaje_at', { ascending: false }).limit(300);
   CONV = data || [];
   const { data: ld } = await sb.from('leads').select('conversation_id,etapa,etapa_sugerida_ia');
   LEADS = Object.fromEntries((ld || []).map(l => [l.conversation_id, l]));
@@ -2647,10 +2657,23 @@ function paintHead(){
     <div class="who"><b>${esc(nomC(c))}</b><a href="https://wa.me/${esc(String(c.numero_cliente).split('@')[0])}" target="_blank" rel="noopener">${esc(numVis(c.numero_cliente))}</a></div>
     <label class="hint" style="margin:0">Etapa <select id="cEt">${ETAPAS.map(([k, t]) => `<option value="${k}" ${k === (l.etapa || 'prospecto') ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
     ${l.etapa_sugerida_ia && l.etapa_sugerida_ia !== l.etapa ? `<span class="tg">IA sugiere: ${esc((ETAPAS.find(x => x[0] === l.etapa_sugerida_ia) || [, l.etapa_sugerida_ia])[1])}</span>` : ''}`;
-  $('cMode').className = 'modebar ' + (c.bot_activo ? 'b' : 'h');
-  $('cMode').innerHTML = c.bot_activo
-    ? `<span>🤖 El asistente está respondiendo este chat.</span><button class="btn ghost sm" id="cTake" type="button">Tomar el control</button>`
-    : `<span>👤 Tú estás atendiendo este chat. El asistente está en pausa.</span><button class="btn sm" id="cBot" type="button">Reanudar asistente</button>`;
+  const pausa = c.bot_activo && c.silencio_hasta && new Date(c.silencio_hasta) > new Date();
+  const ms = tenant && tenant.minutos_silencio ? tenant.minutos_silencio : 2;
+  const selSil = `<label class="hint" style="margin:0;display:flex;gap:6px;align-items:center">Si escribo yo, el asistente espera <select id="cSil">${[1,2,5,10,30].concat([1,2,5,10,30].includes(ms) ? [] : [ms]).map(n => `<option value="${n}" ${n === ms ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>`;
+  $('cMode').className = 'modebar ' + (c.bot_activo && !pausa ? 'b' : 'h');
+  $('cMode').innerHTML = pausa
+    ? `<span>⏸️ Escribiste tú: el asistente vuelve solo a las ${new Date(c.silencio_hasta).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })}.</span><button class="btn sm" id="cDev" type="button">Devolver al asistente</button>${selSil}`
+    : c.bot_activo
+    ? `<span>🤖 El asistente está respondiendo este chat.</span><button class="btn ghost sm" id="cTake" type="button">Tomar el control</button>${selSil}`
+    : `<span>👤 Tú estás atendiendo este chat. El asistente está en pausa.</span><button class="btn sm" id="cBot" type="button">Devolver al asistente</button>`;
+  if ($('cDev')) $('cDev').onclick = async () => {
+    const { data } = await sb.rpc('mi_devolver_asistente', { p_conversation_id: c.id });
+    if (data && data.ok) { c.silencio_hasta = null; c.bot_activo = true; paintHead(); paintList(); } else alert('No se pudo: ' + ((data && data.mensaje) || ''));
+  };
+  if ($('cSil')) $('cSil').onchange = async (e) => {
+    const { data } = await sb.rpc('mi_config_silencio', { p_min: +e.target.value });
+    if (data && data.ok && tenant) tenant.minutos_silencio = data.minutos;
+  };
   $('cBack').onclick = () => { $('inbox').classList.remove('chat'); };
   $('cEt').onchange = () => setEtapa(c, $('cEt').value);
   if ($('cTake')) $('cTake').onclick = () => setBot(c, false);
@@ -2693,6 +2716,10 @@ async function enviarManual(){
   await loadConvs(); await loadChat(convSel, false);
 }
 async function setBot(c, activo){
+  if (activo) {
+    const { data } = await sb.rpc('mi_devolver_asistente', { p_conversation_id: c.id });
+    if (data && data.ok) { c.bot_activo = true; c.silencio_hasta = null; paintHead(); paintList(); return; }
+  }
   const { error } = await sb.from('conversations').update({ bot_activo: activo }).eq('id', c.id);
   if (!error) { c.bot_activo = activo; paintHead(); paintList(); }
 }
@@ -3378,7 +3405,7 @@ function paintSeg(){
   const conV = (arr, v) => arr.some(([x]) => x === v) ? arr : arr.concat([[v, v < 60 ? `A los ${v} minutos` : `A las ${Math.round(v / 60)} horas`]]).sort((a, b) => a[0] - b[0]);
   const opt = (arr, v) => arr.map(([x, t]) => `<option value="${x}" ${x === v ? 'selected' : ''}>${t}</option>`).join('');
   box.innerHTML = `<h2>🔁 Seguimiento automático</h2>
-    <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Solo en tu horario de atención, nunca a quien dijo que no.</p>
+    <p class="sub">Si un cliente pregunta por un producto o servicio y no vuelve a responder, tu asistente le escribe de nuevo con un mensaje personalizado. Nunca a quien dijo que no.</p>
     <p class="hint" style="margin-top:-4px">📌 Cómo funciona: si el cliente <b>compró o agendó</b> en esa conversación, le llega la <b>encuesta</b> (pestaña ⭐ Calidad). Si <b>preguntó y no compró</b>, le llega el <b>seguimiento</b>, aunque te haya comprado otras veces.</p>
     <label class="sw"><input type="checkbox" id="sgA" ${c.activo ? 'checked' : ''}> Activado</label>
     <div class="row" style="margin-top:10px">
@@ -3386,6 +3413,7 @@ function paintSeg(){
       <div><label>Segundo seguimiento</label><select id="sg2">${opt(h2 ? conV(SEG, h2) : SEG, h2)}</select></div>
     </div>
     <p class="hint" style="margin:6px 0 0">El tiempo cuenta desde el último mensaje del cliente. Se revisa cada pocos minutos, así que puede llegar unos minutos después.</p>
+    <label class="sw" style="margin-top:10px"><input type="checkbox" id="sgH" ${c.ignorar_horario !== false ? 'checked' : ''}> 🕐 Enviar las 24 horas (si lo desmarcas, solo sale en tu horario de atención)</label>
     <label class="sw" style="margin-top:10px"><input type="checkbox" id="sgP" ${c.promo ? 'checked' : ''}> Ofrecer mi promoción vigente en el segundo seguimiento</label>
     <div style="margin-top:12px"><button class="btn" id="sgS" type="button">Guardar</button></div>
     <div id="sgM" class="note hidden"></div>`;
@@ -3396,7 +3424,45 @@ function paintSeg(){
     const { data, error } = await sb.rpc('mi_config_seguimiento_min', { p_activo: $('sgA').checked, p_minutos: b ? [a, b] : [a], p_promo: $('sgP').checked });
     $('sgS').disabled = false;
     if (error || !data || !data.ok) { msg($('sgM'), 'No se pudo guardar: ' + ((error && error.message) || (data && data.mensaje) || ''), 'bad'); return; }
-    tenant.seguimiento = data.seguimiento; msg($('sgM'), '✓ Guardado', 'ok');
+    tenant.seguimiento = data.seguimiento;
+    const h = await sb.rpc('mi_config_seguimiento_24h', { p_24h: $('sgH').checked });
+    if (h.data && h.data.ok) tenant.seguimiento = h.data.seguimiento;
+    msg($('sgM'), '✓ Guardado', 'ok');
+  };
+}
+function paintAv2(){
+  const box = $('cfgAv2'); if (!box || !tenant) return;
+  if (tenant.avisos2_activo === undefined) { box.classList.add('hidden'); return; }
+  box.innerHTML = `<h2>📲 Avisos a otro número</h2>
+    <p class="sub">Los avisos del negocio (pedidos nuevos, pagos reportados, cancelaciones, productos agotados…) llegan al WhatsApp del dueño. Si quieres, también llegan a un segundo número (un encargado, la caja…).</p>
+    <label class="sw"><input type="checkbox" id="av2A" ${tenant.avisos2_activo ? 'checked' : ''}> Enviar también a este número</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="av2T" inputmode="tel" placeholder="Ej.: 0414-1234567" value="${esc(tenant.telefono_avisos2 || '')}" style="max-width:220px"><button class="btn" id="av2S" type="button">Guardar</button></div>
+    <div id="av2M" class="note hidden"></div>`;
+  $('av2S').onclick = async () => {
+    $('av2S').disabled = true;
+    const { data, error } = await sb.rpc('mi_config_avisos2', { p_telefono: $('av2T').value, p_activo: $('av2A').checked });
+    $('av2S').disabled = false;
+    if (error || !data || !data.ok) { msg($('av2M'), 'No se pudo guardar: ' + ((error && error.message) || (data && data.mensaje) || ''), 'bad'); return; }
+    tenant.avisos2_activo = data.activo; tenant.telefono_avisos2 = data.telefono;
+    msg($('av2M'), data.activo ? '✓ Guardado. Los avisos también llegarán a ese número.' : '✓ Guardado. Los avisos solo llegan al dueño.', 'ok');
+  };
+}
+function paintClave(){
+  const box = $('cfgClave'); if (!box) return;
+  box.innerHTML = `<h2>🔑 Cambiar mi contraseña</h2>
+    <p class="sub">La contraseña con la que entras a este portal.</p>
+    <div class="row"><div><label>Contraseña nueva (mín. 6)</label><input id="ckN" type="password" autocomplete="new-password"></div>
+      <div><label>Repítela</label><input id="ckR" type="password" autocomplete="new-password"></div></div>
+    <div style="margin-top:10px"><button class="btn" id="ckS" type="button">Cambiar contraseña</button></div><div id="ckM" class="note hidden"></div>`;
+  $('ckS').onclick = async () => {
+    const a = $('ckN').value, b = $('ckR').value;
+    if (a.length < 6) { msg($('ckM'), 'La contraseña debe tener al menos 6 caracteres.', 'bad'); return; }
+    if (a !== b) { msg($('ckM'), 'Las dos contraseñas no son iguales.', 'bad'); return; }
+    $('ckS').disabled = true;
+    const { error } = await sb.auth.updateUser({ password: a });
+    $('ckS').disabled = false;
+    if (error) { msg($('ckM'), 'No se pudo cambiar: ' + error.message, 'bad'); return; }
+    $('ckN').value = ''; $('ckR').value = ''; msg($('ckM'), '✓ Contraseña cambiada. Úsala la próxima vez que entres.', 'ok');
   };
 }
 async function loadCfgStatus(){

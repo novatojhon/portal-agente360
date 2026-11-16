@@ -3035,7 +3035,7 @@ const EMOJIS = { mucho:'Muchos 🎉', poco:'Pocos 🙂', nada:'Ninguno' };
 const NOMBRES = ['Sofi','Max','Luna','Leo','Vale','Teo'];
 
 // Estado del formulario
-let F = null, step = 0, faqEdit = -1;
+let F = null, step = 0, faqEdit = -1, FORM_ESTADO = null;
 const KEY = () => 'a360_borrador_' + (tenant && tenant.id);
 
 function blank(){
@@ -3502,13 +3502,20 @@ async function enviar(){
   $('wzNext').disabled = false;
   if (error) { msg($('wzMsg'), 'No se pudo enviar: ' + error.message, 'bad'); return; }
   fetch(CFG.N8N_URL + '/webhook/portal-onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_id: data.id }) }).catch(() => {});
+  try { localStorage.setItem(KEY() + '_ult', JSON.stringify({ F, at: new Date().toISOString() })); } catch {}
   clearDraft(); show($('wz'), false); paintPago(); await loadCfgStatus(); PP.form = 'enviado'; pintarPrimeros(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function initWizard(){
   const d = loadDraft();
   if (d && d.F) { F = Object.assign(blank(), d.F); step = Math.min(d.step || 0, STEPS.length - 1); }
-  else { F = await fromTenant(tenant); step = 0; }
+  else {
+    // A-10: si el último formulario enviado no está aprobado (por corregir, en revisión o con error), se abre con lo que ya había llenado
+    let u = null; try { u = JSON.parse(localStorage.getItem(KEY() + '_ult') || 'null'); } catch {}
+    if (u && u.F && FORM_ESTADO === null) { try { const { data } = await sb.from('onboarding_forms').select('estado').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(1).maybeSingle(); FORM_ESTADO = data ? data.estado : ''; } catch {} }
+    if (u && u.F && FORM_ESTADO && FORM_ESTADO !== 'aprobado' && !(tenant && tenant.reiniciado_at && (!u.at || u.at < tenant.reiniciado_at))) { F = Object.assign(blank(), u.F); step = 0; }
+    else { F = await fromTenant(tenant); step = 0; }
+  }
 }
 function openWizard(auto){ if (auto === true && !$('wz').classList.contains('hidden')) return; show($('wz'), true); paintPago(); render(); $('wz').scrollIntoView({ behavior: 'smooth' }); }
 
@@ -3637,6 +3644,7 @@ function paintClave(){
 async function loadCfgStatus(){
   const { data } = await sb.from('onboarding_forms').select('id,estado,comentario_revision,created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
   const box = $('cfgStatus');
+  FORM_ESTADO = data ? data.estado : null;
   const hasDraft = !!loadDraft();
   if (!data) {
     box.innerHTML = `<h2>👋 ¡Vamos a crear tu asistente!</h2><p class="sub" style="margin:0">Son ${STEPS.length} pasos cortos. Tu avance se guarda solo, puedes terminar después.</p>`;

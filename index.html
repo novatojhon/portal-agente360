@@ -2240,7 +2240,7 @@ async function masAudiencia(){
 function masAudTxt(){
   if (!masAud) return 'Calculando…';
   const n = masAud.total, lim = masAud.limite_diario || 100, dias = Math.ceil(n / lim), horas = Math.ceil(n / 30);
-  return n ? `👥 Le llegará a <b>${n.toLocaleString('es')}</b> cliente${n === 1 ? '' : 's'}. ⏱️ Tarda aprox. <b>${n <= lim ? horas + ' h' : dias + ' días'}</b> (1 mensaje cada 2 minutos, de 9 am a 7 pm, máx. ${lim} por día).${masAud.bajas ? ` <span class="hint">· ${masAud.bajas} se dieron de baja y no lo reciben.</span>` : ''}`
+  return n ? `👥 Le llegará a <b>${n.toLocaleString('es')}</b> cliente${n === 1 ? '' : 's'}. ⏱️ Tarda aprox. <b>${n <= lim ? horas + ' h' : dias + ' días'}</b> (1 mensaje cada 1 a 3 minutos, al azar, de 9 am a 7 pm, máx. ${lim} por día).${masAud.bajas ? ` <span class="hint">· ${masAud.bajas} se dieron de baja y no lo reciben.</span>` : ''}`
            : 'Nadie cumple ese filtro todavía. Prueba con más días o con «Todos».';
 }
 function paintMasivos(){

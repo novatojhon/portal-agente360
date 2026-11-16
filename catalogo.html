@@ -70,6 +70,8 @@ async function cargar(){
     DATA = await r.json();
   } catch { DATA = null; }
   if (!DATA || !DATA.ok) { $('main').innerHTML = '<p class="msg">Este catálogo no está disponible.</p>'; return; }
+  const GEN = ['producto', 'productos', 'general', 'otros', 'varios'];
+  DATA.productos.forEach(p => { if (p.marca && GEN.includes(norm(p.marca))) p.marca = null; });
   document.title = 'Catálogo · ' + DATA.negocio;
   $('neg').textContent = DATA.negocio;
   if (DATA.logo) { $('lg').src = DATA.logo; $('lg').hidden = false; }
@@ -94,7 +96,7 @@ function pintar(){
 function card(p){
   const f = p.fotos || [];
   const wa = DATA.whatsapp ? `https://wa.me/${DATA.whatsapp}?text=${encodeURIComponent('Hola, me interesa: ' + p.nombre)}` : '';
-  const precio = p.precio != null ? `<span class="pr">${usd(p.precio)}</span>${DATA.tasa ? `<span class="bs">${bs(p.precio * DATA.tasa)}</span>` : ''}` : `<span class="pr">${esc(p.precio_texto || 'Consultar precio')}</span>`;
+  const precio = p.precio != null && Number(p.precio) > 0 ? `<span class="pr">${usd(p.precio)}</span>${DATA.tasa ? `<span class="bs">${bs(p.precio * DATA.tasa)}</span>` : ''}` : `<span class="pr">${esc(p.precio_texto || 'Consultar precio')}</span>`;
   return `<article class="p ${p.agotado ? 'off' : ''}">
     <div class="ph">${f.length ? f.map((u, i) => `<img src="${esc(u)}" alt="${esc(p.nombre)}${f.length > 1 ? ' — foto ' + (i + 1) : ''}" loading="lazy">`).join('') : '<span class="no">📦</span>'}
       ${f.length > 1 ? `<span class="dots">${f.length} fotos · desliza</span>` : ''}${p.agotado ? '<span class="ag">Agotado</span>' : ''}</div>
